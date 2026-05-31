@@ -1,0 +1,23 @@
+[gd_scene format=3 uid="uid://cxspapfe1i7l3"]
+
+[ext_resource type="Script" uid="uid://dawuehorafwc5" path="res://Map/MapGenerator.cs" id="1_8slsq"]
+[ext_resource type="PackedScene" uid="uid://dmw6svokdbmnb" path="res://Map/tile/hex_tile_3d.tscn" id="2_ev0cl"]
+
+[sub_resource type="Environment" id="Environment_ae8na"]
+background_mode = 1
+background_color = Color(0.6882, 0.7123734, 0.74, 1)
+
+[node name="DreadnoughtDeparture" type="Node3D" unique_id=1201600104]
+script = ExtResource("1_8slsq")
+TilePrefab = ExtResource("2_ev0cl")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=858839476]
+environment = SubResource("Environment_ae8na")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=940350807]
+shadow_enabled = true
+
+[node name="Camera3D" type="Camera3D" parent="." unique_id=489673598]
+transform = Transform3D(1, 0, 0, 0, 0.68257254, 0.73081785, 0, -0.73081785, 0.68257254, 0, 4.612845, 4.9970636)
+
+[node name="MapContainer" type="Node3D" parent="." unique_id=404166523]

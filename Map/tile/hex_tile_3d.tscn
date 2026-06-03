@@ -1,5 +1,12 @@
 [gd_scene format=3 uid="uid://dmw6svokdbmnb"]
 
+[sub_resource type="CylinderMesh" id="CylinderMesh_omno1"]
+top_radius = 1.0
+bottom_radius = 1.0
+height = 0.5
+radial_segments = 6
+
 [node name="HexTile3D" type="Node3D" unique_id=253197572]
 
-[node name="CSGBox3D" type="CSGBox3D" parent="." unique_id=122936402]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=726647185]
+mesh = SubResource("CylinderMesh_omno1")

@@ -2,6 +2,10 @@
 
 [ext_resource type="Script" uid="uid://dawuehorafwc5" path="res://Map/MapGenerator.cs" id="1_8slsq"]
 [ext_resource type="PackedScene" uid="uid://dmw6svokdbmnb" path="res://Map/tile/hex_tile_3d.tscn" id="2_ev0cl"]
+[ext_resource type="PackedScene" uid="uid://csw8ncqpv1o2w" path="res://Map/map_editor.tscn" id="3_ljvux"]
+[ext_resource type="Material" uid="uid://ddv2p0kbwt03g" path="res://assets/mat/mat_ocean.tres" id="4_3teqo"]
+[ext_resource type="Material" uid="uid://eaco4tfo0aw" path="res://assets/mat/mat_island.tres" id="5_c26r1"]
+[ext_resource type="Script" uid="uid://cptk3rxv2h7h3" path="res://Map/TacticalCameraController.cs" id="6_c26r1"]
 
 [sub_resource type="Environment" id="Environment_ae8na"]
 background_mode = 1
@@ -10,6 +14,9 @@ background_color = Color(0.6882, 0.7123734, 0.74, 1)
 [node name="DreadnoughtDeparture" type="Node3D" unique_id=1201600104]
 script = ExtResource("1_8slsq")
 TilePrefab = ExtResource("2_ev0cl")
+MapEditorScene = ExtResource("3_ljvux")
+OceanMaterial = ExtResource("4_3teqo")
+IslandMaterial = ExtResource("5_c26r1")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=858839476]
 environment = SubResource("Environment_ae8na")
@@ -17,7 +24,12 @@ environment = SubResource("Environment_ae8na")
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=940350807]
 shadow_enabled = true
 
-[node name="Camera3D" type="Camera3D" parent="." unique_id=489673598]
-transform = Transform3D(1, 0, 0, 0, 0.68257254, 0.73081785, 0, -0.73081785, 0.68257254, 0, 4.612845, 4.9970636)
-
 [node name="MapContainer" type="Node3D" parent="." unique_id=404166523]
+
+[node name="CameraBoom" type="Node3D" parent="." unique_id=980798976]
+transform = Transform3D(0.8660254, 0, -0.5, 0, 1, 0, 0.5, 0, 0.8660254, 0, 0, 0)
+script = ExtResource("6_c26r1")
+
+[node name="Camera3D" type="Camera3D" parent="CameraBoom" unique_id=489673598]
+transform = Transform3D(1, 0, 0, 0, 0.49999997, 0.86602545, 0, -0.86602545, 0.49999997, 0, 15, 15)
+current = true

@@ -1,0 +1,35 @@
+[gd_resource type="TileSet" format=3 uid="uid://cd0itkxoiurfw"]
+
+[ext_resource type="Texture2D" uid="uid://sqnx14npl506" path="res://assets/texture/Tiles/island.png" id="1_2e25e"]
+[ext_resource type="Texture2D" uid="uid://bd8rjypw8otft" path="res://assets/texture/Tiles/ocean.png" id="2_5fslo"]
+[ext_resource type="Texture2D" uid="uid://b0ntbrg7fxowf" path="res://assets/texture/Tiles/Enemy.png" id="3_14vtg"]
+[ext_resource type="Texture2D" uid="uid://c3aylmikocrta" path="res://assets/texture/Tiles/Player.png" id="4_loifd"]
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_3ifoe"]
+texture = ExtResource("1_2e25e")
+texture_region_size = Vector2i(120, 140)
+0:0/0 = 0
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_g0w8n"]
+texture = ExtResource("2_5fslo")
+texture_region_size = Vector2i(120, 140)
+0:0/0 = 0
+0:0/0/modulate = Color(0.37690136, 0.8020974, 0.99999994, 1)
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_41wvr"]
+texture = ExtResource("3_14vtg")
+texture_region_size = Vector2i(120, 140)
+0:0/0 = 0
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_brutm"]
+texture = ExtResource("4_loifd")
+texture_region_size = Vector2i(120, 140)
+0:0/0 = 0
+
+[resource]
+tile_shape = 3
+tile_size = Vector2i(120, 140)
+sources/1 = SubResource("TileSetAtlasSource_3ifoe")
+sources/2 = SubResource("TileSetAtlasSource_g0w8n")
+sources/4 = SubResource("TileSetAtlasSource_41wvr")
+sources/6 = SubResource("TileSetAtlasSource_brutm")

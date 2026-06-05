@@ -21,16 +21,17 @@ public partial class LevelDataManager : Node
 	{
 		string jsonPath = $"user://maps/{MapId}.json";
 
-		// 0. 判断数据来源：读档 还是 从 2D 场景抠
-		if (!ForceReextract && LoadFromJson(jsonPath))
+		// 0. 判断数据来源
+		//    开发期：只要绑了 2D 场景，永远从它抠（保证编辑器改动即时生效）
+		//    运行期：没有 2D 场景时，才从 JSON 读
+		if (MapEditorScene != null)
 		{
-			// 运行时：直接从 JSON 读到了地图数据，啥也不用干
-		}
-		else if (MapEditorScene != null)
-		{
-			// 开发期：从 2D 关卡编辑器场景抠数据，然后顺手存成 JSON
 			ExtractFromTileMap();
 			SaveToJson(jsonPath);
+		}
+		else if (LoadFromJson(jsonPath))
+		{
+			// 发布模式：直接从 JSON 读
 		}
 		else
 		{

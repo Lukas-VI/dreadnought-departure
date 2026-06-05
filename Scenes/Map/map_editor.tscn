@@ -1,6 +1,6 @@
 [gd_scene format=4 uid="uid://csw8ncqpv1o2w"]
 
-[ext_resource type="TileSet" uid="uid://cd0itkxoiurfw" path="res://assets/Tiles/tile_set.tres" id="1_jl2vk"]
+[ext_resource type="TileSet" uid="uid://cd0itkxoiurfw" path="res://Data/TileSets/tile_set.tres" id="1_jl2vk"]
 
 [node name="MapEditor" type="Node2D" unique_id=880970163]
 
@@ -9,5 +9,5 @@ tile_map_data = PackedByteArray("AAAJAAAAAgAAAAAAAAAJAAIAAgAAAAAAAAD//wEAAgAAAAA
 tile_set = ExtResource("1_jl2vk")
 
 [node name="UnitLayer" type="TileMapLayer" parent="." unique_id=623817858]
-tile_map_data = PackedByteArray("AAAAAAEABgAAAAAAAAAMAAcABAAAAAAAAAA=")
+tile_map_data = PackedByteArray("AAAAAAEABgAAAAAAAAAMAAcABAAAAAAAAAALAAcABAAAAAAAAAAMAAYABAAAAAAAAAALAAYABAAAAAAAAAALAAUABAAAAAAAAAAKAAUABAAAAAAAAAAKAAQABAAAAAAAAAAJAAMABAAAAAAAAAAJAAIABAAAAAAAAAAIAAEABAAAAAAAAAA=")
 tile_set = ExtResource("1_jl2vk")

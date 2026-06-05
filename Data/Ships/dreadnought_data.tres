@@ -1,0 +1,7 @@
+[gd_resource type="Resource" script_class="ShipData" format=3 uid="uid://bbvb5oqk0hin0"]
+
+[ext_resource type="Script" uid="uid://dreq4a4on5nm3" path="res://Scripts/Data/ShipData.cs" id="1_suhgx"]
+
+[resource]
+script = ExtResource("1_suhgx")
+metadata/_custom_type_script = "uid://dreq4a4on5nm3"

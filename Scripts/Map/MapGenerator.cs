@@ -16,12 +16,6 @@ public partial class MapGenerator : Node3D
 	// 地形 prefab：key = "ocean"/"island" 等，value = hex_tile_xxx.tscn
 	[Export] public Godot.Collections.Dictionary<string, PackedScene> TilePrefabs;
 
-	// 🔧 兜底：字典没配时用这个
-	[Export] public PackedScene DefaultShipPrefab;
-
-	// 战舰 prefab（按 tile ID 查表）
-	[Export] public Godot.Collections.Dictionary<int, PackedScene> ShipPrefabs;
-
 	// 后面高亮和战斗需要精准找格子，我们把生成的 3D 格子 Mesh 存起来暴露出去
 	public Dictionary<Vector2I, MeshInstance3D> SpawnedTileMeshes { get; private set; } = new();
 
@@ -33,7 +27,7 @@ public partial class MapGenerator : Node3D
 	}
 
 	// 生成地图的核心函数，接受从 LevelDataManager 抓取来的纯数据字典
-	public void BuildMap(Dictionary<Vector2I, string> terrainData, Dictionary<Vector2I, int> unitData)
+	public void BuildMap(Dictionary<Vector2I, string> terrainData)
 	{
 		// 1. 生成地形
 		foreach (var kvp in terrainData)
@@ -65,23 +59,6 @@ if (tilePrefab == null) continue;
 			if (meshInst != null) SpawnedTileMeshes[coords] = meshInst;
 		}
 
-		// 2. 生成单位
-		foreach (var kvp in unitData)
-		{
-			Vector2I coords = kvp.Key;
-			int shipTileId = kvp.Value;
-
-			PackedScene shipPrefab = ShipPrefabs.TryGetValue(shipTileId, out var sp) ? sp : DefaultShipPrefab;
-if (shipPrefab == null) continue;
-
-			ShipComponent shipInstance = shipPrefab.Instantiate<ShipComponent>();
-			AddChild(shipInstance);
-
-			shipInstance.HexCoords = coords;
-			Vector3 targetWorldPos = HexToWorld(coords.X, coords.Y);
-			shipInstance.Position = new Vector3(targetWorldPos.X, 0.3f, targetWorldPos.Z);
-			shipInstance.UpdateUi();
-		}
 	}
 
 	public Vector3 HexToWorld(int q, int r)

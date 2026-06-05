@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://d1k2bwwbi4fan"]
 
 [ext_resource type="Script" uid="uid://c5jjrnq6o77hv" path="res://Scripts/Unit/ShipComponent.cs" id="1_4aexa"]
+[ext_resource type="Texture2D" uid="uid://dkxjjvgf6gemw" path="res://assets/texture/Emotions/emote_alert.png" id="2_gn27q"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_81kd5"]
 size = Vector3(1, 0.5, 0.3)
@@ -16,4 +17,6 @@ mesh = SubResource("BoxMesh_81kd5")
 transform = Transform3D(1, 0, 0, 0, 0.70710677, 0.70710677, 0, -0.70710677, 0.70710677, 0, 1.665, 0)
 
 [node name="TurnFlag" type="Sprite3D" parent="." unique_id=1121847080]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75, 0)
 billboard = 1
+texture = ExtResource("2_gn27q")

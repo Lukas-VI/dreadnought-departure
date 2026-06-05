@@ -4,4 +4,5 @@
 
 [resource]
 script = ExtResource("1_nrhhi")
+ShipName = "杂鱼"
 metadata/_custom_type_script = "uid://dreq4a4on5nm3"

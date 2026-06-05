@@ -1,5 +1,7 @@
 [gd_scene format=3 uid="uid://blpkrddkahs47"]
 
 [ext_resource type="PackedScene" uid="uid://d1k2bwwbi4fan" path="res://Scenes/Unit/ship_3d.tscn" id="1_tt6di"]
+[ext_resource type="Resource" uid="uid://bbvb5oqk0hin0" path="res://Data/Ships/dreadnought_data.tres" id="2_wxio5"]
 
 [node name="Ships" unique_id=432411186 instance=ExtResource("1_tt6di")]
+Data = ExtResource("2_wxio5")

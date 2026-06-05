@@ -4,4 +4,8 @@
 
 [resource]
 script = ExtResource("1_suhgx")
+ShipName = "无畏舰"
+MaxHp = 1000
+MoveRange = 5
+AttackRange = 10
 metadata/_custom_type_script = "uid://dreq4a4on5nm3"

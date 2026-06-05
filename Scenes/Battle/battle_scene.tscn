@@ -14,7 +14,9 @@
 [ext_resource type="PackedScene" uid="uid://csw8ncqpv1o2w" path="res://Scenes/Map/map_editor.tscn" id="12_skgte"]
 [ext_resource type="Script" uid="uid://dvomdp5uctxb3" path="res://Scripts/Battle/GridOverlayController.cs" id="13_1a3gk"]
 [ext_resource type="Material" uid="uid://7goad27uoait" path="res://Data/Materials/overlay/mat_move.tres" id="14_40250"]
+[ext_resource type="Script" uid="uid://b0itldhy83kki" path="res://Scripts/Battle/BattleStateMachine.cs" id="14_sufya"]
 [ext_resource type="Material" uid="uid://clr4rwuaad5v4" path="res://Data/Materials/overlay/mat_attack.tres" id="15_3vjj8"]
+[ext_resource type="Script" uid="uid://cmor1118gv50b" path="res://Scripts/Map/UnitSpawner.cs" id="15_n1ain"]
 [ext_resource type="Script" uid="uid://dtfiv2b70gcek" path="res://Scripts/Battle/BattleInputDetector.cs" id="16_5mbgg"]
 [ext_resource type="Script" uid="uid://u0gemd3dylmu" path="res://Scripts/UI/BattleHudBroker.cs" id="17_jvbbk"]
 
@@ -65,11 +67,6 @@ TilePrefabs = Dictionary[String, PackedScene]({
 "island": ExtResource("5_fm2jp"),
 "ocean": ExtResource("6_swwb8")
 })
-DefaultShipPrefab = ExtResource("7_f4hcl")
-ShipPrefabs = Dictionary[int, PackedScene]({
-4: ExtResource("8_jbiss"),
-6: ExtResource("9_brxyk")
-})
 
 [node name="MapContainer" type="Node3D" parent="MapGenerator" unique_id=404166523]
 
@@ -92,6 +89,17 @@ AttackMaterial = ExtResource("15_3vjj8")
 
 [node name="BattleInputDetector" type="Node" parent="." unique_id=2091353093]
 script = ExtResource("16_5mbgg")
+
+[node name="BattleStateMachine" type="Node" parent="." unique_id=145654159]
+script = ExtResource("14_sufya")
+
+[node name="UnitSpawner" type="Node3D" parent="." unique_id=183500773]
+script = ExtResource("15_n1ain")
+DefaultShipPrefab = ExtResource("7_f4hcl")
+ShipPrefabs = Dictionary[int, PackedScene]({
+4: ExtResource("8_jbiss"),
+6: ExtResource("9_brxyk")
+})
 
 [node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=1367051801]
 

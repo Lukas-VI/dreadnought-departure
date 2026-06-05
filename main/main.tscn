@@ -1,0 +1,88 @@
+[gd_scene format=3 uid="uid://cxspapfe1i7l3"]
+
+[ext_resource type="Script" uid="uid://t0ut6lqf525k" path="res://main/playground/GameplayDirector.cs" id="1_c651c"]
+[ext_resource type="Script" uid="uid://dawuehorafwc5" path="res://Level/Map/MapGenerator.cs" id="1_xwkvk"]
+[ext_resource type="Script" uid="uid://cptk3rxv2h7h3" path="res://main/playground/TacticalCameraController.cs" id="2_c651c"]
+[ext_resource type="Script" uid="uid://bud8bdtieoq8k" path="res://Level/Map/LevelDataManager.cs" id="3_3wy1v"]
+[ext_resource type="PackedScene" uid="uid://dmw6svokdbmnb" path="res://Level/Tile/hex_tile_3d.tscn" id="3_67ri8"]
+[ext_resource type="PackedScene" uid="uid://d1k2bwwbi4fan" path="res://Unit/ship_3d.tscn" id="4_grrlh"]
+[ext_resource type="Script" uid="uid://dvomdp5uctxb3" path="res://main/playground/GridOverlayController.cs" id="5_3wy1v"]
+[ext_resource type="PackedScene" uid="uid://csw8ncqpv1o2w" path="res://Level/Map/map_editor.tscn" id="5_kfbq2"]
+[ext_resource type="PackedScene" uid="uid://bex2b3xfbwap" path="res://Level/Tile/Prefab/hex_tile_island.tscn" id="5_na0o7"]
+[ext_resource type="PackedScene" uid="uid://dc8nvge070lfk" path="res://Level/Tile/Prefab/hex_tile_ocean.tscn" id="6_5xyti"]
+[ext_resource type="PackedScene" uid="uid://blpkrddkahs47" path="res://Unit/Prefab/dreadnought.tscn" id="6_73k8k"]
+[ext_resource type="Script" uid="uid://u0gemd3dylmu" path="res://main/UI/BattleHudBroker.cs" id="7_4dugh"]
+[ext_resource type="PackedScene" uid="uid://bj0tupp4206ep" path="res://assets/Tiles/hex_tile_3d.tscn" id="7_n3o0a"]
+[ext_resource type="PackedScene" uid="uid://cuw7v74tlxfhn" path="res://Unit/Prefab/frigate.tscn" id="9_s758e"]
+[ext_resource type="Material" uid="uid://clr4rwuaad5v4" path="res://assets/mat/overlay/mat_attack.tres" id="11_fwcvl"]
+[ext_resource type="Material" uid="uid://7goad27uoait" path="res://assets/mat/overlay/mat_move.tres" id="11_na0o7"]
+[ext_resource type="Script" uid="uid://dtfiv2b70gcek" path="res://main/playground/BattleInputDetector.cs" id="13_73k8k"]
+
+[sub_resource type="Environment" id="Environment_ae8na"]
+background_mode = 1
+background_color = Color(0.86165696, 0.8681486, 0.86396885, 1)
+
+[sub_resource type="LabelSettings" id="LabelSettings_na0o7"]
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_4dugh"]
+
+[node name="GameplayDirector" type="Node3D" unique_id=1201600104]
+script = ExtResource("1_c651c")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=858839476]
+environment = SubResource("Environment_ae8na")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=940350807]
+transform = Transform3D(1, 0, 0, 0, 0.48230413, 0.87600386, 0, -0.87600386, 0.48230413, 0, 6.392591, 4.5688534)
+shadow_enabled = true
+
+[node name="MapGenerator" type="Node3D" parent="." unique_id=1886016743]
+script = ExtResource("1_xwkvk")
+DefaultTilePrefab = ExtResource("3_67ri8")
+TilePrefabs = Dictionary[String, PackedScene]({
+"default": ExtResource("7_n3o0a"),
+"island": ExtResource("5_na0o7"),
+"ocean": ExtResource("6_5xyti")
+})
+DefaultShipPrefab = ExtResource("4_grrlh")
+ShipPrefabs = Dictionary[int, PackedScene]({
+4: ExtResource("9_s758e"),
+6: ExtResource("6_73k8k")
+})
+
+[node name="MapContainer" type="Node3D" parent="MapGenerator" unique_id=404166523]
+
+[node name="TacticalCameraRig" type="Node3D" parent="." unique_id=980798976]
+transform = Transform3D(0.8660254, 0, -0.5, 0, 1, 0, 0.5, 0, 0.8660254, 0, 0, 0)
+script = ExtResource("2_c651c")
+
+[node name="Camera3D" type="Camera3D" parent="TacticalCameraRig" unique_id=489673598]
+transform = Transform3D(1, 0, 0, 0, 0.49999997, 0.86602545, 0, -0.86602545, 0.49999997, 0, 15, 15)
+current = true
+
+[node name="LevelDataManager" type="Node" parent="." unique_id=1625231127]
+script = ExtResource("3_3wy1v")
+MapEditorScene = ExtResource("5_kfbq2")
+
+[node name="GridOverlayController" type="Node" parent="." unique_id=1079719332]
+script = ExtResource("5_3wy1v")
+MoveMaterial = ExtResource("11_na0o7")
+AttackMaterial = ExtResource("11_fwcvl")
+
+[node name="BattleInputDetector" type="Node" parent="." unique_id=2091353093]
+script = ExtResource("13_73k8k")
+
+[node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=1367051801]
+
+[node name="MarginContainer" type="MarginContainer" parent="CanvasLayer" unique_id=1394021856]
+offset_right = 1150.0
+offset_bottom = 114.0
+
+[node name="InfoLabel" type="Label" parent="CanvasLayer/MarginContainer" unique_id=273461267]
+layout_mode = 2
+label_settings = SubResource("LabelSettings_na0o7")
+script = ExtResource("7_4dugh")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=111098748]
+transform = Transform3D(3, 0, 0, 0, 3, 0, 0, 0, 3, 0, 28.324013, 0)
+mesh = SubResource("CapsuleMesh_4dugh")

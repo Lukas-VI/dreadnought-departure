@@ -1,0 +1,9 @@
+[gd_scene format=3 uid="uid://bex2b3xfbwap"]
+
+[ext_resource type="PackedScene" uid="uid://dmw6svokdbmnb" path="res://Level/Tile/hex_tile_3d.tscn" id="1_mxxan"]
+[ext_resource type="Material" uid="uid://eaco4tfo0aw" path="res://assets/mat/terrain/mat_island.tres" id="2_iljp5"]
+
+[node name="HexTile3D" unique_id=253197572 instance=ExtResource("1_mxxan")]
+
+[node name="MeshInstance3D" parent="." index="0" unique_id=726647185]
+surface_material_override/0 = ExtResource("2_iljp5")

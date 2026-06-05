@@ -1,0 +1,5 @@
+[gd_scene format=3 uid="uid://blpkrddkahs47"]
+
+[ext_resource type="PackedScene" uid="uid://d1k2bwwbi4fan" path="res://Unit/ship_3d.tscn" id="1_tt6di"]
+
+[node name="Ships" unique_id=432411186 instance=ExtResource("1_tt6di")]

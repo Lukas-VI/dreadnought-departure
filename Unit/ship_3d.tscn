@@ -1,0 +1,19 @@
+[gd_scene format=3 uid="uid://d1k2bwwbi4fan"]
+
+[ext_resource type="Script" uid="uid://c5jjrnq6o77hv" path="res://Unit/ShipComponent.cs" id="1_4aexa"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_81kd5"]
+size = Vector3(1, 0.5, 0.3)
+
+[node name="Ships" type="Node3D" unique_id=432411186]
+script = ExtResource("1_4aexa")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=1002817285]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, 0)
+mesh = SubResource("BoxMesh_81kd5")
+
+[node name="Label3D" type="Label3D" parent="." unique_id=767423347]
+transform = Transform3D(1, 0, 0, 0, 0.70710677, 0.70710677, 0, -0.70710677, 0.70710677, 0, 1.665, 0)
+
+[node name="TurnFlag" type="Sprite3D" parent="." unique_id=1121847080]
+billboard = 1

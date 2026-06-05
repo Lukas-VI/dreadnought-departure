@@ -1,5 +1,7 @@
 [gd_scene format=3 uid="uid://dmw6svokdbmnb"]
 
+[ext_resource type="Material" uid="uid://ddv2p0kbwt03g" path="res://assets/mat/terrain/mat_ocean.tres" id="1_ifst6"]
+
 [sub_resource type="CylinderMesh" id="CylinderMesh_omno1"]
 top_radius = 1.0
 bottom_radius = 1.0
@@ -10,3 +12,4 @@ radial_segments = 6
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=726647185]
 mesh = SubResource("CylinderMesh_omno1")
+surface_material_override/0 = ExtResource("1_ifst6")

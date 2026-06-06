@@ -1,0 +1,48 @@
+[gd_scene format=3 uid="uid://brj4gpw3mqqgl"]
+
+[ext_resource type="Script" uid="uid://dmahb2oajcher" path="res://Scripts/UI/BattleUIController.cs" id="1_o21vf"]
+[ext_resource type="Texture2D" uid="uid://bijsgj57web18" path="res://assets/texture/Emo_Icon/emote_exclamation.png" id="2_31gad"]
+[ext_resource type="Script" uid="uid://u0gemd3dylmu" path="res://Scripts/UI/BattleHudBroker.cs" id="2_tr5vc"]
+[ext_resource type="Script" uid="uid://bsatb0t8co5te" path="res://Scripts/UI/WheelMenu.cs" id="3_tr5vc"]
+
+[node name="BattleUIController" type="Control" unique_id=226437474]
+layout_mode = 3
+anchors_preset = 0
+script = ExtResource("1_o21vf")
+
+[node name="WheelMenu" type="Control" parent="." unique_id=2112131439]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("3_tr5vc")
+
+[node name="InfoLabel" type="Label" parent="." unique_id=421730149]
+layout_mode = 0
+offset_left = 31.0
+offset_top = 24.0
+offset_right = 71.0
+offset_bottom = 47.0
+script = ExtResource("2_tr5vc")
+
+[node name="BottomBar" type="HBoxContainer" parent="." unique_id=17716286]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 973.0
+offset_top = 529.0
+offset_right = 1100.0
+offset_bottom = 575.0
+grow_horizontal = 0
+grow_vertical = 0
+
+[node name="EndTurnBtn" type="Button" parent="BottomBar" unique_id=1645166062]
+layout_mode = 2
+text = "结束回合>>"
+icon = ExtResource("2_31gad")
+
+[node name="RetryBtn" type="Button" parent="BottomBar" unique_id=442926299]
+layout_mode = 2
+text = "Retry"

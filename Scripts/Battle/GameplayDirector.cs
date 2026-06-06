@@ -1,5 +1,6 @@
 using Godot;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace DreadnoughtDeparture.Core;
 
@@ -9,99 +10,46 @@ public partial class GameplayDirector : Node
 	private MapGenerator _mapGenerator;
 	private UnitSpawner _unitSpawner;
 	private GridOverlayController _overlay;
-	private BattleHudBroker _hud;
-	
-	// 跟踪战棋游戏时序的状态控制变量
-	private ShipComponent _selectedShip = null;
-	private Dictionary<Vector2I, ShipComponent> _activeShips = new();
+	private BattleUIController _ui;
+	private TurnManager _turnManager;
+	private PlayerController _playerController;
+	private AIController _aiController;
+	private BattleInputDetector _input;
 
 	public override void _Ready()
 	{
-		// 1. 抓取各个独立组件
 		_dataManager = GetNode<LevelDataManager>("LevelDataManager");
 		_mapGenerator = GetNode<MapGenerator>("MapGenerator");
 		_unitSpawner = GetNode<UnitSpawner>("UnitSpawner");
 		_overlay = GetNode<GridOverlayController>("GridOverlayController");
-		_hud = GetNode<BattleHudBroker>("CanvasLayer/MarginContainer/InfoLabel");
-		// 2. 时序控制：监听输入的独立触角信号
-		var inputDetector = GetNodeOrNull<BattleInputDetector>("BattleInputDetector");
-		if (inputDetector != null) inputDetector.HexClicked += OnTacticalHexClicked;
+		_ui = GetNode<BattleUIController>("BattleUI");
+		_turnManager = GetNode<TurnManager>("TurnManager");
+		_playerController = GetNode<PlayerController>("PlayerController");
+		_aiController = GetNode<AIController>("AIController");
+		_input = GetNodeOrNull<BattleInputDetector>("BattleInputDetector");
 
-		// 3. 递延一帧，启动整个世界的沙盘灌注
+		if (_input != null) _playerController.Setup(_input, _ui);
+		_turnManager.Setup(_playerController, _aiController, _mapGenerator, _overlay, _ui);
+
 		CallDeferred(MethodName.LaunchBattleField);
 	}
 
 	public void LaunchBattleField()
 	{
-		GD.Print("--- 🚀 GameplayDirector: 收到 LevelDataManager 的就绪信号，开始生成战场 ---");
-		// 驱动地图与船只生成
 		_mapGenerator.BuildMap(_dataManager.TerrainData);
 		_unitSpawner.SpawnUnits(_dataManager.UnitData);
-		
-		// 核心数据对齐：把生成好的格子 Mesh 丢给化妆师
 		_overlay.InitializeOverlayTargets(_mapGenerator.SpawnedTileMeshes);
-		
-		// 记录当前战场上的所有战舰实例（供寻路和开炮查找）
-		UpdateActiveShipsRegistry();
-
-		_hud.DisplayConsoleLog("⚓ 开始。");
-
-		GD.Print("--- 🎬 GameplayDirector: 战场生成完毕，玩家可以开始指挥了！ ---");
+		StartTurns();
 	}
 
-	// 🔥 整个战棋的核心状态时序机
-	private void OnTacticalHexClicked(Vector2I clickedHex)
+	private async void StartTurns()
 	{
-		if (_selectedShip == null)
-		{
-			// 状态A：选船
-			if (_activeShips.TryGetValue(clickedHex, out var ship))
-			{
-				_selectedShip = ship;
-				_selectedShip.ShowSelected(true);
-				_overlay.DrawTacticalRange(_selectedShip.HexCoords, _selectedShip.MoveRange, _selectedShip.AttackRange);
-				_hud.DisplayShipSelected(_selectedShip);
-			}
-		}
-		else
-		{
-			// 状态B：已有选定船，下达战术指令
-			if (_activeShips.TryGetValue(clickedHex, out var targetShip) && targetShip != _selectedShip)
-			{
-				int dist = BattleRulesEvaluator.GetHexDistance(_selectedShip.HexCoords, clickedHex);
-				if (dist <= _selectedShip.AttackRange)
-				{
-					targetShip.TakeDamage(_selectedShip.AttackPower);
-					_hud.DisplayConsoleLog($"💥 主炮齐射！对 {targetShip.ShipName} 造成 {_selectedShip.AttackPower} 点伤害！");
-				}
-				else _hud.DisplayConsoleLog("❌ 报告长官：目标在射程之外！");
-			}
-			else
-			{
-				// 机动
-				int dist = BattleRulesEvaluator.GetHexDistance(_selectedShip.HexCoords, clickedHex);
-				if (dist <= _selectedShip.MoveRange)
-				{
-					_selectedShip.MoveToHex(_mapGenerator, clickedHex);
-					_hud.DisplayConsoleLog($"⚓ 舰队已机动至：{clickedHex}");
-				}
-				else _hud.DisplayConsoleLog("❌ 报告长官：超出机动范围！");
-			}
-
-			// 指令结算，清空时序状态
-			_selectedShip.ShowSelected(false);
-			_overlay.ClearOverlay();
-			_selectedShip = null;
-			UpdateActiveShipsRegistry();
-		}
-	}
-
-	private void UpdateActiveShipsRegistry()
-	{
-		_activeShips.Clear();
-		foreach (var node in GetTree().GetNodesInGroup("Ships"))
-		{
-			if (node is ShipComponent ship) _activeShips[ship.HexCoords] = ship;
-		}
+		await ToSignal(GetTree(), "process_frame");
+		var all = new List<ShipComponent>();
+		foreach (var n in GetTree().GetNodesInGroup("Ships"))
+			if (n is ShipComponent s) all.Add(s);
+		var player = all.Where(s => s.TileSourceId == 6).ToList();
+		var enemy = all.Where(s => s.TileSourceId != 6).ToList();
+		_turnManager.Start(player, enemy);
 	}
 }

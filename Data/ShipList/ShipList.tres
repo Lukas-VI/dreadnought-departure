@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ShipList" format=3 uid="uid://dfv4epon1gag5"]
+
+[ext_resource type="Script" uid="uid://d0uj8vc56f6hw" path="res://Scripts/Data/Ship/ShipList.cs" id="1_joy8m"]
+[ext_resource type="PackedScene" uid="uid://blpkrddkahs47" path="res://Ships/Dreadnought/dreadnought.tscn" id="1_uawrs"]
+[ext_resource type="PackedScene" uid="uid://cuw7v74tlxfhn" path="res://Ships/Frigate/frigate.tscn" id="2_dmcme"]
+
+[resource]
+script = ExtResource("1_joy8m")
+Ships = Dictionary[int, PackedScene]({
+4: ExtResource("2_dmcme"),
+6: ExtResource("1_uawrs")
+})
+metadata/_custom_type_script = "uid://d0uj8vc56f6hw"

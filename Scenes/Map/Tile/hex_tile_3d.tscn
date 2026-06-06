@@ -3,8 +3,8 @@
 [ext_resource type="Material" uid="uid://ddv2p0kbwt03g" path="res://Data/Materials/terrain/mat_ocean.tres" id="1_ifst6"]
 
 [sub_resource type="CylinderMesh" id="CylinderMesh_omno1"]
-top_radius = 1.0
-bottom_radius = 1.0
+top_radius = 2.0
+bottom_radius = 2.0
 height = 0.5
 radial_segments = 6
 

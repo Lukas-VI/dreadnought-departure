@@ -1,7 +1,0 @@
-[gd_scene format=3 uid="uid://cuw7v74tlxfhn"]
-
-[ext_resource type="PackedScene" uid="uid://d1k2bwwbi4fan" path="res://Scenes/Unit/ship_3d.tscn" id="1_g1ju6"]
-[ext_resource type="Resource" uid="uid://04yil323lfjb" path="res://Data/Ships/frigate_data.tres" id="2_uv1qb"]
-
-[node name="Ships" unique_id=432411186 instance=ExtResource("1_g1ju6")]
-Data = ExtResource("2_uv1qb")

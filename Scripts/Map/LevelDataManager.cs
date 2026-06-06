@@ -13,7 +13,7 @@ public partial class LevelDataManager : Node
 
 	// 提供给全天下的纯粹数据字典
 	public Dictionary<Vector2I, string> TerrainData { get; private set; } = new();
-	public Dictionary<Vector2I, int> UnitData { get; private set; } = new();
+	public Dictionary<Vector2I, List<int>> UnitData { get; private set; } = new();
 
 	private string _currentMapId;
 
@@ -50,7 +50,7 @@ public partial class LevelDataManager : Node
 		Node2D editorInstance = MapEditorScene.Instantiate<Node2D>();
 		
 		TileMapLayer terrainLayer = editorInstance.GetNode<TileMapLayer>("TerrainLayer");
-		TileMapLayer unitLayer = editorInstance.GetNode<TileMapLayer>("UnitLayer");
+		
 
 		// 抠取地形数据
 		if (terrainLayer != null)
@@ -63,13 +63,18 @@ public partial class LevelDataManager : Node
 			}
 		}
 
-		// 抠取单位数据
-		if (unitLayer != null)
+		// 抠取单位数据（支持堆叠：遍历所有 UnitLayer_* 层）
+		foreach (var child in editorInstance.GetChildren())
 		{
-			foreach (Vector2I cellCoords in unitLayer.GetUsedCells())
+			if (child is TileMapLayer layer && layer.Name.ToString().StartsWith("UnitLayer"))
 			{
-				Vector2I axial = ConvertToAxial(cellCoords);
-				UnitData[axial] = unitLayer.GetCellSourceId(cellCoords);
+				foreach (Vector2I cellCoords in layer.GetUsedCells())
+				{
+					Vector2I axial = ConvertToAxial(cellCoords);
+					int tileId = layer.GetCellSourceId(cellCoords);
+					if (!UnitData.ContainsKey(axial)) UnitData[axial] = new List<int>();
+					UnitData[axial].Add(tileId);
+				}
 			}
 		}
 
@@ -93,7 +98,7 @@ public partial class LevelDataManager : Node
 		public string Name { get; set; } = "untitled";
 		public int Version { get; set; } = 1;
 		public Dictionary<string, string> Terrain { get; set; } = new();
-		public Dictionary<string, int> Units { get; set; } = new();
+		public Dictionary<string, List<int>> Units { get; set; } = new();
 	}
 
 	// Vector2I ↔ "q,r" 字符串
@@ -110,7 +115,7 @@ public partial class LevelDataManager : Node
 	{
 		var data = new MapSaveData { Name = _currentMapId, Version = 1 };
 		foreach (var kv in TerrainData) data.Terrain[SerializeKey(kv.Key)] = kv.Value;
-		foreach (var kv in UnitData)    data.Units[SerializeKey(kv.Key)] = kv.Value;
+		foreach (var kv in UnitData)    data.Units[SerializeKey(kv.Key)] = kv.Value;  // List<int>
 		
 		var json = JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true });
 		DirAccess.MakeDirRecursiveAbsolute("user://maps");

@@ -1,8 +1,9 @@
 [gd_resource type="Resource" script_class="ShipData" format=3 uid="uid://04yil323lfjb"]
 
-[ext_resource type="Script" uid="uid://dreq4a4on5nm3" path="res://Scripts/Data/ShipData.cs" id="1_nrhhi"]
+[ext_resource type="Script" uid="uid://dreq4a4on5nm3" path="res://Scripts/Data/Ship/ShipData.cs" id="1_3h8fc"]
 
 [resource]
-script = ExtResource("1_nrhhi")
+script = ExtResource("1_3h8fc")
 ShipName = "杂鱼"
+Rarity = "N"
 metadata/_custom_type_script = "uid://dreq4a4on5nm3"

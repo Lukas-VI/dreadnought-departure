@@ -15,9 +15,13 @@ public partial class ShipComponent : Node3D
 	public int MoveRange { get; set; } = 3;
 	public int AttackRange { get; set; } = 4;
 	public int AttackPower { get; set; } = 35;
+    public int CurrentSpeed; // 当前航速
+	public int TileSourceId; // 来自 2D 编辑器的 tile ID，判断敌我
 
 	// 当前战舰所在的六角格轴向坐标 (Q, R)
 	public Vector2I HexCoords { get; set; }
+    public HexDirection Direction = HexDirection.N;
+    public int PendingDamage;
 
 	private Label3D _hpLabel;
 	private Sprite3D _turnFlag;
@@ -75,9 +79,13 @@ public partial class ShipComponent : Node3D
 		}
 	}
 
-	public void UpdateUi()
+	public void ApplyPendingDamage() { if (PendingDamage <= 0) return; CurrentHp = Mathf.Max(0, CurrentHp - PendingDamage); PendingDamage = 0; if (CurrentHp <= 0) { GD.Print(ShipName + " 沉没！"); QueueFree(); } else UpdateUi(); }
+
+    public void UpdateUi()
 	{
 		if (_hpLabel != null)
 			_hpLabel.Text = $"{ShipName}\nHP: {CurrentHp}/{MaxHp}";
 	}
 }
+
+

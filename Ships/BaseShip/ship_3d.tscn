@@ -6,6 +6,9 @@
 [sub_resource type="BoxMesh" id="BoxMesh_81kd5"]
 size = Vector3(1, 0.5, 0.3)
 
+[sub_resource type="BoxShape3D" id="BoxShape3D_b27bj"]
+size = Vector3(1, 0.60253906, 0.48388672)
+
 [node name="Ships" type="Node3D" unique_id=432411186]
 script = ExtResource("1_4aexa")
 
@@ -20,3 +23,9 @@ transform = Transform3D(1, 0, 0, 0, 0.70710677, 0.70710677, 0, -0.70710677, 0.70
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75, 0)
 billboard = 1
 texture = ExtResource("2_gn27q")
+
+[node name="Area3D" type="Area3D" parent="." unique_id=454021508]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Area3D" unique_id=943094005]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.26998186, -0.002531886)
+shape = SubResource("BoxShape3D_b27bj")

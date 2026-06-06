@@ -8,7 +8,6 @@ namespace DreadnoughtDeparture.Core;
 public partial class MapGenerator : Node3D
 {
 	// 六角格半径，当前 mesh 是半径 1 的正六边形
-	[Export] public float HexRadius = 1.0f;
 
 	// 🔧 兜底：字典没配时用这个
 	[Export] public PackedScene DefaultTilePrefab;
@@ -63,8 +62,8 @@ if (tilePrefab == null) continue;
 
 	public Vector3 HexToWorld(int q, int r)
 	{
-		float x = HexRadius * 1.5f * q;
-		float z = HexRadius * Mathf.Sqrt(3.0f) * (r + q / 2.0f);
+		float x = GameConfig.HexRadius * 1.5f * q;
+		float z = GameConfig.HexRadius * Mathf.Sqrt(3.0f) * (r + q / 2.0f);
 		return new Vector3(x, 0f, z);
 	}
 }

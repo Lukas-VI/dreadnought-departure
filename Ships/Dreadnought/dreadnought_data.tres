@@ -1,9 +1,9 @@
 [gd_resource type="Resource" script_class="ShipData" format=3 uid="uid://bbvb5oqk0hin0"]
 
-[ext_resource type="Script" uid="uid://dreq4a4on5nm3" path="res://Scripts/Data/ShipData.cs" id="1_suhgx"]
+[ext_resource type="Script" uid="uid://dreq4a4on5nm3" path="res://Scripts/Data/Ship/ShipData.cs" id="1_l2fsf"]
 
 [resource]
-script = ExtResource("1_suhgx")
+script = ExtResource("1_l2fsf")
 ShipName = "无畏舰"
 MaxHp = 1000
 MoveRange = 5

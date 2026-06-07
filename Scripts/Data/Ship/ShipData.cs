@@ -17,6 +17,7 @@ public partial class ShipData : Resource
 	// ── 海战惯性属性 ──
 	[Export] public int Speed = 3;          // 每回合移动格数
 	[Export] public float TurnRate = 60f;   // 每格最大转向角（度）
-	[Export] public PackedScene Prefab;
 	[Export] public string[] SkillIds = new string[0]; // 专属技能 ID，轮盘动态生成按钮
 }
+
+

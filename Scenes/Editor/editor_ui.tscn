@@ -1,0 +1,351 @@
+[gd_scene format=3 uid="uid://beditorui0001"]
+
+[ext_resource type="Script" uid="uid://brvxpvxj6o1ga" path="res://Scripts/Editor/EditorUIController.cs" id="1_ui"]
+[ext_resource type="Resource" uid="uid://bfubamqddyrmx" path="res://Data/Editor/editor_tile_catalog.tres" id="2_catalog"]
+[ext_resource type="PackedScene" uid="uid://bpalette00001" path="res://Scenes/Editor/palette_swatch.tscn" id="3_swatch"]
+[ext_resource type="PackedScene" uid="uid://bshiprow00001" path="res://Scenes/Editor/ship_inspector_row.tscn" id="4_row"]
+
+[node name="EditorUI" type="Control" unique_id=245323273]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_ui")
+TileCatalog = ExtResource("2_catalog")
+PaletteSwatchScene = ExtResource("3_swatch")
+ShipRowScene = ExtResource("4_row")
+
+[node name="TopBar" type="PanelContainer" parent="." unique_id=346139313]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+grow_horizontal = 2
+
+[node name="TopBarBox" type="HBoxContainer" parent="TopBar" unique_id=1152698946]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="SaveButton" type="Button" parent="TopBar/TopBarBox" unique_id=265958743]
+layout_mode = 2
+text = "保存"
+
+[node name="CanvasListButton" type="Button" parent="TopBar/TopBarBox" unique_id=963853361]
+layout_mode = 2
+text = "画布列表"
+
+[node name="CanvasNameLabel" type="Label" parent="TopBar/TopBarBox" unique_id=2016158255]
+custom_minimum_size = Vector2(220, 0)
+layout_mode = 2
+size_flags_horizontal = 6
+text = "未打开画布"
+
+[node name="BackButton" type="Button" parent="TopBar/TopBarBox" unique_id=142423860]
+layout_mode = 2
+text = "返回主菜单"
+
+[node name="ToolBar" type="PanelContainer" parent="." unique_id=1755872281]
+layout_mode = 0
+offset_left = 12.0
+offset_top = 64.0
+
+[node name="ToolBox" type="HBoxContainer" parent="ToolBar" unique_id=1318495727]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="SelectToolButton" type="Button" parent="ToolBar/ToolBox" unique_id=1029114372]
+layout_mode = 2
+toggle_mode = true
+text = "选择"
+
+[node name="PencilToolButton" type="Button" parent="ToolBar/ToolBox" unique_id=649727782]
+layout_mode = 2
+toggle_mode = true
+button_pressed = true
+text = "铅笔"
+
+[node name="FillToolButton" type="Button" parent="ToolBar/ToolBox" unique_id=1079546640]
+layout_mode = 2
+toggle_mode = true
+text = "油漆桶"
+
+[node name="EraserToolButton" type="Button" parent="ToolBar/ToolBox" unique_id=50204483]
+layout_mode = 2
+toggle_mode = true
+text = "橡皮"
+
+[node name="GridToggleButton" type="Button" parent="ToolBar/ToolBox" unique_id=123456789]
+layout_mode = 2
+toggle_mode = true
+text = "网格"
+
+[node name="PalettePanel" type="PanelContainer" parent="." unique_id=250161257]
+layout_mode = 1
+anchors_preset = 4
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_top = -310.0
+offset_right = 230.0
+offset_bottom = 302.0
+grow_vertical = 2
+
+[node name="PaletteScroll" type="ScrollContainer" parent="PalettePanel" unique_id=559098974]
+layout_mode = 2
+
+[node name="PaletteBox" type="VBoxContainer" parent="PalettePanel/PaletteScroll" unique_id=895369327]
+custom_minimum_size = Vector2(210, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="TerrainHeader" type="Label" parent="PalettePanel/PaletteScroll/PaletteBox" unique_id=1081213690]
+custom_minimum_size = Vector2(0, 28)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 0
+theme_override_font_sizes/font_size = 18
+text = "地形"
+
+[node name="TerrainEntries" type="VBoxContainer" parent="PalettePanel/PaletteScroll/PaletteBox" unique_id=2136322700]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+
+[node name="GenerationHeader" type="Label" parent="PalettePanel/PaletteScroll/PaletteBox" unique_id=211852003]
+custom_minimum_size = Vector2(0, 28)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 0
+theme_override_font_sizes/font_size = 18
+text = "生成"
+
+[node name="GenerationEntries" type="VBoxContainer" parent="PalettePanel/PaletteScroll/PaletteBox" unique_id=791330972]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+
+[node name="SpecialHeader" type="Label" parent="PalettePanel/PaletteScroll/PaletteBox" unique_id=1167767900]
+custom_minimum_size = Vector2(0, 28)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 0
+theme_override_font_sizes/font_size = 18
+text = "特殊"
+
+[node name="SpecialEntries" type="VBoxContainer" parent="PalettePanel/PaletteScroll/PaletteBox" unique_id=60096324]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+
+[node name="RightInspector" type="PanelContainer" parent="." unique_id=659553834]
+layout_mode = 1
+anchors_preset = 6
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -380.0
+offset_top = -278.0
+offset_bottom = 278.0
+grow_horizontal = 0
+grow_vertical = 2
+
+[node name="InspectorScroll" type="ScrollContainer" parent="RightInspector" unique_id=342973081]
+layout_mode = 2
+
+[node name="InspectorBox" type="VBoxContainer" parent="RightInspector/InspectorScroll" unique_id=1652754823]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="InspectorTitle" type="Label" parent="RightInspector/InspectorScroll/InspectorBox" unique_id=2051217274]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_font_sizes/font_size = 17
+text = "生成点"
+horizontal_alignment = 1
+
+[node name="InspectorSideLabel" type="Label" parent="RightInspector/InspectorScroll/InspectorBox" unique_id=762481687]
+layout_mode = 2
+text = "阵营"
+horizontal_alignment = 1
+
+[node name="ShipRows" type="VBoxContainer" parent="RightInspector/InspectorScroll/InspectorBox" unique_id=915592956]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="InspectorButton" type="VBoxContainer" parent="RightInspector/InspectorScroll/InspectorBox" unique_id=980958397]
+layout_mode = 2
+
+[node name="AddShipButton" type="Button" parent="RightInspector/InspectorScroll/InspectorBox/InspectorButton" unique_id=1665652027]
+layout_mode = 2
+size_flags_vertical = 10
+text = "添加舰船"
+
+[node name="DeleteGenerationButton" type="Button" parent="RightInspector/InspectorScroll/InspectorBox/InspectorButton" unique_id=537821315]
+layout_mode = 2
+size_flags_vertical = 10
+theme_override_colors/font_color = Color(1, 0.55, 0.55, 1)
+text = "删除生成点"
+
+[node name="ConfirmButton" type="Button" parent="RightInspector/InspectorScroll/InspectorBox/InspectorButton" unique_id=816678889]
+layout_mode = 2
+size_flags_vertical = 10
+text = "确认"
+
+[node name="StatusLabel" type="Label" parent="." unique_id=180910607]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = -32.0
+offset_right = -12.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="StatusTimer" type="Timer" parent="." unique_id=1397142958]
+wait_time = 4.0
+one_shot = true
+
+[node name="LibraryOverlay" type="ColorRect" parent="." unique_id=443684566]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.08, 0.1, 0.14, 0.96)
+
+[node name="LibraryCenter" type="CenterContainer" parent="LibraryOverlay" unique_id=282409208]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="LibraryPanel" type="PanelContainer" parent="LibraryOverlay/LibraryCenter" unique_id=254459022]
+custom_minimum_size = Vector2(480, 560)
+layout_mode = 2
+
+[node name="LibraryBox" type="VBoxContainer" parent="LibraryOverlay/LibraryCenter/LibraryPanel" unique_id=671006934]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="LibraryTitle" type="Label" parent="LibraryOverlay/LibraryCenter/LibraryPanel/LibraryBox" unique_id=1474324637]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "画布列表"
+horizontal_alignment = 1
+
+[node name="LibraryHint" type="Label" parent="LibraryOverlay/LibraryCenter/LibraryPanel/LibraryBox" unique_id=370112130]
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+text = "画布保存于 export/maps/*.json"
+
+[node name="CanvasList" type="ItemList" parent="LibraryOverlay/LibraryCenter/LibraryPanel/LibraryBox" unique_id=736879008]
+custom_minimum_size = Vector2(0, 320)
+layout_mode = 2
+
+[node name="LibraryButtons" type="HBoxContainer" parent="LibraryOverlay/LibraryCenter/LibraryPanel/LibraryBox" unique_id=835525236]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="OpenButton" type="Button" parent="LibraryOverlay/LibraryCenter/LibraryPanel/LibraryBox/LibraryButtons" unique_id=1749738653]
+layout_mode = 2
+text = "打开"
+
+[node name="NewButton" type="Button" parent="LibraryOverlay/LibraryCenter/LibraryPanel/LibraryBox/LibraryButtons" unique_id=97509492]
+layout_mode = 2
+text = "新建"
+
+[node name="ImportButton" type="Button" parent="LibraryOverlay/LibraryCenter/LibraryPanel/LibraryBox/LibraryButtons" unique_id=570437660]
+layout_mode = 2
+text = "导入"
+
+[node name="DeleteButton" type="Button" parent="LibraryOverlay/LibraryCenter/LibraryPanel/LibraryBox/LibraryButtons" unique_id=893099098]
+layout_mode = 2
+text = "删除"
+
+[node name="LibraryBackButton" type="Button" parent="LibraryOverlay/LibraryCenter/LibraryPanel/LibraryBox" unique_id=1854104961]
+layout_mode = 2
+text = "返回主菜单"
+
+[node name="NewDialog" type="CenterContainer" parent="." unique_id=101868413]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="NewPanel" type="PanelContainer" parent="NewDialog" unique_id=831565395]
+custom_minimum_size = Vector2(320, 150)
+layout_mode = 2
+
+[node name="NewBox" type="VBoxContainer" parent="NewDialog/NewPanel" unique_id=55537823]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="NewTitle" type="Label" parent="NewDialog/NewPanel/NewBox" unique_id=1811891079]
+layout_mode = 2
+text = "新建画布"
+
+[node name="NewNameEdit" type="LineEdit" parent="NewDialog/NewPanel/NewBox" unique_id=177411294]
+layout_mode = 2
+placeholder_text = "画布名（如 map_02）"
+
+[node name="NewButtons" type="HBoxContainer" parent="NewDialog/NewPanel/NewBox" unique_id=1919196658]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="CreateButton" type="Button" parent="NewDialog/NewPanel/NewBox/NewButtons" unique_id=99585078]
+layout_mode = 2
+text = "创建"
+
+[node name="CancelButton" type="Button" parent="NewDialog/NewPanel/NewBox/NewButtons" unique_id=2028867861]
+layout_mode = 2
+text = "取消"
+
+[node name="DeleteDialog" type="ConfirmationDialog" parent="." unique_id=598733993]
+title = "删除画布"
+dialog_text = "确定删除？"
+
+[node name="ImportDialog" type="FileDialog" parent="." unique_id=1285380973]
+title = "Open a File"
+file_mode = 0
+access = 2
+filters = PackedStringArray("*.json ; 地图 JSON")
+
+[connection signal="pressed" from="TopBar/TopBarBox/SaveButton" to="." method="_OnSavePressed"]
+[connection signal="pressed" from="TopBar/TopBarBox/CanvasListButton" to="." method="_OnCanvasListPressed"]
+[connection signal="pressed" from="TopBar/TopBarBox/BackButton" to="." method="_OnBackPressed"]
+[connection signal="pressed" from="ToolBar/ToolBox/SelectToolButton" to="." method="_OnSelectToolPressed"]
+[connection signal="pressed" from="ToolBar/ToolBox/PencilToolButton" to="." method="_OnPencilToolPressed"]
+[connection signal="pressed" from="ToolBar/ToolBox/FillToolButton" to="." method="_OnFillToolPressed"]
+[connection signal="pressed" from="ToolBar/ToolBox/EraserToolButton" to="." method="_OnEraserToolPressed"]
+[connection signal="pressed" from="ToolBar/ToolBox/GridToggleButton" to="." method="_OnGridTogglePressed"]
+[connection signal="pressed" from="RightInspector/InspectorScroll/InspectorBox/InspectorButton/AddShipButton" to="." method="_OnAddShipPressed"]
+[connection signal="pressed" from="RightInspector/InspectorScroll/InspectorBox/InspectorButton/DeleteGenerationButton" to="." method="_OnDeleteGenerationPressed"]
+[connection signal="pressed" from="RightInspector/InspectorScroll/InspectorBox/InspectorButton/ConfirmButton" to="." method="_OnConfirmInspector"]
+[connection signal="timeout" from="StatusTimer" to="." method="_OnStatusTimeout"]
+[connection signal="item_activated" from="LibraryOverlay/LibraryCenter/LibraryPanel/LibraryBox/CanvasList" to="." method="_OnOpenCanvasPressed"]
+[connection signal="pressed" from="LibraryOverlay/LibraryCenter/LibraryPanel/LibraryBox/LibraryButtons/OpenButton" to="." method="_OnOpenCanvasPressed"]
+[connection signal="pressed" from="LibraryOverlay/LibraryCenter/LibraryPanel/LibraryBox/LibraryButtons/NewButton" to="." method="_ShowNewDialog"]
+[connection signal="pressed" from="LibraryOverlay/LibraryCenter/LibraryPanel/LibraryBox/LibraryButtons/ImportButton" to="." method="_OnImportPressed"]
+[connection signal="pressed" from="LibraryOverlay/LibraryCenter/LibraryPanel/LibraryBox/LibraryButtons/DeleteButton" to="." method="_OnDeleteCanvasPressed"]
+[connection signal="pressed" from="LibraryOverlay/LibraryCenter/LibraryPanel/LibraryBox/LibraryBackButton" to="." method="_OnBackPressed"]
+[connection signal="pressed" from="NewDialog/NewPanel/NewBox/NewButtons/CreateButton" to="." method="_OnConfirmNewCanvas"]
+[connection signal="pressed" from="NewDialog/NewPanel/NewBox/NewButtons/CancelButton" to="." method="_OnCancelNewDialog"]
+[connection signal="confirmed" from="DeleteDialog" to="." method="_OnDeleteConfirmed"]
+[connection signal="file_selected" from="ImportDialog" to="." method="_OnImportFileSelected"]

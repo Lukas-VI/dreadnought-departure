@@ -3,6 +3,10 @@ using System;
 
 namespace DreadnoughtDeparture.Core;
 
+/// <summary>
+/// 兵棋规则引擎——命中率、装甲分段、基础伤害、完整射击流程。
+/// 纯静态方法，无副作用；修改 ShipComponent 的 PendingDamage 由调用方负责。
+/// </summary>
 public static class CombatRulesEvaluator
 {
 	private static readonly Random _rng = new();
@@ -54,7 +58,19 @@ public static class CombatRulesEvaluator
 		return (true, final);
 	}
 
-	// 炮击——伤害进悬空池，阶段末统一结算
+	// 炮击——返回命中文本供 UI 显示
+	public static (bool hit, int damage, string desc) FireEx(ShipComponent attacker, ShipComponent defender, int distanceHex)
+	{
+		var (hit, dmg) = ResolveShot(attacker, defender, distanceHex);
+		if (hit)
+		{
+			defender.PendingDamage += dmg;
+			return (true, dmg, $"💥 {attacker.ShipName} 主炮命中 {defender.ShipName}！造成 {dmg} 点悬空损伤");
+		}
+		return (false, 0, $"🌊 {attacker.ShipName} 跨射散布，炮弹落水！");
+	}
+
+	// 兼容旧调用
 	public static void Fire(ShipComponent attacker, ShipComponent defender, int distanceHex)
 	{
 		var (hit, dmg) = ResolveShot(attacker, defender, distanceHex);

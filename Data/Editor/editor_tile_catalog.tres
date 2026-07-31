@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="EditorTileCatalog" format=3 uid="uid://bfubamqddyrmx"]
+
+[ext_resource type="Script" uid="uid://krh2pfry614g" path="res://Scripts/Editor/EditorTileEntry.cs" id="1_entry"]
+[ext_resource type="Script" uid="uid://c8aagw8w8sdse" path="res://Scripts/Editor/EditorTileCatalog.cs" id="2_catalog"]
+
+[sub_resource type="Resource" id="entry_island"]
+script = ExtResource("1_entry")
+SourceId = 1
+DisplayName = "岛屿"
+Swatch = Color(0.3, 0.7, 0.35, 1)
+
+[sub_resource type="Resource" id="entry_ocean"]
+script = ExtResource("1_entry")
+SourceId = 2
+DisplayName = "海洋"
+Swatch = Color(0.3, 0.6, 1, 1)
+
+[sub_resource type="Resource" id="entry_enemy"]
+script = ExtResource("1_entry")
+Category = "Generation"
+SourceId = 4
+DisplayName = "敌方生成点"
+Swatch = Color(0.9, 0.3, 0.3, 1)
+
+[sub_resource type="Resource" id="entry_player"]
+script = ExtResource("1_entry")
+Category = "Generation"
+SourceId = 6
+DisplayName = "玩家生成点"
+Swatch = Color(0.3, 0.5, 1, 1)
+
+[resource]
+script = ExtResource("2_catalog")
+Entries = Array[ExtResource("1_entry")]([SubResource("entry_island"), SubResource("entry_ocean"), SubResource("entry_enemy"), SubResource("entry_player")])

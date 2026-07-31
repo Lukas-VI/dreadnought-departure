@@ -1,0 +1,57 @@
+[gd_scene format=3 uid="uid://oa1t7v33prd3"]
+
+[ext_resource type="Script" uid="uid://cqtd2p78s2nhs" path="res://Scripts/UI/Menu/MainMenuController.cs" id="1_sc8q1"]
+
+[node name="MainMenuController" type="Control" unique_id=1991040517]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_sc8q1")
+
+[node name="CenterContainer" type="CenterContainer" parent="." unique_id=1691111616]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="CenterContainer" unique_id=816072830]
+layout_mode = 2
+size_flags_vertical = 0
+theme_override_constants/separation = 20
+
+[node name="Title" type="Label" parent="CenterContainer/VBoxContainer" unique_id=1274809231]
+layout_mode = 2
+theme_override_font_sizes/font_size = 36
+text = "Dreadnought Departure"
+horizontal_alignment = 1
+
+[node name="Spacer" type="Control" parent="CenterContainer/VBoxContainer" unique_id=1622025145]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+
+[node name="BtnEditor" type="Button" parent="CenterContainer/VBoxContainer" unique_id=945889632]
+custom_minimum_size = Vector2(300, 60)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "地图编辑器"
+
+[node name="BtnCampaign" type="Button" parent="CenterContainer/VBoxContainer" unique_id=1446092042]
+custom_minimum_size = Vector2(300, 60)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "战役"
+
+[node name="BtnQuit" type="Button" parent="CenterContainer/VBoxContainer" unique_id=1602749771]
+custom_minimum_size = Vector2(300, 60)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "退出"
+
+[connection signal="pressed" from="CenterContainer/VBoxContainer/BtnEditor" to="." method="_OnEditorPressed"]
+[connection signal="pressed" from="CenterContainer/VBoxContainer/BtnCampaign" to="." method="_OnCampaignPressed"]
+[connection signal="pressed" from="CenterContainer/VBoxContainer/BtnQuit" to="." method="_OnQuitPressed"]

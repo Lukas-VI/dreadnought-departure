@@ -1,20 +1,53 @@
 using Godot;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
 namespace DreadnoughtDeparture.Core;
 
+public enum BattlePhase
+{
+	SpeedAdjust,   // 0. 速度调整阶段
+	MovePhase1,    // 1. 第一移动阶段
+	MovePhase2,    // 2. 第二移动阶段
+	MovePhase3,    // 3. 第三移动阶段
+	ReconLighting, // 4. 视野/照明阶段
+	Gunfire,       // 5. 火炮射击阶段
+	Torpedo,       // 6. 鱼雷雷击阶段
+	EndTurn        // 7. 回合结束结算
+}
+
+/// <summary>
+/// 战场主控——阶段管线调度器。
+/// 持有 LevelDataManager / MapGenerator / UnitSpawner / PlayerController 引用，
+/// 在大回合内驱动 8 个阶段的流转（速度调整→三段移动→视野→炮击→雷击→结算），
+/// 管理全局 CP 计数，并通过 EventBus 通知各子系统。
+/// </summary>
 public partial class GameplayDirector : Node
 {
 	private LevelDataManager _dataManager;
 	private MapGenerator _mapGenerator;
 	private UnitSpawner _unitSpawner;
 	private GridOverlayController _overlay;
-	private BattleUIController _ui;
-	private TurnManager _turnManager;
-	private PlayerController _playerController;
-	private AIController _aiController;
-	private BattleInputDetector _input;
+	private PlayerController _player;
+
+	// —— 阶段管线 ——
+	private BattlePhase _currentPhase = BattlePhase.SpeedAdjust;
+	private int _turnNumber;
+
+	// —— CP ——
+	public int CurrentCP { get; private set; } = 8;
+	public int MaxCP { get; private set; } = 12;
+
+	// —— 单位缓存 ——
+	private List<ShipComponent> _playerShips = new();
+	private List<ShipComponent> _enemyShips = new();
+
+	private static readonly string[] PhaseLabels =
+	{
+		"⚙ 速度调整", "▶ 第一移动", "▶ 第二移动", "▶ 第三移动",
+		"👁 视野/照明", "💥 火炮射击", "🎯 鱼雷雷击", "⏳ 回合结算"
+	};
 
 	public override void _Ready()
 	{
@@ -22,15 +55,9 @@ public partial class GameplayDirector : Node
 		_mapGenerator = GetNode<MapGenerator>("MapGenerator");
 		_unitSpawner = GetNode<UnitSpawner>("UnitSpawner");
 		_overlay = GetNode<GridOverlayController>("GridOverlayController");
-		_ui = GetNode<BattleUIController>("BattleUI");
-		_turnManager = GetNode<TurnManager>("TurnManager");
-		_playerController = GetNode<PlayerController>("PlayerController");
-		_aiController = GetNode<AIController>("AIController");
-		_input = GetNodeOrNull<BattleInputDetector>("BattleInputDetector");
+		_player = GetNode<PlayerController>("PlayerController");
 
-		if (_input != null) _playerController.Setup(_input, _ui);
-		_turnManager.Setup(_playerController, _aiController, _mapGenerator, _overlay, _ui);
-
+		GetNode<EventBus>("EventBus").AdvancePhaseClicked += AdvancePhase;
 		CallDeferred(MethodName.LaunchBattleField);
 	}
 
@@ -39,17 +66,120 @@ public partial class GameplayDirector : Node
 		_mapGenerator.BuildMap(_dataManager.TerrainData);
 		_unitSpawner.SpawnUnits(_dataManager.UnitData);
 		_overlay.InitializeOverlayTargets(_mapGenerator.SpawnedTileMeshes);
-		StartTurns();
+		StartBattle();
 	}
 
-	private async void StartTurns()
+	private async void StartBattle()
 	{
 		await ToSignal(GetTree(), "process_frame");
 		var all = new List<ShipComponent>();
 		foreach (var n in GetTree().GetNodesInGroup("Ships"))
 			if (n is ShipComponent s) all.Add(s);
-		var player = all.Where(s => s.TileSourceId == 6).ToList();
-		var enemy = all.Where(s => s.TileSourceId != 6).ToList();
-		_turnManager.Start(player, enemy);
+		_playerShips = all.Where(s => s.BattleSide == GenerationSide.Player).ToList();
+		_enemyShips = all.Where(s => s.BattleSide == GenerationSide.Enemy).ToList();
+
+		_turnNumber = 1;
+		CurrentCP = MaxCP;
+		_currentPhase = BattlePhase.SpeedAdjust;
+		EmitPhaseChanged();
+		EmitCpUpdated();
+		GetNode<EventBus>("EventBus").EmitSignal("LogMessage",
+			$"⚓ —— 第 {_turnNumber} 回合 —— {PhaseLabels[(int)_currentPhase]}");
+
+		// 启动首阶段
+		_player.BeginPhaseAction(this, _playerShips, _enemyShips, _mapGenerator, _overlay);
 	}
+
+/// <summary>推进到下一个阶段。从 SpeedAdjust 开始按序流转，到 EndTurn 时执行回合结算。</summary>
+	public void AdvancePhase()
+	{
+		GetNode<EventBus>("EventBus").EmitSignal("OverlayClearRequested");
+
+		_currentPhase = _currentPhase switch
+		{
+			BattlePhase.SpeedAdjust   => BattlePhase.MovePhase1,
+			BattlePhase.MovePhase1    => BattlePhase.MovePhase2,
+			BattlePhase.MovePhase2    => BattlePhase.MovePhase3,
+			BattlePhase.MovePhase3    => BattlePhase.ReconLighting,
+			BattlePhase.ReconLighting => BattlePhase.Gunfire,
+			BattlePhase.Gunfire       => BattlePhase.Torpedo,
+			BattlePhase.Torpedo       => BattlePhase.EndTurn,
+			BattlePhase.EndTurn       => BattlePhase.SpeedAdjust,
+			_                         => BattlePhase.SpeedAdjust,
+		};
+
+		if (_currentPhase == BattlePhase.SpeedAdjust)
+		{
+			_turnNumber++;
+			CurrentCP = Math.Min(CurrentCP + 3, MaxCP);
+			GetNode<EventBus>("EventBus").EmitSignal("LogMessage",
+				$"⏳ —— 第 {_turnNumber} 回合 ——");
+		}
+
+		if (_currentPhase == BattlePhase.EndTurn)
+		{
+			DoEndTurnSettlement();
+			return;
+		}
+
+		EmitPhaseChanged();
+		EmitCpUpdated();
+		GetNode<EventBus>("EventBus").EmitSignal("LogMessage",
+			$"➡ {PhaseLabels[(int)_currentPhase]}");
+
+		// 可玩家交互的阶段自动启动
+		if (IsPlayerActionPhase(_currentPhase))
+			_player.BeginPhaseAction(this, _playerShips, _enemyShips, _mapGenerator, _overlay);
+	}
+
+	private static bool IsPlayerActionPhase(BattlePhase p) => p switch
+	{
+		BattlePhase.SpeedAdjust => true,
+		BattlePhase.MovePhase1 => true,
+		BattlePhase.MovePhase2 => true,
+		BattlePhase.MovePhase3 => true,
+		BattlePhase.Gunfire => true,
+		_ => false
+	};
+
+/// <summary>尝试消耗 CP。成功则返回 true 并 Emit CpUpdated 信号。</summary>
+	public bool TryConsumeCP(int amount)
+	{
+		if (CurrentCP < amount) return false;
+		CurrentCP -= amount;
+		EmitCpUpdated();
+		return true;
+	}
+
+/// <summary>增加 CP（不超过上限），Emit CpUpdated 信号。</summary>
+	public void AddCP(int amount)
+	{
+		CurrentCP = Math.Min(CurrentCP + amount, MaxCP);
+		EmitCpUpdated();
+	}
+
+	private void DoEndTurnSettlement()
+	{
+		GetNode<EventBus>("EventBus").EmitSignal("LogMessage", "📋 回合结算中...");
+		GetNode<EventBus>("EventBus").EmitSignal("LogMessage", "✅ 结算完成，进入下一回合");
+		CallDeferred(nameof(AdvancePhase));
+	}
+
+	public BattlePhase CurrentPhase => _currentPhase;
+	public int TurnNumber => _turnNumber;
+	public bool IsOddTurn => _turnNumber % 2 == 1;
+	public int CurrentMovePhase => _currentPhase switch
+	{
+		BattlePhase.MovePhase1 => 1, BattlePhase.MovePhase2 => 2, BattlePhase.MovePhase3 => 3,
+		_ => 0
+	};
+	public IReadOnlyList<ShipComponent> PlayerShips => _playerShips;
+	public IReadOnlyList<ShipComponent> EnemyShips => _enemyShips;
+
+	private void EmitPhaseChanged() =>
+		GetNode<EventBus>("EventBus").EmitSignal("PhaseChanged",
+			PhaseLabels[(int)_currentPhase], (int)_currentPhase);
+
+	private void EmitCpUpdated() =>
+		GetNode<EventBus>("EventBus").EmitSignal("CpUpdated", CurrentCP, MaxCP);
 }

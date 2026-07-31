@@ -7,7 +7,7 @@ namespace DreadnoughtDeparture.Core;
 
 public partial class MapGenerator : Node3D
 {
-	// 六角格半径，当前 mesh 是半径 1 的正六边形
+	// 六角格半径，当前 mesh 是半径 2 的正六边形
 
 	// 🔧 兜底：字典没配时用这个
 	[Export] public PackedScene DefaultTilePrefab;
@@ -35,13 +35,13 @@ public partial class MapGenerator : Node3D
 			string type = kvp.Value;
 
 			PackedScene tilePrefab = TilePrefabs.TryGetValue(type, out var p) ? p : DefaultTilePrefab;
-if (tilePrefab == null) continue;
+			if (tilePrefab == null) continue;
 
 			Node3D tileInstance = tilePrefab.Instantiate<Node3D>();
 			_mapContainer.AddChild(tileInstance);
 
 			Vector3 targetPos = HexToWorld(coords.X, coords.Y);
-			tileInstance.Rotation = new Vector3(0, Mathf.DegToRad(30), 0);
+			//tileInstance.Rotation = new Vector3(0, Mathf.DegToRad(30), 0);
 
 			if (type == "island")
 			{

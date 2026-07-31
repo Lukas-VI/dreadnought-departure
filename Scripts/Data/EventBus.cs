@@ -1,0 +1,43 @@
+using Godot;
+
+namespace DreadnoughtDeparture.Core;
+
+/// <summary>
+/// 全局事件总线。
+/// 所有系统间通信通过此处定义的 Signal 解耦——UI、输入、AI、战斗结算、
+/// 阶段管理各子系统不直接引用彼此。
+/// 静态 Instance 属性供非 Node 的静态工具类访问。
+/// </summary>
+public partial class EventBus : Node
+{
+	public static EventBus Instance { get; private set; }
+
+	[Signal] public delegate void HexClickedEventHandler(Vector2I hex);
+	[Signal] public delegate void TurnStartedEventHandler(string side);
+	[Signal] public delegate void EndTurnClickedEventHandler();
+	[Signal] public delegate void CombatResultEventHandler(string desc);
+	[Signal] public delegate void ActionSelectedEventHandler(string actionId);
+	[Signal] public delegate void LogMessageEventHandler(string message);
+	[Signal] public delegate void ShipInfoRequestedEventHandler(ShipComponent ship);
+	[Signal] public delegate void OverlayDrawRequestedEventHandler(Vector2I center, int move, int attack, int state);
+	[Signal] public delegate void OverlayClearRequestedEventHandler();
+	[Signal] public delegate void MoveTargetHighlightedEventHandler(Vector2I target);
+
+	// -- 阶段管理 --
+	[Signal] public delegate void PhaseChangedEventHandler(string phaseName, int phaseIndex);
+	[Signal] public delegate void AdvancePhaseClickedEventHandler();
+	[Signal] public delegate void CpUpdatedEventHandler(int current, int max);
+
+	public override void _Ready()
+	{
+		base._Ready();
+		Instance = this;
+	}
+
+	/// <summary>发送日志消息（线程/协程安全）。</summary>
+	public void EmitLog(string message)
+	{
+		if (GodotObject.IsInstanceValid(this))
+			EmitSignal(SignalName.LogMessage, message);
+	}
+}

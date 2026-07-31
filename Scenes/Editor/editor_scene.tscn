@@ -1,0 +1,36 @@
+[gd_scene format=3 uid="uid://dfws6ubql5vsk"]
+
+[ext_resource type="Script" uid="uid://g3tplj38ylgb" path="res://Scripts/Editor/EditorSceneController.cs" id="0_root"]
+[ext_resource type="Script" uid="uid://bud8bdtieoq8k" path="res://Scripts/Map/LevelDataManager.cs" id="1_leveldata"]
+[ext_resource type="Script" uid="uid://dtc3mmrwqnl2g" path="res://Scripts/Data/EventBus.cs" id="2_eventbus"]
+[ext_resource type="Script" uid="uid://bysjhh5umhjup" path="res://Scripts/Camera/EditorCameraController2D.cs" id="3_camera"]
+[ext_resource type="PackedScene" uid="uid://csw8ncqpv1o2w" path="res://Scenes/Map/map_editor.tscn" id="4_mapeditor"]
+[ext_resource type="Script" uid="uid://c31k21ipg8ed3" path="res://Scripts/Editor/MapCanvasController.cs" id="5_canvas"]
+[ext_resource type="Script" uid="uid://c6jltfkv43bej" path="res://Scripts/Editor/ShipNameOverlay.cs" id="6_overlay"]
+[ext_resource type="PackedScene" uid="uid://beditorui0001" path="res://Scenes/Editor/editor_ui.tscn" id="7_ui"]
+
+[node name="EditorScene" type="Node2D" unique_id=1348134400]
+script = ExtResource("0_root")
+
+[node name="EditorCamera" type="Camera2D" parent="." unique_id=1226056771]
+zoom = Vector2(1.5, 1.5)
+script = ExtResource("3_camera")
+
+[node name="MapEditor" parent="." unique_id=454018163 instance=ExtResource("4_mapeditor")]
+
+[node name="MapCanvas" type="Node2D" parent="." unique_id=160364478]
+script = ExtResource("5_canvas")
+
+[node name="ShipNameOverlay" type="Node2D" parent="MapCanvas" unique_id=506468619]
+script = ExtResource("6_overlay")
+
+[node name="LevelDataManager" type="Node" parent="." unique_id=1779025813]
+script = ExtResource("1_leveldata")
+AutoLoadOnReady = false
+
+[node name="EventBus" type="Node" parent="." unique_id=1476953996]
+script = ExtResource("2_eventbus")
+
+[node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=1801218662]
+
+[node name="EditorUI" parent="CanvasLayer" unique_id=2123021520 instance=ExtResource("7_ui")]

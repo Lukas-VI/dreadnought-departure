@@ -3,6 +3,11 @@ using System;
 
 namespace DreadnoughtDeparture.Core;
 
+/// <summary>
+/// 3D 场景鼠标左键点击 → 六角格坐标事件发射器。
+/// 两阶段射线检测：① 物理层 Layer 2 命中 ShipComponent → 发射单位所在格；
+/// ② 命中 y=0 海平面 → 反算世界坐标 → 轴向六角格坐标 (Q,R) 并发射 HexClicked 信号。
+/// </summary>
 public partial class BattleInputDetector : Node
 {
 	[Signal] public delegate void HexClickedEventHandler(Vector2I hexCoords);

@@ -3,18 +3,18 @@
 [ext_resource type="Script" uid="uid://c5jjrnq6o77hv" path="res://Scripts/Unit/ShipComponent.cs" id="1_4aexa"]
 [ext_resource type="Texture2D" uid="uid://dkxjjvgf6gemw" path="res://assets/texture/Emotions/emote_alert.png" id="2_gn27q"]
 
-[sub_resource type="BoxMesh" id="BoxMesh_81kd5"]
-size = Vector3(1, 0.5, 0.3)
+[sub_resource type="PrismMesh" id="PrismMesh_n6xpr"]
+size = Vector3(1, 2, 1)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_b27bj"]
-size = Vector3(1, 0.60253906, 0.48388672)
+size = Vector3(1, 1.2490234, 1.0509033)
 
 [node name="Ships" type="Node3D" unique_id=432411186]
 script = ExtResource("1_4aexa")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=1002817285]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, 0)
-mesh = SubResource("BoxMesh_81kd5")
+transform = Transform3D(-4.371139e-08, 1, -4.371139e-08, 0, -4.371139e-08, -1, -1, -4.371139e-08, 1.9106855e-15, 0, 0.25, 0)
+mesh = SubResource("PrismMesh_n6xpr")
 
 [node name="Label3D" type="Label3D" parent="." unique_id=767423347]
 transform = Transform3D(1, 0, 0, 0, 0.70710677, 0.70710677, 0, -0.70710677, 0.70710677, 0, 1.665, 0)
@@ -27,5 +27,5 @@ texture = ExtResource("2_gn27q")
 [node name="Area3D" type="Area3D" parent="." unique_id=454021508]
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Area3D" unique_id=943094005]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.26998186, -0.002531886)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3549428, 0.04477036)
 shape = SubResource("BoxShape3D_b27bj")

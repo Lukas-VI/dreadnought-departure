@@ -1,0 +1,29 @@
+[gd_scene format=3 uid="uid://bshiprow00001"]
+
+[ext_resource type="Script" uid="uid://bshiprowbtn00" path="res://Scripts/Editor/ShipInspectorRow.cs" id="1_row"]
+
+[node name="ShipInspectorRow" type="HBoxContainer" unique_id=1106251291]
+offset_right = 393.0
+offset_bottom = 118.0
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+script = ExtResource("1_row")
+
+[node name="ShipSelect" type="OptionButton" parent="." unique_id=1388106209]
+custom_minimum_size = Vector2(130, 0)
+layout_mode = 2
+
+[node name="DirectionSpin" type="SpinBox" parent="." unique_id=408649341]
+custom_minimum_size = Vector2(64, 0)
+layout_mode = 2
+max_value = 5.0
+
+[node name="SpeedSpin" type="SpinBox" parent="." unique_id=1071649495]
+custom_minimum_size = Vector2(64, 0)
+layout_mode = 2
+max_value = 12.0
+
+[node name="RemoveButton" type="Button" parent="." unique_id=553941341]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "×"

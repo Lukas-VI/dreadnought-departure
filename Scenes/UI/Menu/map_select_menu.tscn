@@ -1,0 +1,12 @@
+[gd_scene format=3 uid="uid://dkm7kq4a8f2m"]
+
+[ext_resource type="Script" uid="uid://cl8fw354oydp0" path="res://Scripts/UI/Menu/MapSelectMenuController.cs" id="1_1rio8"]
+
+[node name="MapSelectMenu" type="Control" unique_id=1563944002]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_1rio8")

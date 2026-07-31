@@ -1,3 +1,4 @@
+using Godot;
 using System;
 
 namespace DreadnoughtDeparture.Core;
@@ -7,7 +8,39 @@ namespace DreadnoughtDeparture.Core;
 // =============================================
 public enum HexDirection
 {
-    N = 0, NE = 1, SE = 2, S = 3, SW = 4, NW = 5
+	N = 0, NE = 1, SE = 2, S = 3, SW = 4, NW = 5
+}
+
+public class UnitSpawnData
+{
+	// 兼容字段：旧地图用 TileId 找 ShipList 里的预制体
+	public int TileId { get; set; }
+	// 新字段：优先用 ShipId 找 ShipCatalog 里的预制体
+	public string ShipId { get; set; } = "";
+	// 阵营（从生成点继承，用于敌我分组）
+	public GenerationSide Side { get; set; } = GenerationSide.Player;
+	public HexDirection Direction { get; set; } = HexDirection.N;
+	public int Speed { get; set; }
+}
+
+// 六角格轴向偏移工具
+public static class HexDirectionUtility
+{
+	// flat-top 轴向坐标 (q, r) 每步偏移
+	public static Vector2I Offset(HexDirection dir) => dir switch
+	{
+		HexDirection.N  => new Vector2I( 0, -1),
+		HexDirection.NE => new Vector2I( 1, -1),
+		HexDirection.SE => new Vector2I( 1,  0),
+		HexDirection.S  => new Vector2I( 0,  1),
+		HexDirection.SW => new Vector2I(-1,  1),
+		HexDirection.NW => new Vector2I(-1,  0),
+		_ => Vector2I.Zero
+	};
+
+	// 转向操作
+	public static HexDirection TurnLeft(HexDirection d)  => (HexDirection)(((int)d + 5) % 6);
+	public static HexDirection TurnRight(HexDirection d) => (HexDirection)(((int)d + 1) % 6);
 }
 
 // =============================================
@@ -16,49 +49,46 @@ public enum HexDirection
 // =============================================
 public readonly struct SpeedPhaseEntry
 {
-    public readonly int Phase1, Phase2, Phase3;
-    public readonly bool HasAlternate; // 是否有 "+" 号
+	public readonly int Phase1, Phase2, Phase3;
+	public readonly bool HasAlternate;
 
-    public SpeedPhaseEntry(int p1, int p2, int p3, bool alt = false)
-    {
-        Phase1 = p1; Phase2 = p2; Phase3 = p3; HasAlternate = alt;
-    }
+	public SpeedPhaseEntry(int p1, int p2, int p3, bool alt = false)
+	{
+		Phase1 = p1; Phase2 = p2; Phase3 = p3; HasAlternate = alt;
+	}
 }
 
 public static class SpeedTable
 {
-    // A2 表：速度 → [Phase1, Phase2, Phase3]
-    public static readonly SpeedPhaseEntry[] Table =
-    {
-        new(0, 0, 0),             // Speed 0: 停船
-        new(0, 0, 0, true),       // Speed 1: "+"
-        new(0, 1, 0, true),       // Speed 2: "+"
-        new(1, 1, 0, false),      // Speed 3
-        new(1, 1, 0, true),       // Speed 4: "+"
-        new(1, 1, 1, false),      // Speed 5
-        new(2, 1, 1, false),      // Speed 6
-        new(2, 2, 1, false),      // Speed 7
-        new(2, 2, 1, true),       // Speed 8: "+"
-        new(2, 2, 2, false),      // Speed 9
-        new(3, 2, 2, false),      // Speed 10
-        new(3, 3, 2, false),      // Speed 11
-        new(3, 3, 2, true),       // Speed 12: "+"
-    };
+	public static readonly SpeedPhaseEntry[] Table =
+	{
+		new(0, 0, 0),             // Speed 0: 停船
+		new(0, 0, 0, true),       // Speed 1: "+"
+		new(0, 1, 0, true),       // Speed 2: "+"
+		new(1, 1, 0, false),      // Speed 3
+		new(1, 1, 0, true),       // Speed 4: "+"
+		new(1, 1, 1, false),      // Speed 5
+		new(2, 1, 1, false),      // Speed 6
+		new(2, 2, 1, false),      // Speed 7
+		new(2, 2, 1, true),       // Speed 8: "+"
+		new(2, 2, 2, false),      // Speed 9
+		new(3, 2, 2, false),      // Speed 10
+		new(3, 3, 2, false),      // Speed 11
+		new(3, 3, 2, true),       // Speed 12: "+"
+	};
 
-    // 本阶段能走的格数
-    public static int MoveForPhase(int speed, int phase, bool isOddTurn)
-    {
-        if (speed < 0 || speed >= Table.Length) return 0;
-        var entry = Table[speed];
-        int baseMove = phase switch { 1 => entry.Phase1, 2 => entry.Phase2, _ => entry.Phase3 };
-        if (entry.HasAlternate && isOddTurn) baseMove++;
-        return baseMove;
-    }
+	public static int MoveForPhase(int speed, int phase, bool isOddTurn)
+	{
+		if (speed < 0 || speed >= Table.Length) return 0;
+		var entry = Table[speed];
+		int baseMove = phase switch { 1 => entry.Phase1, 2 => entry.Phase2, _ => entry.Phase3 };
+		if (entry.HasAlternate && isOddTurn) baseMove++;
+		return baseMove;
+	}
 
-    // 速度调整合法性：新速 ∈ [旧速-2, 旧速+3]，且 ≤ 最大航速
-    public static bool CanAdjustSpeed(int oldSpeed, int newSpeed, int maxSpeed)
-        => newSpeed >= Math.Max(0, oldSpeed - 2)
-        && newSpeed <= Math.Min(oldSpeed + 3, maxSpeed);
+	public static bool CanAdjustSpeed(int oldSpeed, int newSpeed, int maxSpeed)
+		=> newSpeed >= Math.Max(0, oldSpeed - 2)
+		&& newSpeed <= Math.Min(oldSpeed + 3, maxSpeed);
 }
 
 // =============================================
@@ -67,16 +97,48 @@ public static class SpeedTable
 public enum DamageState { Intact = 0, Light = 1, Moderate = 2, Heavy = 3, Sunk = 4 }
 
 // =============================================
+//  地形类型
+// =============================================
+public enum HexTerrainType { DeepSea = 0, Reef = 1, Island = 2 }
+
+// =============================================
+//  单位战术状态
+// =============================================
+public enum UnitTacticalState { Idle = 0, Actioned = 1, Sunk = 2 }
+
+// =============================================
 //  射界火力
 // =============================================
 [Serializable]
 public struct Firepower
 {
-    public int Forward, Side, Backward;
-    public int ForArc(HexDirection shipDir, HexDirection targetDir)
-    {
-        int diff = ((int)targetDir - (int)shipDir + 6) % 6;
-        return diff switch { 0 or 5 => Forward, 1 or 4 => Side, _ => Backward };
-    }
+	public int Forward, Side, Backward;
+	public int ForArc(HexDirection shipDir, HexDirection targetDir)
+	{
+		int diff = ((int)targetDir - (int)shipDir + 6) % 6;
+		return diff switch { 0 or 5 => Forward, 1 or 4 => Side, _ => Backward };
+	}
 }
 
+
+// =============================================
+//  生成点与初设船（编辑器 v3 数据模型）
+// =============================================
+
+/// <summary>生成点阵营：玩家 / 敌方。</summary>
+public enum GenerationSide { Player = 0, Enemy = 1 }
+
+/// <summary>一个生成点：阵营 + 所用 tileset 源 ID（仅代表标记外观，不代表船型）。</summary>
+public class GenerationPointData
+{
+	public GenerationSide Side { get; set; } = GenerationSide.Player;
+	public int SourceId { get; set; } = 4;
+}
+
+/// <summary>挂在生成点上的初设船。ShipId 是 ShipCatalog 中的全局 ID（如 "dreadnought"）。</summary>
+public class ShipSpawnData
+{
+	public string ShipId { get; set; } = "";
+	public HexDirection Direction { get; set; } = HexDirection.N;
+	public int Speed { get; set; }
+}

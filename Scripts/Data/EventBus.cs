@@ -23,6 +23,11 @@ public partial class EventBus : Node
 	[Signal] public delegate void OverlayClearRequestedEventHandler();
 	[Signal] public delegate void MoveTargetHighlightedEventHandler(Vector2I target);
 
+	// -- 相机焦点（全局运镜接口，剧情/演绎可直接使用）--
+	[Signal] public delegate void CameraFocusRequestedEventHandler(Vector3 worldPos, float distance, float pitchDegrees);
+	[Signal] public delegate void CameraFocusBetweenRequestedEventHandler(Vector3 from, Vector3 to);
+	[Signal] public delegate void CameraTopDownRequestedEventHandler(Vector3 worldPos);
+
 	// -- 阶段管理 --
 	[Signal] public delegate void PhaseChangedEventHandler(string phaseName, int phaseIndex);
 	[Signal] public delegate void AdvancePhaseClickedEventHandler();
@@ -39,5 +44,26 @@ public partial class EventBus : Node
 	{
 		if (GodotObject.IsInstanceValid(this))
 			EmitSignal(SignalName.LogMessage, message);
+	}
+
+	/// <summary>全局运镜：聚焦 worldPos，距离与仰角由调用方给出。</summary>
+	public void RequestCameraFocus(Vector3 worldPos, float distance, float pitchDegrees)
+	{
+		if (GodotObject.IsInstanceValid(this))
+			EmitSignal(SignalName.CameraFocusRequested, worldPos, distance, pitchDegrees);
+	}
+
+	/// <summary>全局运镜：聚焦两点中点（船-目标/船-预测格）。</summary>
+	public void RequestCameraFocusBetween(Vector3 from, Vector3 to)
+	{
+		if (GodotObject.IsInstanceValid(this))
+			EmitSignal(SignalName.CameraFocusBetweenRequested, from, to);
+	}
+
+	/// <summary>全局运镜：以 worldPos 为中心俯视。</summary>
+	public void RequestCameraTopDown(Vector3 worldPos)
+	{
+		if (GodotObject.IsInstanceValid(this))
+			EmitSignal(SignalName.CameraTopDownRequested, worldPos);
 	}
 }

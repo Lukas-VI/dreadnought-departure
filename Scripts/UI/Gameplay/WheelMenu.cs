@@ -9,6 +9,7 @@ namespace DreadnoughtDeparture.Core;
 /// 舰船操作轮盘菜单（Control）。
 /// 选中舰船后显示一个圆形按钮菜单，包含基础指令（移动/攻击/左右转/加减速）
 /// 以及舰船技能。按钮数量根据可用操作动态生成，等角分布。
+/// 显示期间每帧把菜单中心对齐到舰船屏幕位置，镜头移动时菜单始终跟随目标。
 /// </summary>
 public partial class WheelMenu : Control
 {
@@ -18,15 +19,25 @@ public partial class WheelMenu : Control
 	[Export] public float ButtonSize = 48f;
 
 	private static readonly string[] _baseActions = { "move", "attack", "turn_left", "turn_right", "speed_up", "speed_down" };
+	private ShipComponent _trackingShip;
 
 	public override void _Ready()
 	{
 		Hide();
 	}
 
-	/// <summary>在屏幕坐标 screenPos 处显示轮盘菜单，包含基础操作与舰船技能。</summary>
+	public override void _Process(double delta)
+	{
+		if (!Visible || _trackingShip == null || !GodotObject.IsInstanceValid(_trackingShip)) return;
+		Camera3D camera = GetViewport().GetCamera3D();
+		if (camera == null) return;
+		Position = camera.UnprojectPosition(_trackingShip.GlobalPosition);
+	}
+
+	/// <summary>在屏幕坐标 screenPos 处显示轮盘菜单，包含基础操作与舰船技能，并开始追踪该船。</summary>
 	public void Show(Vector2 screenPos, ShipComponent ship)
 	{
+		_trackingShip = ship;
 		var skills = ship.Data?.SkillIds ?? Array.Empty<string>();
 		var actions = _baseActions.Concat(skills).ToList();
 		int count = actions.Count;
@@ -53,8 +64,12 @@ public partial class WheelMenu : Control
 		Visible = true;
 	}
 
-	/// <summary>隐藏轮盘菜单。</summary>
-	public void HideMenu() { Visible = false; }
+	/// <summary>隐藏轮盘菜单并停止追踪舰船。</summary>
+	public void HideMenu()
+	{
+		Visible = false;
+		_trackingShip = null;
+	}
 
 	private Vector2 btnPos(Vector2 o) => o - new Vector2(ButtonSize / 2, ButtonSize / 2);
 

@@ -79,6 +79,9 @@ public partial class LevelDataManager : Node
 	}
 
 	public string CurrentMapName { get; private set; } = "untitled";
+	/// <summary>地图类型："day"/"night"，决定照明阶段是否启用。</summary>
+	public string MapType { get; private set; } = "day";
+	public bool IsNightBattle => MapType == "night";
 	/// <summary>是否由画布菜单的 RuntimeMapRequest 自动打开了画布；编辑器据此决定是否默认显示画布列表。</summary>
 	public bool MapAutoOpened { get; private set; }
 	private string _currentJsonPath;
@@ -324,6 +327,7 @@ public partial class LevelDataManager : Node
 	public void NewMap(string name)
 	{
 		CurrentMapName = string.IsNullOrWhiteSpace(name) ? "untitled" : name.Trim();
+		MapType = "day";
 		_currentJsonPath = $"{DefaultExportFolder}/{CurrentMapName}.json";
 		ClearAll();
 	}
@@ -358,6 +362,7 @@ public partial class LevelDataManager : Node
 	private class MapSaveData
 	{
 		public string Name { get; set; } = "untitled";
+		public string MapType { get; set; } = "day";
 		public int Version { get; set; } = 3;
 		public Dictionary<string, int> Terrain { get; set; } = new();
 		public Dictionary<string, GenerationPointData> Generation { get; set; } = new();
@@ -376,7 +381,7 @@ public partial class LevelDataManager : Node
 	/// <summary>把内存表写入 JSON 文件。</summary>
 	private bool SaveToJson(string path)
 	{
-		var data = new MapSaveData { Name = CurrentMapName, Version = 3 };
+		var data = new MapSaveData { Name = CurrentMapName, Version = 3, MapType = MapType };
 		foreach (var kv in TerrainSources) data.Terrain[SerializeKey(kv.Key)] = kv.Value;
 		foreach (var kv in GenerationPoints) data.Generation[SerializeKey(kv.Key)] = kv.Value;
 		foreach (var kv in SpecialTiles) data.Special[SerializeKey(kv.Key)] = kv.Value;
@@ -470,7 +475,8 @@ public partial class LevelDataManager : Node
 		}
 
 		CurrentMapName = root.TryGetProperty("Name", out JsonElement nameElement) ? nameElement.GetString() : "untitled";
-		GD.Print($"地图已加载: {path} (地形 {TerrainSources.Count}, 生成点 {GenerationPoints.Count}, 船 {ShipSpawns.Count})");
+		MapType = root.TryGetProperty("MapType", out JsonElement mapTypeElement) ? mapTypeElement.GetString() ?? "day" : "day";
+		GD.Print($"地图已加载: {path} (地形 {TerrainSources.Count}, 生成点 {GenerationPoints.Count}, 船 {ShipSpawns.Count}, 类型 {MapType})");
 		return true;
 	}
 
@@ -509,6 +515,7 @@ public partial class LevelDataManager : Node
 		}
 
 		CurrentMapName = root.TryGetProperty("Name", out JsonElement nameElement) ? nameElement.GetString() : "untitled";
+		MapType = "day";
 		return true;
 	}
 

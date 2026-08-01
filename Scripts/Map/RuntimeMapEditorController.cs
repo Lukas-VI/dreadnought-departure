@@ -4,8 +4,8 @@ using System;
 namespace DreadnoughtDeparture.Core;
 
 /// <summary>
-/// Runtime hex-level unit editor panel. Attaches to 2D tilemap in editor_scene.
-/// Listens for HexClicked (from EditorInputDetector or BattleInputDetector),
+/// Runtime hex-level unit editor panel. Attaches to editor_scene.
+/// Listens for HexClicked (from MapCanvasController or BattleInputDetector),
 /// shows a property panel to edit TileId / Direction / Speed per stacked unit.
 /// </summary>
 /// <summary>

@@ -8,7 +8,7 @@ namespace DreadnoughtDeparture.Core;
 /// </summary>
 public partial class MainMenuController : Control
 {
-	[Export] public string MapSelectMenuPath = "res://Scenes/UI/Menu/map_select_menu.tscn";
+	[Export] public string MapSelectMenuPath = "res://Scenes/UI/Menu/MainMenu/map_select_menu.tscn";
 
 	/// <summary> 编辑器入口：先进入画布选择菜单，编辑器模式打开地图编辑器。 </summary>
 	public void _OnEditorPressed()

@@ -14,12 +14,10 @@ public partial class ShipNameOverlay : Node2D
 	[Export] public Color EnemyColor = new(1f, 0.35f, 0.35f, 1f);
 
 	private LevelDataManager _data;
-	private TileMapLayer _terrainLayer;
 
 	public override void _Ready()
 	{
 		_data = GetNodeOrNull<LevelDataManager>("../../LevelDataManager");
-		_terrainLayer = GetNodeOrNull<TileMapLayer>("../../MapEditor/TerrainLayer");
 	}
 
 	/// <summary>数据变化后调用，触发重新绘制。</summary>
@@ -27,7 +25,7 @@ public partial class ShipNameOverlay : Node2D
 
 	public override void _Draw()
 	{
-		if (_data == null || _terrainLayer == null) return;
+		if (_data == null) return;
 		Font font = ThemeDB.FallbackFont;
 
 		foreach (var kv in _data.ShipSpawns)
@@ -36,8 +34,7 @@ public partial class ShipNameOverlay : Node2D
 			if (!_data.GenerationPoints.TryGetValue(hex, out var gen)) continue;
 			if (kv.Value == null || kv.Value.Count == 0) continue;
 
-			Vector2I cell = new(hex.X + (hex.Y >> 1), hex.Y);
-			Vector2 center = _terrainLayer.MapToLocal(cell);
+			Vector2 center = HexMath.HexToLocal(_data.MapOrientation, hex, HexMath.EditorHexRadius);
 			Color color = gen.Side == GenerationSide.Enemy ? EnemyColor : PlayerColor;
 
 			int count = Mathf.Min(kv.Value.Count, 3);
@@ -49,7 +46,7 @@ public partial class ShipNameOverlay : Node2D
 			{
 				string name = ShipCatalog.Get(kv.Value[i].ShipId)?.DisplayName ?? kv.Value[i].ShipId;
 				DrawString(font, new Vector2(center.X, startY + i * lineHeight),
-					name, HorizontalAlignment.Center, 120f, FontSize, color);
+					name, HorizontalAlignment.Center, HexMath.EditorHexRadius * 1.7f, FontSize, color);
 			}
 		}
 	}

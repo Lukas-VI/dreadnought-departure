@@ -5,7 +5,7 @@ namespace DreadnoughtDeparture.Core;
 
 /// <summary>
 /// 编辑器 UI 控制器（CanvasLayer/EditorUI）。
-/// 静态布局全部由 Scenes/Editor/editor_ui.tscn 组织，本类只负责节点绑定、
+/// 静态布局全部由 Scenes/UI/Editor/editor_ui.tscn 组织，本类只负责节点绑定、
 /// 数据填充与信号转发；画布数据读写委托给 LevelDataManager，
 /// 图块操作委托给 MapCanvasController。
 /// </summary>
@@ -14,7 +14,7 @@ public partial class EditorUIController : Control
 	[Export] public EditorTileCatalog TileCatalog;
 	[Export] public PackedScene PaletteSwatchScene;
 	[Export] public PackedScene ShipRowScene;
-	[Export] public string MainMenuScenePath = "res://Scenes/MainMenu/main_menu.tscn";
+	[Export] public string MainMenuScenePath = "res://Scenes/UI/Menu/MainMenu/main_menu.tscn";
 
 	private MapCanvasController _canvas;
 	private LevelDataManager _data;
@@ -36,6 +36,14 @@ public partial class EditorUIController : Control
 	private ItemList _libraryList;
 	private CenterContainer _newDialog;
 	private LineEdit _newNameEdit;
+	private OptionButton _newOrientation;
+	private SpinBox _playerCommandSpin;
+	private SpinBox _enemyCommandSpin;
+	private SpinBox _playerCPSpin;
+	private SpinBox _enemyCPSpin;
+	private SpinBox _initiativeSpin;
+	private SpinBox _visionSpin;
+	private SpinBox _maxTurnsSpin;
 	private ConfirmationDialog _deleteDialog;
 	private FileDialog _importDialog;
 	private string _pendingDelete;
@@ -60,7 +68,7 @@ public partial class EditorUIController : Control
 
 		bool autoOpened = _data?.MapAutoOpened ?? false;
 		_canvasNameLabel.Text = _data?.CurrentMapName ?? "未打开画布";
-		// 从画布菜单直接进入时，数据已由 LevelDataManager 加载，这里把数据刷进 TileMapLayer。
+		// 从画布菜单直接进入时，数据已由 LevelDataManager 加载，这里把数据刷进程序化画布。
 		if (autoOpened) _canvas?.ApplyDataToLayers();
 		ShowCanvasLibrary(!autoOpened);
 	}
@@ -85,6 +93,14 @@ public partial class EditorUIController : Control
 		_libraryList = GetNode<ItemList>("LibraryOverlay/LibraryCenter/LibraryPanel/LibraryBox/CanvasList");
 		_newDialog = GetNode<CenterContainer>("NewDialog");
 		_newNameEdit = GetNode<LineEdit>("NewDialog/NewPanel/NewBox/NewNameEdit");
+		_newOrientation = GetNode<OptionButton>("NewDialog/NewPanel/NewBox/NewOrientation");
+		_playerCommandSpin = GetNode<SpinBox>("NewDialog/NewPanel/NewBox/PlayerCommandSpin");
+		_enemyCommandSpin = GetNode<SpinBox>("NewDialog/NewPanel/NewBox/EnemyCommandSpin");
+		_playerCPSpin = GetNode<SpinBox>("NewDialog/NewPanel/NewBox/PlayerCPSpin");
+		_enemyCPSpin = GetNode<SpinBox>("NewDialog/NewPanel/NewBox/EnemyCPSpin");
+		_initiativeSpin = GetNode<SpinBox>("NewDialog/NewPanel/NewBox/InitiativeSpin");
+		_visionSpin = GetNode<SpinBox>("NewDialog/NewPanel/NewBox/VisionSpin");
+		_maxTurnsSpin = GetNode<SpinBox>("NewDialog/NewPanel/NewBox/MaxTurnsSpin");
 		_deleteDialog = GetNode<ConfirmationDialog>("DeleteDialog");
 		_importDialog = GetNode<FileDialog>("ImportDialog");
 
@@ -226,12 +242,26 @@ public partial class EditorUIController : Control
 	{
 		string name = _newNameEdit.Text.Trim();
 		if (string.IsNullOrEmpty(name)) { ShowStatus("画布名不能为空"); return; }
-		_data.NewMap(name);
+		HexOrientation orientation = _newOrientation.Selected == 1
+			? HexOrientation.NSVertical
+			: HexOrientation.EWHorizontal;
+		_data.NewMap(
+			name,
+			orientation,
+			(int)_playerCommandSpin.Value,
+			(int)_enemyCommandSpin.Value,
+			(int)_playerCPSpin.Value,
+			(int)_enemyCPSpin.Value,
+			(int)_initiativeSpin.Value,
+			"player",
+			(int)_visionSpin.Value,
+			(int)_maxTurnsSpin.Value);
 		_canvas.ClearCanvas();
 		_canvasNameLabel.Text = name;
+		_canvas.ApplyDataToLayers();
 		_newDialog.Visible = false;
 		ShowCanvasLibrary(false);
-		ShowStatus($"已新建 {name}");
+		ShowStatus($"已新建 {name}（{(_newOrientation.Selected == 1 ? "N/S 竖直向" : "E/W 水平向")}）");
 	}
 
 	private void ImportCanvas(string sourcePath)
@@ -333,14 +363,10 @@ public partial class EditorUIController : Control
 		ShowStatus("已删除生成点");
 	}
 
-	/// <summary>删除生成点后，把内存中剩余生成点刷回 GenerationLayer。</summary>
+	/// <summary>删除生成点后，刷新程序化画布上的剩余生成点。</summary>
 	private void SyncGenerationLayerFromData()
 	{
-		var layer = _canvas?.LayerForCategory("Generation");
-		if (layer == null) return;
-		layer.Clear();
-		foreach (var kv in _data.GenerationPoints)
-			layer.SetCell(new Vector2I(kv.Key.X + (kv.Key.Y >> 1), kv.Key.Y), kv.Value.SourceId, Vector2I.Zero);
+		_canvas?.RefreshOverlay();
 	}
 
 	/// <summary>在底部状态栏提示信息，4 秒后自动清空。</summary>

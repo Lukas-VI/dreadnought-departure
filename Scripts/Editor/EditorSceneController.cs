@@ -9,7 +9,7 @@ namespace DreadnoughtDeparture.Core;
 /// </summary>
 public partial class EditorSceneController : Node2D
 {
-	[Export] public string MainMenuScenePath = "res://Scenes/MainMenu/main_menu.tscn";
+	[Export] public string MainMenuScenePath = "res://Scenes/UI/Menu/MainMenu/main_menu.tscn";
 
 	/// <summary>Connected to BackButton.pressed signal。</summary>
 	public void _OnBackPressed() => GetTree().ChangeSceneToFile(MainMenuScenePath);

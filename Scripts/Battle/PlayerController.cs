@@ -8,9 +8,10 @@ namespace DreadnoughtDeparture.Core;
 /// <summary>
 /// 人类玩家控制器——按阶段逐船驱动操作队列。
 /// GameplayDirector 在每个可交互阶段调用 BeginPhaseAction，控制器按存活舰船顺序
-/// 自动激活当前船、显示轮盘菜单并移动镜头；船完成行动后自动轮到下一艘。
-/// 相机反馈：激活/转向用俯视，速度调整/机动用“船-目标中点”，攻击确认目标后
-/// 用“船-敌舰中点”，保证操作时菜单与战场焦点可见。
+/// 自动激活当前船并弹出底部操作菜单；船完成行动后自动轮到下一艘。
+/// 机动在三个移动阶段各自推进时按航向/速度自动执行，玩家只负责变速、转向与炮击选目标。
+/// 相机反馈：激活/转向用俯视，变速用“船-推算到达格”中点，炮击确认目标后
+/// 用“船-敌舰”中点，保证操作时菜单与战场焦点可见。
 /// </summary>
 public partial class PlayerController : Node, IUnitController
 {
@@ -26,7 +27,7 @@ public partial class PlayerController : Node, IUnitController
 	public override void _Ready()
 	{
 		GetNode<EventBus>("../EventBus").HexClicked += OnHexClicked;
-		GetNode<EventBus>("../EventBus").ActionSelected += OnWheelAction;
+		GetNode<EventBus>("../EventBus").ActionSelected += OnActionSelected;
 	}
 
 	/// <summary>阶段开始入口：重建逐船队列并激活第一艘可操作船。</summary>
@@ -47,12 +48,13 @@ public partial class PlayerController : Node, IUnitController
 				ship.ShowSelected(false);
 
 		_pendingShips = new Queue<ShipComponent>(myUnits.Where(s =>
-			GodotObject.IsInstanceValid(s) && s.CurrentHp > 0 && CanActInPhase(s)));
+			GodotObject.IsInstanceValid(s) && s.CurrentHp > 0));
 
 		if (_pendingShips.Count == 0)
 		{
 			GetNode<EventBus>("../EventBus").EmitSignal("LogMessage",
 				"⏸ 本阶段没有可操作的舰船，请推进阶段");
+			NotifyPlayerFinished();
 			return;
 		}
 
@@ -62,38 +64,23 @@ public partial class PlayerController : Node, IUnitController
 	}
 
 	// 兼容 IUnitController（AI 用）
-	/// <summary>IUnitController 接口实现——占位，AI 回合不走此路径。</summary>
+	/// <summary>IUnitController 接口实现——占位，AI 回合尚未接入阶段管线。</summary>
 	public void TakeTurn(List<ShipComponent> myUnits, List<ShipComponent> enemyUnits,
-		MapGenerator map, GridOverlayController overlay, BattleHudBroker hud, Action onComplete)
+		MapGenerator map, GridOverlayController overlay, BattleHudBroker hud,
+		BattlePhase phase, Action onComplete)
 	{
-		// 占位：AI 回合尚未接入阶段管线。
+		// 玩家侧操作由 BeginPhaseAction 逐船驱动，不经过该接口。
 		onComplete?.Invoke();
 	}
 
-	/// <summary>当前移动阶段该船可走的格数；非移动阶段返回 1 次行动。</summary>
-	private int StepsForShip(ShipComponent ship)
-	{
-		int phase = _director?.CurrentMovePhase ?? 0;
-		if (phase <= 0) return 1;
-		return MoveRulesEvaluator.MovementForPhase(
-			ship.CurrentSpeed, phase, _director.IsOddTurn);
-	}
-
-	/// <summary>移动阶段无步数的船自动跳过，其余阶段所有存活船都排队。</summary>
-	private bool CanActInPhase(ShipComponent ship)
-	{
-		int movePhase = _director?.CurrentMovePhase ?? 0;
-		return movePhase <= 0 || StepsForShip(ship) > 0;
-	}
-
-	/// <summary>从队列取出下一艘存活船，激活选中态并弹出轮盘菜单。</summary>
+	/// <summary>从队列取出下一艘存活船，激活选中态并弹出底部操作菜单。</summary>
 	private void SelectNextShip()
 	{
 		var bus = GetNode<EventBus>("../EventBus");
 		while (_pendingShips.Count > 0)
 		{
 			var ship = _pendingShips.Dequeue();
-			if (!GodotObject.IsInstanceValid(ship) || ship.CurrentHp <= 0 || !CanActInPhase(ship))
+			if (!GodotObject.IsInstanceValid(ship) || ship.CurrentHp <= 0)
 				continue;
 
 			SelectShip(ship);
@@ -102,66 +89,66 @@ public partial class PlayerController : Node, IUnitController
 
 		_selected = null;
 		bus.EmitSignal("LogMessage", "⏸ 本阶段全部舰船已行动，请推进阶段");
+		NotifyPlayerFinished();
 	}
 
-	/// <summary>选中船：点亮标记、更新 HUD、弹出轮盘并俯视运镜到船体中心。</summary>
+	/// <summary>选中船：点亮标记、更新 HUD、弹出操作菜单并俯视运镜到船体中心。</summary>
 	private void SelectShip(ShipComponent ship)
 	{
 		_selected = ship;
 		_selected.ShowSelected(true);
 		var bus = GetNode<EventBus>("../EventBus");
+		int totalMove = 0;
+		bool oddTurn = (_director?.TurnNumber ?? 1) % 2 == 1;
+		for (int p = 1; p <= 3; p++)
+			totalMove += SpeedTable.MoveForPhase(ship.CurrentSpeed, p, oddTurn);
+		bus.EmitSignal("OverlayArcDrawRequested", ship.HexCoords, (int)ship.Direction, totalMove);
 		bus.EmitSignal("ShipInfoRequested", ship);
-		bus.EmitSignal("ActionSelected", "_show_wheel");
+		bus.EmitSignal("ActionSelected", "_show_menu");
 		bus.EmitSignal("CameraTopDownRequested", ShipWorld(ship));
 		bus.EmitSignal("LogMessage", $"⚓ 轮到 {ship.ShipName}（剩余 {_pendingShips.Count} 艘）");
 	}
 
-	/// <summary>处理轮盘菜单指令：变速/转向即时执行，移动/攻击进入 _pendingAction 等待点击目标。</summary>
-	private void OnWheelAction(string actionId)
+	/// <summary>处理操作菜单指令：变速/转向即时执行，炮击进入 _pendingAction 等待点击目标，待命直接跳过。</summary>
+	private void OnActionSelected(string actionId)
 	{
-		if (actionId == "_show_wheel") return;
+		if (actionId == "_show_menu") return;
 		if (_selected == null) return;
+
+		if (actionId == "skip")
+		{
+			GetNode<EventBus>("../EventBus").EmitSignal("LogMessage", $"⏭ {_selected.ShipName} 待命");
+			EndAction();
+			return;
+		}
 
 		var phase = _director?.CurrentPhase ?? BattlePhase.EndTurn;
 
 		if (actionId == "speed_up" || actionId == "speed_down")
 		{
-			if (phase != BattlePhase.SpeedAdjust && phase != BattlePhase.MovePhase1 &&
-				phase != BattlePhase.MovePhase2 && phase != BattlePhase.MovePhase3)
+			if (phase != BattlePhase.SpeedAdjust)
 			{
-				RejectAction("❌ 仅速度调整或移动阶段可变更航速");
+				RejectAction("❌ 仅速度调整阶段可变更航速");
 				return;
 			}
 			ExecuteSpeedAdjust(actionId == "speed_up" ? +1 : -1);
 			return;
 		}
 
-		bool canMove = phase is BattlePhase.MovePhase1 or BattlePhase.MovePhase2 or BattlePhase.MovePhase3;
+		bool canTurn = phase is BattlePhase.SpeedAdjust or BattlePhase.MovePhase1
+			or BattlePhase.MovePhase2 or BattlePhase.MovePhase3;
 		bool canAttack = phase == BattlePhase.Gunfire;
-		bool canTurn = canMove;
 
-		if (actionId == "move" && !canMove)
-		{ RejectAction("❌ 当前阶段不可机动"); return; }
-		if (actionId == "attack" && !canAttack)
-		{ RejectAction("❌ 当前阶段不可射击"); return; }
+		if (actionId == "attack" && _selected.MainAmmo <= 0)
+		{ RejectAction("❌ 主炮弹药耗尽！"); return; }
 		if ((actionId == "turn_left" || actionId == "turn_right") && !canTurn)
 		{ RejectAction("❌ 当前阶段不可转向"); return; }
+		if (actionId == "attack" && !canAttack)
+		{ RejectAction("❌ 当前阶段不可射击"); return; }
 
 		_pendingAction = actionId;
 
-		if (actionId == "move")
-		{
-			int steps = StepsForShip(_selected);
-			if (steps <= 0)
-			{ _pendingAction = null; RejectAction("❌ 当前航速无机动能力"); return; }
-			Vector2I off = HexDirectionUtility.Offset(_selected.Direction);
-			Vector2I target = _selected.HexCoords + off * steps;
-			GetNode<EventBus>("../EventBus").EmitSignal("MoveTargetHighlighted", target);
-			GetNode<EventBus>("../EventBus").EmitSignal("LogMessage",
-				$"🎯 航向 {_selected.Direction} × {steps} 格 → {target}");
-			FocusBetween(_selected, target);
-		}
-		else if (actionId == "attack")
+		if (actionId == "attack")
 		{
 			GetNode<EventBus>("../EventBus").EmitSignal("OverlayDrawRequested",
 				_selected.HexCoords, 0, _selected.AttackRange, (int)UnitTacticalState.Idle);
@@ -177,7 +164,7 @@ public partial class PlayerController : Node, IUnitController
 	private void ExecuteSpeedAdjust(int delta)
 	{
 		int old = _selected.CurrentSpeed;
-		int max = _selected.Data != null ? _selected.Data.MaxSpeed : 5;
+		int max = _selected.MaxSpeedForCurrentState;
 		int wish = old + delta;
 		if (!SpeedTable.CanAdjustSpeed(old, wish, max))
 		{ RejectAction($"❌ 航速调整超限（当前 {old}）"); return; }
@@ -194,8 +181,9 @@ public partial class PlayerController : Node, IUnitController
 		if (_map != null && _director != null)
 		{
 			int total = 0;
+			bool oddTurn = (_director?.TurnNumber ?? 1) % 2 == 1;
 			for (int p = 1; p <= 3; p++)
-				total += SpeedTable.MoveForPhase(wish, p, _director.IsOddTurn);
+				total += SpeedTable.MoveForPhase(wish, p, oddTurn);
 			Vector2I off = HexDirectionUtility.Offset(_selected.Direction);
 			Vector2I target = _selected.HexCoords + off * total;
 			GetNode<EventBus>("../EventBus").EmitSignal("CameraFocusBetweenRequested",
@@ -205,7 +193,7 @@ public partial class PlayerController : Node, IUnitController
 		EndAction();
 	}
 
-	/// <summary>点击六角格：无选中单位则尝试选中队首船；有 _pendingAction 则执行。</summary>
+	/// <summary>点击六角格：无选中单位则尝试选中队首船；有炮击待命则执行目标确认。</summary>
 	private void OnHexClicked(Vector2I hex)
 	{
 		if (_myUnits == null) return;
@@ -222,10 +210,10 @@ public partial class PlayerController : Node, IUnitController
 			return;
 		}
 
-		// 未在等待目标时点击当前船，重新弹出轮盘菜单。
+		// 未在等待目标时点击当前船，重新弹出操作菜单。
 		if (_selected.HexCoords == hex)
 		{
-			GetNode<EventBus>("../EventBus").EmitSignal("ActionSelected", "_show_wheel");
+			GetNode<EventBus>("../EventBus").EmitSignal("ActionSelected", "_show_menu");
 			return;
 		}
 
@@ -251,54 +239,28 @@ public partial class PlayerController : Node, IUnitController
 		SelectShip(ship);
 	}
 
-	/// <summary>执行移动或攻击指令：校验惯性规则/射程/编队跟随，更新单位状态。</summary>
+	/// <summary>执行炮击：校验敌舰与射程，确认目标后以船-敌舰中点运镜并结算射击。</summary>
 	private void ExecutePendingAction(Vector2I hex)
 	{
+		if (_pendingAction != "attack") return;
 		if (_enemyUnits == null) return;
+
 		int d = BattleRulesEvaluator.GetHexDistance(_selected.HexCoords, hex);
+		var target = _enemyUnits.Find(s =>
+			s.HexCoords == hex && GodotObject.IsInstanceValid(s) && s.CurrentHp > 0);
+		if (target == null || d > _selected.AttackRange)
+		{ RejectAction("❌ 目标无效或不在射程内！"); return; }
+		if (!CombatRulesEvaluator.CanFireInArc(_selected, target))
+		{ RejectAction("❌ 目标不在当前舰炮射界内！"); return; }
 
-		if (_pendingAction == "attack")
-		{
-			var target = _enemyUnits.Find(s =>
-				s.HexCoords == hex && GodotObject.IsInstanceValid(s) && s.CurrentHp > 0);
-			if (target == null || d > _selected.AttackRange)
-			{ RejectAction("❌ 目标无效或不在射程内！"); return; }
+		_selected.MainAmmo--;
+		// 选中敌方后：以船与敌舰中点为焦点，再执行射击。
+		GetNode<EventBus>("../EventBus").EmitSignal("CameraFocusBetweenRequested",
+			ShipWorld(_selected), ShipWorld(target));
 
-			// 选中敌方后：以船与敌舰中点为焦点，再执行射击。
-			GetNode<EventBus>("../EventBus").EmitSignal("CameraFocusBetweenRequested",
-				ShipWorld(_selected), ShipWorld(target));
-
-			(bool hit, int dmg, string desc) = CombatRulesEvaluator.FireEx(_selected, target, d);
-			GetNode<EventBus>("../EventBus").EmitSignal("CombatResult", desc);
-			EndAction();
-			return;
-		}
-
-		if (_pendingAction == "move")
-		{
-			if (!MoveRulesEvaluator.IsInForwardArc(_selected.HexCoords, hex, _selected.Direction))
-			{ RejectAction("❌ 仅可朝前方 120° 扇面机动"); return; }
-
-			int steps = StepsForShip(_selected);
-			Vector2I off = HexDirectionUtility.Offset(_selected.Direction);
-			Vector2I expected = _selected.HexCoords + off * steps;
-
-			var formation = MoveRulesEvaluator.DetectLineAhead(_selected, _myUnits);
-			bool isFollower = formation.IsInFormation && formation.LeadShip != _selected;
-
-			if (hex == expected && d == steps)
-			{
-				_selected.MoveToHex(_map, hex);
-				GetNode<EventBus>("../EventBus").EmitSignal("LogMessage",
-					isFollower ? $"⚓ 跟随首舰机动至 {hex}（编队自动转向）"
-						: $"⚓ 舰队机动至 {hex}（航向 {_selected.Direction}）");
-				EndAction();
-			}
-			else
-			{
-				RejectAction($"❌ 惯性规则：仅可抵达 {expected}");
-			}
-		}
+		(bool hit, int dmg, string desc) = CombatRulesEvaluator.FireEx(_selected, target, d);
+		GetNode<EventBus>("../EventBus").EmitSignal("CombatResult", desc);
+		EndAction();
 	}
 
 	/// <summary>执行转向：扣 CP、更新航向，然后俯视运镜到船体中心。</summary>
@@ -313,6 +275,7 @@ public partial class PlayerController : Node, IUnitController
 				if (_director != null && !_director.TryConsumeCP(cost))
 				{ _pendingAction = null; RejectAction($"❌ 转向需要 {cost} CP"); return; }
 				_selected.Direction = nd;
+				_selected.TurnedThisPhase = true;
 				GetNode<EventBus>("../EventBus").EmitSignal("LogMessage",
 					$"↩ 左转 60°→ 航向 {nd}（消耗 {cost} CP）");
 				break;
@@ -324,6 +287,7 @@ public partial class PlayerController : Node, IUnitController
 				if (_director != null && !_director.TryConsumeCP(cost))
 				{ _pendingAction = null; RejectAction($"❌ 转向需要 {cost} CP"); return; }
 				_selected.Direction = nd;
+				_selected.TurnedThisPhase = true;
 				GetNode<EventBus>("../EventBus").EmitSignal("LogMessage",
 					$"↪ 右转 60°→ 航向 {nd}（消耗 {cost} CP）");
 				break;
@@ -337,15 +301,7 @@ public partial class PlayerController : Node, IUnitController
 		EndAction();
 	}
 
-	/// <summary>以“船-目标格”中点为焦点，距离按两点跨度自适应。</summary>
-	private void FocusBetween(ShipComponent ship, Vector2I targetHex)
-	{
-		if (_map == null) return;
-		GetNode<EventBus>("../EventBus").EmitSignal("CameraFocusBetweenRequested",
-			ShipWorld(ship), _map.HexToWorld(targetHex.X, targetHex.Y));
-	}
-
-	/// <summary>进入攻击待命时拉高镜头，让射程圈完整可见。</summary>
+	/// <summary>进入炮击待命时拉高镜头，让射程圈完整可见。</summary>
 	private void FocusOnAttackRange()
 	{
 		float distance = Mathf.Clamp(8f + _selected.AttackRange * 3f, 12f, 40f);
@@ -361,13 +317,13 @@ public partial class PlayerController : Node, IUnitController
 		return ship.GlobalPosition;
 	}
 
-	/// <summary>拒绝操作：输出原因日志，若单位仍选中则重新弹出轮盘菜单。</summary>
+	/// <summary>拒绝操作：输出原因日志，若单位仍选中则重新弹出操作菜单。</summary>
 	private void RejectAction(string message)
 	{
 		var bus = GetNode<EventBus>("../EventBus");
 		bus.EmitSignal("LogMessage", message);
 		if (_selected != null)
-			bus.EmitSignal("ActionSelected", "_show_wheel");
+			bus.EmitSignal("ActionSelected", "_show_menu");
 	}
 
 	/// <summary>结束当前行动：清除高亮与选中态，自动轮到下一艘船。</summary>
@@ -378,5 +334,11 @@ public partial class PlayerController : Node, IUnitController
 		if (_selected != null) _selected.ShowSelected(false);
 		_selected = null;
 		SelectNextShip();
+	}
+
+	/// <summary>玩家队列清空后通知 GameplayDirector 接续敌方行动。</summary>
+	private void NotifyPlayerFinished()
+	{
+		GetNode<EventBus>("../EventBus").EmitSignal("PlayerSideFinished");
 	}
 }

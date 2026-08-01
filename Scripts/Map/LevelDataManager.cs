@@ -26,8 +26,6 @@ public partial class LevelDataManager : Node
 	public static string RuntimeMapRequest;
 	/// <summary>当前战役画布名；战役重试时沿用，避免退回 map_01。</summary>
 	public static string ActiveCampaignMap;
-	[Export] public bool ForceReextract = false;
-	[Export] public PackedScene MapEditorScene;
 	// 编辑器场景置 false：画布由编辑器显式打开，避免启动时自动加载 map_01
 	[Export] public bool AutoLoadOnReady = true;
 
@@ -82,6 +80,19 @@ public partial class LevelDataManager : Node
 	/// <summary>地图类型："day"/"night"，决定照明阶段是否启用。</summary>
 	public string MapType { get; private set; } = "day";
 	public bool IsNightBattle => MapType == "night";
+	// ── 关卡初设（编辑器可配置，旧地图使用默认值）──
+	public int PlayerCommand { get; private set; } = 5;
+	public int EnemyCommand { get; private set; } = 4;
+	public int PlayerInitialCP { get; private set; } = 8;
+	public int EnemyInitialCP { get; private set; } = 8;
+	public int InitiativeValue { get; private set; } = 5;
+	public string InitiativeOwner { get; private set; } = "player";
+	public int BasicVision { get; private set; } = 6;
+	public int TorpedoModePlayer { get; private set; } = 7;
+	public int TorpedoModeEnemy { get; private set; } = 4;
+	public int MaxTurns { get; private set; } = 18;
+	/// <summary>地图六角格朝向：EW 平行边水平 / NS 尖角上下。</summary>
+	public HexOrientation MapOrientation { get; private set; } = HexOrientation.EWHorizontal;
 	/// <summary>是否由画布菜单的 RuntimeMapRequest 自动打开了画布；编辑器据此决定是否默认显示画布列表。</summary>
 	public bool MapAutoOpened { get; private set; }
 	private string _currentJsonPath;
@@ -106,93 +117,29 @@ public partial class LevelDataManager : Node
 			return;
 		}
 
-		// 战斗场景：优先读导出文件夹，其次读旧 user://maps，最后才从 2D 场景重新抠图
+		// 战斗场景：优先读导出文件夹，其次读旧 user://maps
 		string jsonPath = $"{DefaultExportFolder}/{MapId}.json";
 		_currentJsonPath = jsonPath;
 
-		if (!ForceReextract && LoadMap(jsonPath))
+		if (LoadMap(jsonPath))
 		{
 			// 已从 JSON 读取
 		}
-		else if (!ForceReextract && LoadMap($"user://maps/{MapId}.json"))
+		else if (LoadMap($"user://maps/{MapId}.json"))
 		{
 			// 兼容旧版本存放位置
 		}
-		else if (MapEditorScene != null)
-		{
-			ExtractFromTileMap();
-			SaveCurrentMap();
-		}
 		else
 		{
-			GD.PrintErr("错误: LevelDataManager —— 既没 JSON 也没绑 2D 场景！");
+			GD.PrintErr("错误: LevelDataManager —— 没有找到可加载的 JSON 地图！");
 		}
-	}
-
-	// ── 从 2D TileMap 抠数据（旧路径保留，勾选 ForceReextract 时使用）──
-
-	private void ExtractFromTileMap()
-	{
-		ClearAll();
-		Node2D editorInstance = MapEditorScene.Instantiate<Node2D>();
-		TileMapLayer terrainLayer = editorInstance.GetNodeOrNull<TileMapLayer>("TerrainLayer");
-		if (terrainLayer != null)
-		{
-			foreach (Vector2I cell in terrainLayer.GetUsedCells())
-			{
-				int sourceId = terrainLayer.GetCellSourceId(cell);
-				if (sourceId < 0) continue;
-				TerrainSources[ConvertToAxial(cell)] = sourceId;
-			}
-		}
-
-		TileMapLayer generationLayer = editorInstance.GetNodeOrNull<TileMapLayer>("GenerationLayer");
-		if (generationLayer != null)
-		{
-			foreach (Vector2I cell in generationLayer.GetUsedCells())
-			{
-				int sourceId = generationLayer.GetCellSourceId(cell);
-				if (sourceId < 0) continue;
-				var gen = new GenerationPointData { SourceId = sourceId };
-				// 兼容旧 tileset：4=敌方标记，6=玩家标记
-				gen.Side = sourceId == 4 ? GenerationSide.Enemy : GenerationSide.Player;
-				GenerationPoints[ConvertToAxial(cell)] = gen;
-			}
-		}
-
-		TileMapLayer specialLayer = editorInstance.GetNodeOrNull<TileMapLayer>("SpecialLayer");
-		if (specialLayer != null)
-		{
-			foreach (Vector2I cell in specialLayer.GetUsedCells())
-			{
-				int sourceId = specialLayer.GetCellSourceId(cell);
-				if (sourceId >= 0) SpecialTiles[ConvertToAxial(cell)] = sourceId;
-			}
-		}
-
-		editorInstance.QueueFree();
-		GD.Print($"LevelDataManager: 从 TileMap 抠取地形 {TerrainSources.Count}，生成点 {GenerationPoints.Count}，特殊 {SpecialTiles.Count}");
-	}
-
-	/// <summary>offset cell 坐标转轴向坐标。</summary>
-	private static Vector2I ConvertToAxial(Vector2I cell)
-	{
-		int r = cell.Y;
-		int q = cell.X - (cell.Y >> 1);
-		return new Vector2I(q, r);
-	}
-
-	/// <summary>轴向坐标转 offset cell 坐标。</summary>
-	private static Vector2I ConvertToCell(Vector2I axial)
-	{
-		int y = axial.Y;
-		int x = axial.X + (axial.Y >> 1);
-		return new Vector2I(x, y);
 	}
 
 	// ── 编辑器 API：地形 ──
 
 	public int GetTerrainSource(Vector2I hex) => TerrainSources.GetValueOrDefault(hex, -1);
+	/// <summary>该格是否为岛屿地形（sourceId == 1）。</summary>
+	public bool IsIsland(Vector2I hex) => GetTerrainSource(hex) == 1;
 	public void SetTerrain(Vector2I hex, int sourceId)
 	{
 		if (sourceId < 0) TerrainSources.Remove(hex);
@@ -226,9 +173,9 @@ public partial class LevelDataManager : Node
 	/// <summary>移除一个特殊格。</summary>
 	public void EraseSpecial(Vector2I hex) => SpecialTiles.Remove(hex);
 
-	// ── 编辑器 API：船初设（每个生成点最多 3 艘）──
+	// ── 编辑器 API：船初设（每个生成点最多 2 艘）──
 
-	public const int MaxShipsPerTile = 3;
+	public const int MaxShipsPerTile = 2;
 
 	public IReadOnlyList<ShipSpawnData> GetShipsAt(Vector2I hex)
 	{
@@ -324,10 +271,21 @@ public partial class LevelDataManager : Node
 	}
 
 	/// <summary>新建空白画布（内存中清空，未落盘）。</summary>
-	public void NewMap(string name)
+	public void NewMap(string name, HexOrientation orientation = HexOrientation.EWHorizontal,
+		int playerCommand = 5, int enemyCommand = 4, int playerCP = 8, int enemyCP = 8,
+		int initiativeValue = 5, string initiativeOwner = "player", int vision = 6, int maxTurns = 18)
 	{
 		CurrentMapName = string.IsNullOrWhiteSpace(name) ? "untitled" : name.Trim();
 		MapType = "day";
+		MapOrientation = orientation;
+		PlayerCommand = playerCommand;
+		EnemyCommand = enemyCommand;
+		PlayerInitialCP = playerCP;
+		EnemyInitialCP = enemyCP;
+		InitiativeValue = initiativeValue;
+		InitiativeOwner = initiativeOwner;
+		BasicVision = vision;
+		MaxTurns = maxTurns;
 		_currentJsonPath = $"{DefaultExportFolder}/{CurrentMapName}.json";
 		ClearAll();
 	}
@@ -363,6 +321,17 @@ public partial class LevelDataManager : Node
 	{
 		public string Name { get; set; } = "untitled";
 		public string MapType { get; set; } = "day";
+		public string Orientation { get; set; } = "ew";
+		public int PlayerCommand { get; set; } = 5;
+		public int EnemyCommand { get; set; } = 4;
+		public int PlayerInitialCP { get; set; } = 8;
+		public int EnemyInitialCP { get; set; } = 8;
+		public int InitiativeValue { get; set; } = 5;
+		public string InitiativeOwner { get; set; } = "player";
+		public int BasicVision { get; set; } = 6;
+		public int TorpedoModePlayer { get; set; } = 7;
+		public int TorpedoModeEnemy { get; set; } = 4;
+		public int MaxTurns { get; set; } = 18;
 		public int Version { get; set; } = 3;
 		public Dictionary<string, int> Terrain { get; set; } = new();
 		public Dictionary<string, GenerationPointData> Generation { get; set; } = new();
@@ -381,7 +350,23 @@ public partial class LevelDataManager : Node
 	/// <summary>把内存表写入 JSON 文件。</summary>
 	private bool SaveToJson(string path)
 	{
-		var data = new MapSaveData { Name = CurrentMapName, Version = 3, MapType = MapType };
+		var data = new MapSaveData
+		{
+			Name = CurrentMapName,
+			Version = 3,
+			MapType = MapType,
+			Orientation = MapOrientation == HexOrientation.NSVertical ? "ns" : "ew",
+			PlayerCommand = PlayerCommand,
+			EnemyCommand = EnemyCommand,
+			PlayerInitialCP = PlayerInitialCP,
+			EnemyInitialCP = EnemyInitialCP,
+			InitiativeValue = InitiativeValue,
+			InitiativeOwner = InitiativeOwner,
+			BasicVision = BasicVision,
+			TorpedoModePlayer = TorpedoModePlayer,
+			TorpedoModeEnemy = TorpedoModeEnemy,
+			MaxTurns = MaxTurns
+		};
 		foreach (var kv in TerrainSources) data.Terrain[SerializeKey(kv.Key)] = kv.Value;
 		foreach (var kv in GenerationPoints) data.Generation[SerializeKey(kv.Key)] = kv.Value;
 		foreach (var kv in SpecialTiles) data.Special[SerializeKey(kv.Key)] = kv.Value;
@@ -476,7 +461,23 @@ public partial class LevelDataManager : Node
 
 		CurrentMapName = root.TryGetProperty("Name", out JsonElement nameElement) ? nameElement.GetString() : "untitled";
 		MapType = root.TryGetProperty("MapType", out JsonElement mapTypeElement) ? mapTypeElement.GetString() ?? "day" : "day";
-		GD.Print($"地图已加载: {path} (地形 {TerrainSources.Count}, 生成点 {GenerationPoints.Count}, 船 {ShipSpawns.Count}, 类型 {MapType})");
+		MapOrientation = root.TryGetProperty("Orientation", out JsonElement orientationElement)
+			&& orientationElement.GetString() == "ns"
+			? HexOrientation.NSVertical
+			: HexOrientation.EWHorizontal;
+		PlayerCommand = root.TryGetProperty("PlayerCommand", out JsonElement playerCommand) ? playerCommand.GetInt32() : 5;
+		EnemyCommand = root.TryGetProperty("EnemyCommand", out JsonElement enemyCommand) ? enemyCommand.GetInt32() : 4;
+		PlayerInitialCP = root.TryGetProperty("PlayerInitialCP", out JsonElement playerCp) ? playerCp.GetInt32() : 8;
+		EnemyInitialCP = root.TryGetProperty("EnemyInitialCP", out JsonElement enemyCp) ? enemyCp.GetInt32() : 8;
+		InitiativeValue = root.TryGetProperty("InitiativeValue", out JsonElement initiative) ? initiative.GetInt32() : 5;
+		InitiativeOwner = root.TryGetProperty("InitiativeOwner", out JsonElement owner)
+			? owner.GetString() ?? "player"
+			: "player";
+		BasicVision = root.TryGetProperty("BasicVision", out JsonElement vision) ? vision.GetInt32() : 6;
+		TorpedoModePlayer = root.TryGetProperty("TorpedoModePlayer", out JsonElement tp) ? tp.GetInt32() : 7;
+		TorpedoModeEnemy = root.TryGetProperty("TorpedoModeEnemy", out JsonElement te) ? te.GetInt32() : 4;
+		MaxTurns = root.TryGetProperty("MaxTurns", out JsonElement maxTurns) ? maxTurns.GetInt32() : 18;
+		GD.Print($"地图已加载: {path} (地形 {TerrainSources.Count}, 生成点 {GenerationPoints.Count}, 船 {ShipSpawns.Count}, 类型 {MapType}, 朝向 {MapOrientation})");
 		return true;
 	}
 
@@ -516,6 +517,7 @@ public partial class LevelDataManager : Node
 
 		CurrentMapName = root.TryGetProperty("Name", out JsonElement nameElement) ? nameElement.GetString() : "untitled";
 		MapType = "day";
+		MapOrientation = HexOrientation.EWHorizontal;
 		return true;
 	}
 

@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="ShipData" format=3]
+
+[ext_resource type="Script" uid="uid://dreq4a4on5nm3" path="res://Scripts/Data/Ship/ShipData.cs" id="1_cruiser"]
+
+[resource]
+script = ExtResource("1_cruiser")
+ShipName = "火奴鲁鲁 / 圣路易斯 / 海伦娜"
+ShipClass = "CL"
+PV = 16
+MaxHp = 18
+MoveRange = 4
+AttackRange = 7
+AttackPower = 15
+MaxSpeed = 6
+MainAmmo = 15
+HullThresholds = Array[int]([4, 9, 13, 18])
+MaxSpeedByState = Array[int]([6, 5, 4, 2])
+ForwardFire = 6
+SideFire = 15
+BackwardFire = 6
+GunCaliber = 15
+SecondaryForwardFire = 0
+SecondarySideFire = 0
+SecondaryBackwardFire = 0
+ArmorClose = 3
+ArmorMedium = 7
+ArmorFar = 8
+TorpedoType = ""
+TorpedoLeftTubes = 0
+TorpedoCenterTubes = 0
+TorpedoRightTubes = 0
+HasSpareTorpedoes = false
+RadarType = "US_A"
+metadata/_custom_type_script = "uid://dreq4a4on5nm3"

@@ -14,12 +14,16 @@ public partial class EventBus : Node
 
 	[Signal] public delegate void HexClickedEventHandler(Vector2I hex);
 	[Signal] public delegate void TurnStartedEventHandler(string side);
+	[Signal] public delegate void PlayerSideFinishedEventHandler();
+	[Signal] public delegate void EnemySideFinishedEventHandler();
+	[Signal] public delegate void BattleEndedEventHandler(string result, string detail);
 	[Signal] public delegate void EndTurnClickedEventHandler();
 	[Signal] public delegate void CombatResultEventHandler(string desc);
 	[Signal] public delegate void ActionSelectedEventHandler(string actionId);
 	[Signal] public delegate void LogMessageEventHandler(string message);
 	[Signal] public delegate void ShipInfoRequestedEventHandler(ShipComponent ship);
 	[Signal] public delegate void OverlayDrawRequestedEventHandler(Vector2I center, int move, int attack, int state);
+	[Signal] public delegate void OverlayArcDrawRequestedEventHandler(Vector2I center, int direction, int range);
 	[Signal] public delegate void OverlayClearRequestedEventHandler();
 	[Signal] public delegate void MoveTargetHighlightedEventHandler(Vector2I target);
 
@@ -29,7 +33,7 @@ public partial class EventBus : Node
 	[Signal] public delegate void CameraTopDownRequestedEventHandler(Vector3 worldPos);
 
 	// -- 阶段管理 --
-	[Signal] public delegate void PhaseChangedEventHandler(string phaseName, int phaseIndex);
+	[Signal] public delegate void PhaseChangedEventHandler(string phaseName, int phaseIndex, int turnNumber);
 	[Signal] public delegate void AdvancePhaseClickedEventHandler();
 	[Signal] public delegate void CpUpdatedEventHandler(int current, int max);
 

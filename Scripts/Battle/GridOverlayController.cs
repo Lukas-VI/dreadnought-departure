@@ -20,6 +20,7 @@ public partial class GridOverlayController : Node
 	{
 		var bus = GetNode<EventBus>("../EventBus");
 		bus.OverlayDrawRequested += DrawTacticalRange;
+		bus.OverlayArcDrawRequested += DrawForwardArc;
 		bus.OverlayClearRequested += ClearOverlay;
 		bus.MoveTargetHighlighted += HighlightMoveTarget;
 	}
@@ -51,6 +52,20 @@ public partial class GridOverlayController : Node
 	{
 		if (_targets.TryGetValue(target, out var mesh) && GodotObject.IsInstanceValid(mesh))
 			mesh.MaterialOverride = MoveMaterial;
+	}
+
+	/// <summary>航向锥形可到达格预览：高亮前方 120° 扇面内、距离范围内的格。</summary>
+	public void DrawForwardArc(Vector2I center, int directionInt, int range)
+	{
+		ClearOverlay();
+		HexDirection direction = (HexDirection)directionInt;
+		foreach (var (coords, mesh) in _targets)
+		{
+			int dist = BattleRulesEvaluator.GetHexDistance(center, coords);
+			if (dist <= range && dist > 0
+				&& MoveRulesEvaluator.IsInForwardArc(center, coords, direction))
+				mesh.MaterialOverride = MoveMaterial;
+		}
 	}
 
 	public void ClearOverlay()

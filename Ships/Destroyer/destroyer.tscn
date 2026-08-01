@@ -1,0 +1,7 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" uid="uid://d1k2bwwbi4fan" path="res://Ships/BaseShip/ship_3d.tscn" id="1_destroyer"]
+[ext_resource type="Resource" path="res://Ships/Destroyer/destroyer_data.tres" id="2_destroyer"]
+
+[node name="Ships" instance=ExtResource("1_destroyer")]
+Data = ExtResource("2_destroyer")

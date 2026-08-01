@@ -12,8 +12,44 @@ public static class MoveRulesEvaluator
 	// ═════════════════════════════════════════
 	//  3.1  A2 速力→阶段位移映射（已在 SpeedTable 中）
 	// ═════════════════════════════════════════
-	public static int MovementForPhase(int speed, int phase, bool isOddTurn)
-		=> SpeedTable.MoveForPhase(speed, phase, isOddTurn);
+	public static int MovementForPhase(int speed, int phase, bool oddTurn)
+		=> SpeedTable.MoveForPhase(speed, phase, oddTurn);
+
+	/// <summary>返回从 from 到 to 最接近的六向航向（用于射界/转向判定）。</summary>
+	public static HexDirection DirectionTo(Vector2I from, Vector2I to)
+	{
+		HexDirection best = HexDirection.N;
+		int bestDist = int.MaxValue;
+		foreach (HexDirection dir in System.Enum.GetValues<HexDirection>())
+		{
+			Vector2I next = from + HexDirectionUtility.Offset(dir);
+			int dist = BattleRulesEvaluator.GetHexDistance(next, to);
+			if (dist < bestDist)
+			{
+				bestDist = dist;
+				best = dir;
+			}
+		}
+		return best;
+	}
+
+	/// <summary>
+	/// 沿航向逐格推进，遇到 isBlocked 返回 true 的格子立即停下；
+	/// 返回实际可走的步数（不超过 requestedSteps）。
+	/// </summary>
+	public static int AdvanceSteps(Vector2I start, HexDirection dir, int requestedSteps,
+		System.Func<Vector2I, bool> isBlocked)
+	{
+		Vector2I off = HexDirectionUtility.Offset(dir);
+		Vector2I cursor = start;
+		for (int i = 0; i < requestedSteps; i++)
+		{
+			Vector2I next = cursor + off;
+			if (isBlocked(next)) return i;
+			cursor = next;
+		}
+		return requestedSteps;
+	}
 
 	// ═════════════════════════════════════════
 	//  3.2  前方合法格子（正面 3 个方向）

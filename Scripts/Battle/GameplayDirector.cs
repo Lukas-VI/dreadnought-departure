@@ -23,6 +23,7 @@ public enum BattlePhase
 /// 在大回合内驱动 8 个阶段的流转（速度调整→三段移动→视野→炮击→雷击→结算），
 /// 管理全局 CP 计数，并通过 EventBus 通知各子系统。
 /// 白天地图自动跳过视野/照明阶段，仅夜战地图进入 ReconLighting。
+/// 三段移动在各自阶段被推进时立即按 SpeedTable 结算，不累积到回合末。
 /// </summary>
 public partial class GameplayDirector : Node
 {
@@ -31,6 +32,8 @@ public partial class GameplayDirector : Node
 	private UnitSpawner _unitSpawner;
 	private GridOverlayController _overlay;
 	private PlayerController _player;
+	private AIController _ai;
+	private BattleHudBroker _hud;
 
 	// —— 阶段管线 ——
 	private BattlePhase _currentPhase = BattlePhase.SpeedAdjust;
@@ -43,11 +46,15 @@ public partial class GameplayDirector : Node
 	// —— 单位缓存 ——
 	private List<ShipComponent> _playerShips = new();
 	private List<ShipComponent> _enemyShips = new();
+	private bool _advancing;
+	private bool _settling;
+	private bool _enemyActing;
+	private bool _battleEnded;
 
 	private static readonly string[] PhaseLabels =
 	{
-		"速度", "▶ 第一移动", "▶▶ 第二移动", "▶▶▶ 第三移动",
-		"视野", "火炮", "鱼雷", "结算"
+		"1 速度", "2 ▶ 第一移动", "3 ▶▶ 第二移动", "4 ▶▶▶ 第三移动",
+		"5 视野", "6 火炮", "7 鱼雷", "8 结算"
 	};
 
 	public override void _Ready()
@@ -57,8 +64,12 @@ public partial class GameplayDirector : Node
 		_unitSpawner = GetNode<UnitSpawner>("UnitSpawner");
 		_overlay = GetNode<GridOverlayController>("GridOverlayController");
 		_player = GetNode<PlayerController>("PlayerController");
+		_ai = GetNodeOrNull<AIController>("AIController");
+		_hud = GetNodeOrNull<BattleHudBroker>("CanvasLayer/BattleUI/InfoLabel");
 
-		GetNode<EventBus>("EventBus").AdvancePhaseClicked += AdvancePhase;
+		var bus = GetNode<EventBus>("EventBus");
+		bus.AdvancePhaseClicked += AdvancePhase;
+		bus.PlayerSideFinished += OnPlayerSideFinished;
 		CallDeferred(MethodName.LaunchBattleField);
 	}
 
@@ -80,7 +91,8 @@ public partial class GameplayDirector : Node
 		_enemyShips = all.Where(s => s.BattleSide == GenerationSide.Enemy).ToList();
 
 		_turnNumber = 1;
-		CurrentCP = MaxCP;
+		MaxCP = Math.Max(4, _dataManager.PlayerCommand * 2);
+		CurrentCP = Math.Min(_dataManager.PlayerInitialCP, MaxCP);
 		_currentPhase = BattlePhase.SpeedAdjust;
 		EmitPhaseChanged();
 		EmitCpUpdated();
@@ -88,11 +100,100 @@ public partial class GameplayDirector : Node
 			$"—— 第 {_turnNumber} 回合 —— {PhaseLabels[(int)_currentPhase]}");
 
 		// 启动首阶段
+		if (CheckBattleEnd()) return;
 		_player.BeginPhaseAction(this, _playerShips, _enemyShips, _mapGenerator, _overlay);
 	}
 
-	/// <summary>推进到下一个阶段。白天地图从第三移动阶段直接进入火炮阶段。</summary>
+	private void OnPlayerSideFinished()
+	{
+		if (_battleEnded || _enemyActing) return;
+		RunEnemyTurn();
+	}
+
+	/// <summary>玩家侧操作队列清空后，同一阶段内接续敌方 AI 操作。</summary>
+	private void RunEnemyTurn()
+	{
+		_enemyActing = true;
+		var bus = GetNode<EventBus>("EventBus");
+		bus.EmitSignal("OverlayClearRequested");
+
+		var aliveEnemies = _enemyShips.Where(IsShipAlive).ToList();
+		var alivePlayers = _playerShips.Where(IsShipAlive).ToList();
+		if (!IsPlayerActionPhase(_currentPhase) || _ai == null
+			|| aliveEnemies.Count == 0 || alivePlayers.Count == 0)
+		{
+			OnEnemySideFinished();
+			return;
+		}
+
+		bus.EmitLog($"🤖 敌方行动：{PhaseLabels[(int)_currentPhase]}");
+		FocusOnEnemyTurn(aliveEnemies);
+		_ai.TakeTurn(aliveEnemies, alivePlayers, _mapGenerator, _overlay, _hud,
+			_currentPhase, OnEnemySideFinished);
+	}
+
+	/// <summary>敌方行动开始时把镜头平滑移到敌方舰队中心。</summary>
+	private void FocusOnEnemyTurn(List<ShipComponent> enemies)
+	{
+		if (_mapGenerator == null || enemies.Count == 0) return;
+		Vector3 center = Vector3.Zero;
+		foreach (var enemy in enemies)
+			center += _mapGenerator.HexToWorld(enemy.HexCoords.X, enemy.HexCoords.Y);
+		center /= enemies.Count;
+		GetNode<EventBus>("EventBus").EmitSignal("CameraFocusRequested", center, 22f, 55f);
+	}
+
+	private void OnEnemySideFinished()
+	{
+		_enemyActing = false;
+		GetNode<EventBus>("EventBus").EmitLog("✅ 敌方行动完成，可推进阶段");
+	}
+
+	/// <summary>推进到下一个阶段；从移动阶段离开时先执行该阶段的惯性移动。</summary>
 	public void AdvancePhase()
+	{
+		if (_advancing || _settling || _battleEnded) return;
+		if (_enemyActing)
+		{
+			GetNode<EventBus>("EventBus").EmitLog("敌方行动中，请稍候");
+			return;
+		}
+
+		int movePhase = CurrentMovePhase;
+		if (movePhase is 1 or 2 or 3)
+		{
+			_advancing = true;
+			GetNode<EventBus>("EventBus").EmitSignal("OverlayClearRequested");
+			AnimateMovePhaseAndContinue(movePhase);
+			return;
+		}
+
+		_advancing = true;
+		try
+		{
+			FinishPhaseTransition();
+		}
+		finally
+		{
+			_advancing = false;
+		}
+	}
+
+	/// <summary>等待移动动画结束后再切换阶段，避免船还没到位就开始下一阶段交互。</summary>
+	private async void AnimateMovePhaseAndContinue(int phase)
+	{
+		try
+		{
+			await AnimateMovePhase(phase);
+		}
+		finally
+		{
+			_advancing = false;
+		}
+		FinishPhaseTransition();
+	}
+
+	private void FinishPhaseTransition()
 	{
 		GetNode<EventBus>("EventBus").EmitSignal("OverlayClearRequested");
 
@@ -119,7 +220,11 @@ public partial class GameplayDirector : Node
 		if (_currentPhase == BattlePhase.SpeedAdjust)
 		{
 			_turnNumber++;
-			CurrentCP = Math.Min(CurrentCP + 3, MaxCP);
+			CurrentCP = Math.Min(CurrentCP + _dataManager.PlayerCommand, MaxCP);
+			ApplyDeferredSpeedCaps();
+			foreach (var ship in _playerShips.Concat(_enemyShips))
+				if (IsShipAlive(ship))
+					ship.TurnedThisPhase = false;
 			GetNode<EventBus>("EventBus").EmitSignal("LogMessage",
 				$"—— 第 {_turnNumber} 回合 ——");
 		}
@@ -166,16 +271,87 @@ public partial class GameplayDirector : Node
 		EmitCpUpdated();
 	}
 
-	private void DoEndTurnSettlement()
+	private async void DoEndTurnSettlement()
 	{
-		GetNode<EventBus>("EventBus").EmitSignal("LogMessage", "回合结算中……");
-		GetNode<EventBus>("EventBus").EmitSignal("LogMessage", "下一回合……");
-		CallDeferred(nameof(AdvancePhase));
+		if (_settling) return;
+		_settling = true;
+		var bus = GetNode<EventBus>("EventBus");
+		try
+		{
+			bus.EmitSignal("LogMessage", "回合结算：判定检定……");
+			var checks = new List<string>();
+			foreach (var ship in _playerShips.Concat(_enemyShips))
+			{
+				if (!GodotObject.IsInstanceValid(ship) || ship.PendingShotChecks.Count == 0) continue;
+				checks.AddRange(ship.PendingShotChecks);
+			}
+			if (checks.Count > 0)
+				bus.EmitSignal("LogMessage", string.Join("\n", checks));
+
+			foreach (var ship in _playerShips.Concat(_enemyShips))
+				if (GodotObject.IsInstanceValid(ship) && ship.PendingDamage > 0)
+					ship.ApplyPendingDamage();
+
+			foreach (var ship in _playerShips.Concat(_enemyShips))
+				if (GodotObject.IsInstanceValid(ship))
+					ship.PendingShotChecks.Clear();
+
+			if (!CheckBattleEnd())
+				await ToSignal(GetTree(), "process_frame");
+		}
+		finally
+		{
+			if (_battleEnded)
+				_settling = false;
+			else
+				CallDeferred(nameof(ContinueAfterSettlement));
+		}
+	}
+
+	private void ContinueAfterSettlement()
+	{
+		_settling = false;
+		AdvancePhase();
+	}
+
+	/// <summary>移动阶段自动执行该阶段位移：按 SpeedTable 推算格数，用 Tween 播放位移动画。</summary>
+	private async System.Threading.Tasks.Task AnimateMovePhase(int phase)
+	{
+		float longest = 0f;
+		var occupied = new HashSet<Vector2I>();
+		foreach (var ship in _playerShips.Concat(_enemyShips))
+			if (IsShipAlive(ship))
+				occupied.Add(ship.HexCoords);
+
+		foreach (var ship in _playerShips.Concat(_enemyShips))
+		{
+			if (!GodotObject.IsInstanceValid(ship) || ship.CurrentHp <= 0) continue;
+
+			int requestedSteps = MoveRulesEvaluator.MovementForPhase(
+				ship.CurrentSpeed, phase, _turnNumber % 2 == 1);
+			int steps = MoveRulesEvaluator.AdvanceSteps(ship.HexCoords, ship.Direction,
+				requestedSteps, hex => (_dataManager?.IsIsland(hex) ?? false)
+					|| (occupied.Contains(hex) && hex != ship.HexCoords));
+			if (steps <= 0) continue;
+			if (steps < requestedSteps)
+				GetNode<EventBus>("EventBus").EmitLog(
+					$"⚠️ {ship.ShipName} 前方受阻（岛屿/舰船），仅推进 {steps} 格");
+
+			Vector2I off = HexDirectionUtility.Offset(ship.Direction);
+			Vector2I target = ship.HexCoords + off * steps;
+			occupied.Remove(ship.HexCoords);
+			occupied.Add(target);
+			float duration = 0.35f + steps * 0.2f;
+			longest = Mathf.Max(longest, duration);
+			ship.AnimateMoveTo(_mapGenerator, target, duration);
+		}
+
+		if (longest > 0f)
+			await ToSignal(GetTree().CreateTimer(longest + 0.1f), "timeout");
 	}
 
 	public BattlePhase CurrentPhase => _currentPhase;
 	public int TurnNumber => _turnNumber;
-	public bool IsOddTurn => _turnNumber % 2 == 1;
 	public int CurrentMovePhase => _currentPhase switch
 	{
 		BattlePhase.MovePhase1 => 1, BattlePhase.MovePhase2 => 2, BattlePhase.MovePhase3 => 3,
@@ -184,9 +360,46 @@ public partial class GameplayDirector : Node
 	public IReadOnlyList<ShipComponent> PlayerShips => _playerShips;
 	public IReadOnlyList<ShipComponent> EnemyShips => _enemyShips;
 
+	/// <summary>任一方全灭时结束战斗，并通知 UI 显示结果。</summary>
+	private bool CheckBattleEnd()
+	{
+		int playerCount = _playerShips.Count(IsShipAlive);
+		int enemyCount = _enemyShips.Count(IsShipAlive);
+		if (playerCount > 0 && enemyCount > 0) return false;
+
+		_battleEnded = true;
+		bool playerWon = playerCount > 0;
+		string result = playerWon ? "胜利" : "失败";
+		string detail = playerWon ? "敌方舰队已全灭" : "我方舰队已全灭";
+		var bus = GetNode<EventBus>("EventBus");
+		bus.EmitLog($"🏁 {result}：{detail}");
+		bus.EmitSignal("BattleEnded", result, detail);
+		return true;
+	}
+
+	private static bool IsShipAlive(ShipComponent ship)
+		=> GodotObject.IsInstanceValid(ship) && ship.CurrentHp > 0;
+
+	/// <summary>损伤导致的降速不立即生效，统一在下一回合速度调整阶段强制压速。</summary>
+	private void ApplyDeferredSpeedCaps()
+	{
+		var bus = GetNode<EventBus>("EventBus");
+		foreach (var ship in _playerShips.Concat(_enemyShips))
+		{
+			if (!IsShipAlive(ship)) continue;
+			int cap = ship.MaxSpeedForCurrentState;
+			if (ship.CurrentSpeed > cap)
+			{
+				int old = ship.CurrentSpeed;
+				ship.CurrentSpeed = cap;
+				bus.EmitLog($"{ship.ShipName} 因损伤强制降速 {old} → {cap}");
+			}
+		}
+	}
+
 	private void EmitPhaseChanged() =>
 		GetNode<EventBus>("EventBus").EmitSignal("PhaseChanged",
-			PhaseLabels[(int)_currentPhase], (int)_currentPhase);
+			PhaseLabels[(int)_currentPhase], (int)_currentPhase, _turnNumber);
 
 	private void EmitCpUpdated() =>
 		GetNode<EventBus>("EventBus").EmitSignal("CpUpdated", CurrentCP, MaxCP);

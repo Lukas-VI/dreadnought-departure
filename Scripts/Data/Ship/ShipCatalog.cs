@@ -5,12 +5,14 @@ using System.Linq;
 namespace DreadnoughtDeparture.Core;
 
 /// <summary>
-/// 舰船目录扫描器——运行时从 res://Ships/*/ 目录检索 ShipData（*_data.tres）与对应预制体（同名 .tscn）。
+/// 舰船目录扫描器——运行时从 res://Data/Ships/*/ 与 res://Ships/*/ 检索 ShipData（*_data.tres）与对应预制体（同名 .tscn）。
 /// ShipId 使用目录名小写（如 "dreadnought" / "frigate"），是编辑器与生成器共用的全局 ID。
 /// 结果静态缓存，供编辑器检查器、UnitSpawner 等模块直接查询。
 /// </summary>
 public static class ShipCatalog
 {
+	private static readonly string[] ScanRoots = { "res://Data/Ships", "res://Ships" };
+
 	/// <summary>单条舰船目录项：全局 ID、显示名、数据资源、场景预制体。</summary>
 	public sealed class Entry
 	{
@@ -53,36 +55,42 @@ public static class ShipCatalog
 		_entries = new List<Entry>();
 		_byId = new Dictionary<string, Entry>();
 
-		DirAccess shipsDir = DirAccess.Open("res://Ships");
-		if (shipsDir == null) return;
-
-		foreach (string folder in shipsDir.GetDirectories())
+		var seenIds = new HashSet<string>();
+		foreach (string root in ScanRoots)
 		{
-			string dirPath = $"res://Ships/{folder}";
-			DirAccess subDir = DirAccess.Open(dirPath);
-			if (subDir == null) continue;
+			DirAccess shipsDir = DirAccess.Open(root);
+			if (shipsDir == null) continue;
 
-			string dataPath = null;
-			string scenePath = null;
-			foreach (string file in subDir.GetFiles())
+			foreach (string folder in shipsDir.GetDirectories())
 			{
-				if (file.EndsWith("_data.tres")) dataPath = $"{dirPath}/{file}";
-				else if (file.EndsWith(".tscn")) scenePath = $"{dirPath}/{file}";
+				string dirPath = $"{root}/{folder}";
+				DirAccess subDir = DirAccess.Open(dirPath);
+				if (subDir == null) continue;
+
+				string dataPath = null;
+				string scenePath = null;
+				foreach (string file in subDir.GetFiles())
+				{
+					if (file.EndsWith("_data.tres")) dataPath = $"{dirPath}/{file}";
+					else if (file.EndsWith(".tscn")) scenePath = $"{dirPath}/{file}";
+				}
+				if (dataPath == null) continue;
+
+				string shipId = folder.ToLowerInvariant();
+				if (!seenIds.Add(shipId)) continue;
+
+				ShipData data = ResourceLoader.Load<ShipData>(dataPath);
+				PackedScene scene = scenePath != null ? ResourceLoader.Load<PackedScene>(scenePath) : null;
+				var entry = new Entry
+				{
+					ShipId = shipId,
+					DisplayName = data?.ShipName ?? folder,
+					Data = data,
+					Scene = scene
+				};
+				_entries.Add(entry);
+				_byId[shipId] = entry;
 			}
-			if (dataPath == null) continue;
-
-			ShipData data = ResourceLoader.Load<ShipData>(dataPath);
-			PackedScene scene = scenePath != null ? ResourceLoader.Load<PackedScene>(scenePath) : null;
-			string shipId = folder.ToLowerInvariant();
-			var entry = new Entry
-			{
-				ShipId = shipId,
-				DisplayName = data?.ShipName ?? folder,
-				Data = data,
-				Scene = scene
-			};
-			_entries.Add(entry);
-			_byId[shipId] = entry;
 		}
 	}
 }

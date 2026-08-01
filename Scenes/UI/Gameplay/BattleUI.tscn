@@ -3,9 +3,12 @@
 [ext_resource type="Script" uid="uid://dmahb2oajcher" path="res://Scripts/UI/Gameplay/BattleUIController.cs" id="1_t3eps"]
 [ext_resource type="Script" uid="uid://u0gemd3dylmu" path="res://Scripts/UI/Gameplay/BattleHudBroker.cs" id="2_t3eps"]
 [ext_resource type="Texture2D" uid="uid://bijsgj57web18" path="res://assets/texture/Emo_Icon/emote_exclamation.png" id="3_mtokn"]
-[ext_resource type="Script" uid="uid://bsatb0t8co5te" path="res://Scripts/UI/Gameplay/WheelMenu.cs" id="4_utuhh"]
+[ext_resource type="Script" uid="uid://ex1bpn7yk4f1" path="res://Scripts/UI/Gameplay/PhaseActionMenu.cs" id="4_utuhh"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_t3eps"]
+font_size = 32
+
+[sub_resource type="LabelSettings" id="LabelSettings_vwq26"]
 font_size = 32
 
 [node name="BattleUIController" type="Control" unique_id=574590131]
@@ -18,6 +21,28 @@ grow_vertical = 2
 mouse_filter = 1
 script = ExtResource("1_t3eps")
 
+[node name="MarginLabel" type="MarginContainer" parent="." unique_id=567644586]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -1.0
+offset_top = -45.0
+grow_horizontal = 0
+grow_vertical = 0
+size_flags_horizontal = 8
+size_flags_vertical = 4
+
+[node name="PhasePanel" type="PanelContainer" parent="MarginLabel" unique_id=1811992100]
+layout_mode = 2
+
+[node name="PhaseLabel" type="Label" parent="MarginLabel/PhasePanel" unique_id=1811992101]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "第 1 回合 · 1 速度"
+
 [node name="InfoLabel" type="Label" parent="." unique_id=209796006]
 layout_mode = 1
 offset_right = 1.0
@@ -28,63 +53,178 @@ label_settings = SubResource("LabelSettings_t3eps")
 script = ExtResource("2_t3eps")
 metadata/_edit_use_anchors_ = true
 
-[node name="MarginContainer" type="MarginContainer" parent="." unique_id=1214355705]
-layout_mode = 0
+[node name="LeftPanel" type="PanelContainer" parent="." unique_id=1811992001]
+layout_mode = 1
+anchors_preset = 4
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_left = 16.0
+offset_top = -280.0
+offset_right = 360.0
+offset_bottom = 280.0
+grow_vertical = 2
+
+[node name="Box" type="VBoxContainer" parent="LeftPanel" unique_id=1811992002]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="CommandLabel" type="Label" parent="LeftPanel/Box" unique_id=1811992003]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "指挥值 0 | CP 0/0"
+
+[node name="PlayerTitle" type="Label" parent="LeftPanel/Box" unique_id=1811992004]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "我方舰船"
+
+[node name="PlayerShipList" type="VBoxContainer" parent="LeftPanel/Box" unique_id=1811992005]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+
+[node name="RightPanel" type="PanelContainer" parent="." unique_id=1811992011]
+layout_mode = 1
+anchors_preset = 6
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -360.0
+offset_top = -280.0
+offset_right = -16.0
+offset_bottom = 280.0
+grow_horizontal = 0
+grow_vertical = 2
+
+[node name="Box" type="VBoxContainer" parent="RightPanel" unique_id=1811992012]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="EnemyTitle" type="Label" parent="RightPanel/Box" unique_id=1811992013]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "敌方舰船"
+
+[node name="EnemyShipList" type="VBoxContainer" parent="RightPanel/Box" unique_id=1811992014]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+
+[node name="MarginContainer2" type="MarginContainer" parent="." unique_id=48820018]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_override_constants/margin_left = 12
-theme_override_constants/margin_top = 12
-theme_override_constants/margin_right = 12
-theme_override_constants/margin_bottom = 12
-
-[node name="MarginContainerMain" type="MarginContainer" parent="MarginContainer" unique_id=134714222]
-layout_mode = 2
-
-[node name="MarginContainer" type="MarginContainer" parent="MarginContainer/MarginContainerMain" unique_id=48820018]
-layout_mode = 2
+offset_left = -320.0
+offset_top = -159.0
+grow_horizontal = 0
+grow_vertical = 0
 size_flags_horizontal = 8
 size_flags_vertical = 10
 theme_override_constants/margin_left = 32
 theme_override_constants/margin_top = 32
-theme_override_constants/margin_right = 32
-theme_override_constants/margin_bottom = 32
 
-[node name="HBoxContainer" type="HBoxContainer" parent="MarginContainer/MarginContainerMain/MarginContainer" unique_id=1028385423]
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer2" unique_id=1654392172]
 layout_mode = 2
 
-[node name="BtnPanel" type="PanelContainer" parent="MarginContainer/MarginContainerMain/MarginContainer/HBoxContainer" unique_id=260824244]
+[node name="LableContainer" type="PanelContainer" parent="MarginContainer2/VBoxContainer" unique_id=876921666]
+custom_minimum_size = Vector2(256, 32)
+layout_mode = 2
+
+[node name="Label" type="Label" parent="MarginContainer2/VBoxContainer/LableContainer" unique_id=292437397]
+layout_mode = 2
+size_flags_vertical = 1
+label_settings = SubResource("LabelSettings_vwq26")
+
+[node name="BtnPanel" type="PanelContainer" parent="MarginContainer2/VBoxContainer" unique_id=260824244]
 layout_mode = 2
 size_flags_horizontal = 10
 
-[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer/MarginContainerMain/MarginContainer/HBoxContainer/BtnPanel" unique_id=196569246]
-layout_mode = 2
-
-[node name="Label" type="Label" parent="MarginContainer/MarginContainerMain/MarginContainer/HBoxContainer/BtnPanel/VBoxContainer" unique_id=292437397]
-layout_mode = 2
-
-[node name="BottomBar" type="HBoxContainer" parent="MarginContainer/MarginContainerMain/MarginContainer/HBoxContainer/BtnPanel/VBoxContainer" unique_id=17716286]
-layout_mode = 2
-size_flags_horizontal = 2
-size_flags_vertical = 0
-
-[node name="EndTurnBtn" type="Button" parent="MarginContainer/MarginContainerMain/MarginContainer/HBoxContainer/BtnPanel/VBoxContainer/BottomBar" unique_id=1645166062]
+[node name="EndTurnBtn" type="Button" parent="MarginContainer2/VBoxContainer/BtnPanel" unique_id=1645166062]
+custom_minimum_size = Vector2(256, 128)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "推进阶段 >>"
 icon = ExtResource("3_mtokn")
 
-[node name="RetryBtn" type="Button" parent="MarginContainer/MarginContainerMain/MarginContainer/HBoxContainer/BtnPanel/VBoxContainer/BottomBar" unique_id=442926299]
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Retry"
-
-[node name="WheelMenu" type="Control" parent="." unique_id=2112131439]
+[node name="ActionMenu" type="Control" parent="." unique_id=2112131439]
 anchors_preset = 0
-offset_right = 40.0
-offset_bottom = 40.0
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -500.0
+offset_top = -140.0
+offset_right = 500.0
+offset_bottom = -20.0
+grow_horizontal = 2
+grow_vertical = 0
 script = ExtResource("4_utuhh")
 
-[connection signal="pressed" from="MarginContainer/MarginContainerMain/MarginContainer/HBoxContainer/BtnPanel/VBoxContainer/BottomBar/EndTurnBtn" to="." method="_OnEndTurnPressed"]
-[connection signal="pressed" from="MarginContainer/MarginContainerMain/MarginContainer/HBoxContainer/BtnPanel/VBoxContainer/BottomBar/RetryBtn" to="." method="_OnRetryPressed"]
+[node name="CardRow" type="HBoxContainer" parent="ActionMenu" unique_id=2112131440]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="ResultOverlay" type="ColorRect" parent="." unique_id=1286026800]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0.72)
+
+[node name="Center" type="CenterContainer" parent="ResultOverlay" unique_id=875569931]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="PanelContainer" parent="ResultOverlay/Center" unique_id=432787886]
+custom_minimum_size = Vector2(480, 260)
+layout_mode = 2
+
+[node name="Box" type="VBoxContainer" parent="ResultOverlay/Center/Panel" unique_id=921022635]
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="Title" type="Label" parent="ResultOverlay/Center/Panel/Box" unique_id=393900754]
+layout_mode = 2
+text = "战斗结束"
+horizontal_alignment = 1
+
+[node name="ResultLabel" type="Label" parent="ResultOverlay/Center/Panel/Box" unique_id=1654899444]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "胜负"
+horizontal_alignment = 1
+
+[node name="Buttons" type="HBoxContainer" parent="ResultOverlay/Center/Panel/Box" unique_id=967501570]
+layout_mode = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="RetryButton" type="Button" parent="ResultOverlay/Center/Panel/Box/Buttons" unique_id=1089916511]
+layout_mode = 2
+text = "重试"
+
+[node name="ExitButton" type="Button" parent="ResultOverlay/Center/Panel/Box/Buttons" unique_id=1699206709]
+layout_mode = 2
+text = "返回主菜单"
+
+[connection signal="pressed" from="MarginContainer2/VBoxContainer/BtnPanel/EndTurnBtn" to="." method="_OnEndTurnPressed"]
+[connection signal="pressed" from="ResultOverlay/Center/Panel/Box/Buttons/RetryButton" to="." method="_OnResultRetryPressed"]
+[connection signal="pressed" from="ResultOverlay/Center/Panel/Box/Buttons/ExitButton" to="." method="_OnResultExitPressed"]

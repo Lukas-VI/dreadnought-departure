@@ -10,7 +10,7 @@ namespace DreadnoughtDeparture.Core;
 /// </summary>
 public partial class PauseMenuController : Control
 {
-	[Export] public string MainMenuScenePath = "res://Scenes/MainMenu/main_menu.tscn";
+	[Export] public string MainMenuScenePath = "res://Scenes/UI/Menu/MainMenu/main_menu.tscn";
 	[Export] public string CurrentBattleScenePath = "res://Scenes/Battle/battle_scene.tscn";
 
 	private bool _isPaused;

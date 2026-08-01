@@ -13,7 +13,7 @@ public enum HexDirection
 
 public class UnitSpawnData
 {
-	// 兼容字段：旧地图用 TileId 找 ShipList 里的预制体
+	// 兼容字段：旧地图用 TileId 记录标记来源
 	public int TileId { get; set; }
 	// 新字段：优先用 ShipId 找 ShipCatalog 里的预制体
 	public string ShipId { get; set; } = "";
@@ -43,9 +43,34 @@ public static class HexDirectionUtility
 	public static HexDirection TurnRight(HexDirection d) => (HexDirection)(((int)d + 1) % 6);
 }
 
+/// <summary>地图六角格朝向：EW = 平行边水平（默认地图），NS = 尖角上下。</summary>
+public enum HexOrientation
+{
+	EWHorizontal = 0,
+	NSVertical = 1
+}
+
+/// <summary>轴向坐标 ↔ TileMap offset 坐标换算，随地图朝向切换，避免编辑器与战斗各写一套。</summary>
+public static class HexGrid
+{
+	public static Vector2I CellFromAxial(HexOrientation orientation, Vector2I axial)
+	{
+		return orientation == HexOrientation.NSVertical
+			? new Vector2I(axial.X, axial.Y + (axial.X >> 1))
+			: new Vector2I(axial.X + (axial.Y >> 1), axial.Y);
+	}
+
+	public static Vector2I AxialFromCell(HexOrientation orientation, Vector2I cell)
+	{
+		return orientation == HexOrientation.NSVertical
+			? new Vector2I(cell.X, cell.Y - (cell.X >> 1))
+			: new Vector2I(cell.X - (cell.Y >> 1), cell.Y);
+	}
+}
+
 // =============================================
 //  速度 → 三阶段移动力映射表（A2 表）
-//  "+" 号表示：奇数回合 +1 格，偶数回合 +0 格
+//  "+" 号表示：该档位每阶段额外 +1 格；回合不再区分奇偶，不按回合奇偶交替
 // =============================================
 public readonly struct SpeedPhaseEntry
 {
@@ -62,27 +87,24 @@ public static class SpeedTable
 {
 	public static readonly SpeedPhaseEntry[] Table =
 	{
-		new(0, 0, 0),             // Speed 0: 停船
-		new(0, 0, 0, true),       // Speed 1: "+"
-		new(0, 1, 0, true),       // Speed 2: "+"
-		new(1, 1, 0, false),      // Speed 3
-		new(1, 1, 0, true),       // Speed 4: "+"
-		new(1, 1, 1, false),      // Speed 5
-		new(2, 1, 1, false),      // Speed 6
-		new(2, 2, 1, false),      // Speed 7
-		new(2, 2, 1, true),       // Speed 8: "+"
-		new(2, 2, 2, false),      // Speed 9
-		new(3, 2, 2, false),      // Speed 10
-		new(3, 3, 2, false),      // Speed 11
-		new(3, 3, 2, true),       // Speed 12: "+"
+		new(0, 0, 0),        // Speed 0: 停船
+		new(0, 0, 0, true),  // Speed 1: 第一移动阶段 0+，仅奇数回合移动 1 格
+		new(1, 0, 0, false), // Speed 2
+		new(1, 1, 0, false), // Speed 3
+		new(1, 1, 0, false), // Speed 4
+		new(1, 1, 1, false), // Speed 5
+		new(2, 1, 1, false), // Speed 6
+		new(2, 2, 1, false), // Speed 7
+		new(2, 2, 2, false), // Speed 8
 	};
 
-	public static int MoveForPhase(int speed, int phase, bool isOddTurn)
+	public static int MoveForPhase(int speed, int phase, bool oddTurn)
 	{
 		if (speed < 0 || speed >= Table.Length) return 0;
 		var entry = Table[speed];
 		int baseMove = phase switch { 1 => entry.Phase1, 2 => entry.Phase2, _ => entry.Phase3 };
-		if (entry.HasAlternate && isOddTurn) baseMove++;
+		if (entry.HasAlternate && oddTurn && phase == 1)
+			baseMove = Math.Max(baseMove, 1);
 		return baseMove;
 	}
 

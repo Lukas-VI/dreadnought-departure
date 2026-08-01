@@ -13,11 +13,15 @@ size = Vector3(1, 1.2490234, 1.0509033)
 script = ExtResource("1_4aexa")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=1002817285]
-transform = Transform3D(-4.371139e-08, 1, -4.371139e-08, 0, -4.371139e-08, -1, -1, -4.371139e-08, 1.9106855e-15, 0, 0.25, 0)
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0.25, 0)
 mesh = SubResource("PrismMesh_n6xpr")
 
 [node name="Label3D" type="Label3D" parent="." unique_id=767423347]
-transform = Transform3D(1, 0, 0, 0, 0.70710677, 0.70710677, 0, -0.70710677, 0.70710677, 0, 1.665, 0)
+transform = Transform3D(1, 0, 0, 0, 0.99999994, 0, 0, 0, 0.99999994, 0, 4.553446, 0)
+pixel_size = 0.001
+billboard = 1
+fixed_size = true
+font_size = 48
 
 [node name="TurnFlag" type="Sprite3D" parent="." unique_id=1121847080]
 transform = Transform3D(2.5647845, 0, 0, 0, 2.6435666, 0, 0, 0, 1, 0, 1.1902561, 0)
@@ -25,6 +29,7 @@ billboard = 1
 texture = ExtResource("2_gn27q")
 
 [node name="Area3D" type="Area3D" parent="." unique_id=454021508]
+collision_layer = 2
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Area3D" unique_id=943094005]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3549428, 0.04477036)

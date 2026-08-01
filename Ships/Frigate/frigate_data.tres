@@ -4,6 +4,22 @@
 
 [resource]
 script = ExtResource("1_3h8fc")
-ShipName = "杂鱼"
-Rarity = "N"
+ShipName = "白露(b) (Shiratsuyu)"
+ShipClass = "DD"
+PV = 5
+MaxHp = 4
+MoveRange = 4
+AttackPower = 12
+MaxSpeed = 6
+MainAmmo = 12
+ForwardFire = 2
+SideFire = 4
+BackwardFire = 2
+GunCaliber = 12
+ArmorClose = 0
+ArmorMedium = 0
+ArmorFar = 0
+TorpedoType = "93式"
+TorpedoCenterTubes = 8
+HasSpareTorpedoes = true
 metadata/_custom_type_script = "uid://dreq4a4on5nm3"

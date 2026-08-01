@@ -4,8 +4,19 @@
 
 [resource]
 script = ExtResource("1_l2fsf")
-ShipName = "无畏舰"
-MaxHp = 1000
+ShipName = "南达科他 (South Dakota)"
+ShipClass = "BB"
+PV = 42
+MaxHp = 42
 MoveRange = 5
 AttackRange = 10
+AttackPower = 40
+BackwardFire = 3
+GunCaliber = 40
+SecondaryForwardFire = 6
+SecondarySideFire = 10
+SecondaryBackwardFire = 6
+ArmorClose = 9
+ArmorMedium = 13
+ArmorFar = 11
 metadata/_custom_type_script = "uid://dreq4a4on5nm3"

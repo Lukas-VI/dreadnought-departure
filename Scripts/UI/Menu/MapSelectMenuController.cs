@@ -14,9 +14,9 @@ public partial class MapSelectMenuController : Control
 	/// <summary>主菜单写入的模式：editor / campaign；进入本场景后消费并清空。</summary>
 	public static string PendingMode = "editor";
 
-	[Export] public string EditorScenePath = "res://Scenes/Editor/editor_scene.tscn";
+	[Export] public string EditorScenePath = "res://Scenes/UI/Editor/editor_scene.tscn";
 	[Export] public string BattleScenePath = "res://Scenes/Battle/battle_scene.tscn";
-	[Export] public string MainMenuScenePath = "res://Scenes/MainMenu/main_menu.tscn";
+	[Export] public string MainMenuScenePath = "res://Scenes/UI/Menu/MainMenu/main_menu.tscn";
 
 	private string _mode = "editor";
 	private ItemList _list;
@@ -28,6 +28,14 @@ public partial class MapSelectMenuController : Control
 	private ConfirmationDialog _deleteDialog;
 	private FileDialog _importDialog;
 	private string _pendingDelete;
+	private OptionButton _newOrientation;
+	private SpinBox _playerCommandSpin;
+	private SpinBox _enemyCommandSpin;
+	private SpinBox _playerCPSpin;
+	private SpinBox _enemyCPSpin;
+	private SpinBox _initiativeSpin;
+	private SpinBox _visionSpin;
+	private SpinBox _maxTurnsSpin;
 
 	public override void _Ready()
 	{
@@ -97,7 +105,29 @@ public partial class MapSelectMenuController : Control
 			PlaceholderText = "画布名（如 map_02）",
 			CustomMinimumSize = new Vector2(320, 0)
 		};
-		_newDialog.AddChild(_newNameEdit);
+		_newOrientation = new OptionButton();
+		_newOrientation.AddItem("E/W 水平向（当前）", 0);
+		_newOrientation.AddItem("N/S 竖直向", 1);
+		_newOrientation.Selected = 0;
+		var content = new VBoxContainer { CustomMinimumSize = new Vector2(360, 0) };
+		content.AddChild(_newNameEdit);
+		content.AddChild(_newOrientation);
+		content.AddChild(new Label { Text = "关卡初设（占位）" });
+		_playerCommandSpin = MakeSpinBox(" 玩家指挥值", 1, 20, 5);
+		_enemyCommandSpin = MakeSpinBox(" 敌方指挥值", 1, 20, 4);
+		_playerCPSpin = MakeSpinBox(" 玩家初设CP", 0, 99, 8);
+		_enemyCPSpin = MakeSpinBox(" 敌方初设CP", 0, 99, 8);
+		_initiativeSpin = MakeSpinBox(" 主动权值", 1, 10, 5);
+		_visionSpin = MakeSpinBox(" 基本视野", 1, 24, 6);
+		_maxTurnsSpin = MakeSpinBox(" 回合数", 1, 99, 18);
+		content.AddChild(_playerCommandSpin);
+		content.AddChild(_enemyCommandSpin);
+		content.AddChild(_playerCPSpin);
+		content.AddChild(_enemyCPSpin);
+		content.AddChild(_initiativeSpin);
+		content.AddChild(_visionSpin);
+		content.AddChild(_maxTurnsSpin);
+		_newDialog.AddChild(content);
 		_newDialog.Confirmed += ConfirmNewCanvas;
 		AddChild(_newDialog);
 
@@ -173,7 +203,15 @@ public partial class MapSelectMenuController : Control
 		string path = $"{LevelDataManager.DefaultExportFolder}/{safe}.json";
 		using var file = FileAccess.Open(path, FileAccess.ModeFlags.Write);
 		if (file == null) return;
-		file.StoreString($"{{\"Name\":\"{safe}\",\"Version\":3,\"Terrain\":{{}},\"Generation\":{{}},\"Special\":{{}},\"Ships\":{{}}}}");
+		string orientation = _newOrientation.Selected == 1 ? "ns" : "ew";
+		int pc = (int)_playerCommandSpin.Value, ec = (int)_enemyCommandSpin.Value;
+		int pcp = (int)_playerCPSpin.Value, ecp = (int)_enemyCPSpin.Value;
+		int ini = (int)_initiativeSpin.Value, vis = (int)_visionSpin.Value, turns = (int)_maxTurnsSpin.Value;
+		file.StoreString($"{{\"Name\":\"{safe}\",\"Version\":3,\"Orientation\":\"{orientation}\"," +
+			$"\"PlayerCommand\":{pc},\"EnemyCommand\":{ec},\"PlayerInitialCP\":{pcp},\"EnemyInitialCP\":{ecp}," +
+			$"\"InitiativeValue\":{ini},\"InitiativeOwner\":\"player\",\"BasicVision\":{vis}," +
+			$"\"TorpedoModePlayer\":7,\"TorpedoModeEnemy\":4,\"MaxTurns\":{turns}," +
+			$"\"Terrain\":{{}},\"Generation\":{{}},\"Special\":{{}},\"Ships\":{{}}}}");
 		RefreshList();
 	}
 
@@ -201,5 +239,17 @@ public partial class MapSelectMenuController : Control
 		var btn = new Button { Text = text };
 		btn.Pressed += pressed;
 		return btn;
+	}
+
+	private static SpinBox MakeSpinBox(string suffix, float min, float max, float value)
+	{
+		return new SpinBox
+		{
+			MinValue = min,
+			MaxValue = max,
+			Value = value,
+			Suffix = suffix,
+			CustomMinimumSize = new Vector2(360, 0)
+		};
 	}
 }

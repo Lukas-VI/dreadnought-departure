@@ -12,5 +12,5 @@ public interface IUnitController
 {
     void TakeTurn(List<ShipComponent> myUnits, List<ShipComponent> enemyUnits,
                   MapGenerator map, GridOverlayController overlay, BattleHudBroker hud,
-                  Action onComplete);
+                  BattlePhase phase, Action onComplete);
 }

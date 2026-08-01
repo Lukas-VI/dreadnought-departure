@@ -21,9 +21,12 @@ public partial class GameplayCameraController : Node3D
 
 	[Export] public float RotateSensitivity = 0.25f;
 	// 相机仰角（从水平面向上）范围；避免翻到地面以下。
-	[Export] public Vector2 PitchLimit = new Vector2(15.0f, 80.0f);
-	[Export] public float TopDownPitch = 75f;
+	[Export] public Vector2 PitchLimit = new Vector2(5.0f, 80.0f);
+		[Export] public float TopDownPitch = 75f;
+	[Export] public float HorizontalViewPitch = 8f;
 	[Export] public float TopDownDistance = 16f;
+	/// <summary>EW 地图的相机初始偏航补偿（逆时针 60°）。</summary>
+	[Export] public float EWCameraYawOffsetDegrees = 30f;
 
 	private Camera3D _camera;
 	private bool _isDragging;
@@ -49,6 +52,9 @@ public partial class GameplayCameraController : Node3D
 			_camera.Position.Y / Mathf.Max(0.01f, _currentDistance), -1f, 1f)));
 		_targetPitch = _pitchDegrees;
 		_yawDegrees = RotationDegrees.Y;
+		LevelDataManager levelData = GetNodeOrNull<LevelDataManager>("../LevelDataManager");
+		if (levelData?.MapOrientation == HexOrientation.EWHorizontal)
+			_yawDegrees += EWCameraYawOffsetDegrees;
 		_targetFocusPosition = Position;
 		_hasFocusTarget = true;
 		ApplyOrbit();
@@ -133,11 +139,13 @@ public partial class GameplayCameraController : Node3D
 			if (mouseButton.Pressed && mouseButton.ButtonIndex == MouseButton.WheelUp)
 			{
 				_targetDistance = Mathf.Clamp(_targetDistance - ZoomSpeed, ZoomRange.X, ZoomRange.Y);
+				UpdatePitchForZoom();
 				_applyZoomAnchor = true;
 			}
 			if (mouseButton.Pressed && mouseButton.ButtonIndex == MouseButton.WheelDown)
 			{
 				_targetDistance = Mathf.Clamp(_targetDistance + ZoomSpeed, ZoomRange.X, ZoomRange.Y);
+				UpdatePitchForZoom();
 				_applyZoomAnchor = true;
 			}
 		}
@@ -189,6 +197,13 @@ public partial class GameplayCameraController : Node3D
 
 	/// <summary>以 worldPos 为中心俯视（方向调整/单位激活用）。</summary>
 	public void FocusTopDown(Vector3 worldPos) => FocusOn(worldPos, TopDownDistance, TopDownPitch);
+
+	/// <summary>滚轮缩放联动仰角：放大趋近水平正视，缩小趋近俯视全局。</summary>
+	private void UpdatePitchForZoom()
+	{
+		float t = Mathf.InverseLerp(ZoomRange.X, ZoomRange.Y, _targetDistance);
+		_targetPitch = Mathf.Lerp(HorizontalViewPitch, TopDownPitch, t);
+	}
 
 	/// <summary>按当前距离/仰角/偏航把相机摆到环绕焦点（rig 原点）的位置。</summary>
 	private void ApplyOrbit()

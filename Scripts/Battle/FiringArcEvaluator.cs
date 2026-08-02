@@ -15,7 +15,7 @@ public enum FiringArc
 
 /// <summary>
 /// 按六角格真实角度划分射界：正前/正后各 60°（±30°），左右侧射各 120°。
-/// 使用尖顶六边形轴向坐标换算，与规则定义一致。
+/// 使用尖顶六边形轴向坐标换算，整体顺时针偏转 60° 与六角格对齐。
 /// </summary>
 public static class FiringArcEvaluator
 {
@@ -30,7 +30,7 @@ public static class FiringArcEvaluator
 		double angle = Math.Atan2(y, x) * 180.0 / Math.PI % 360.0;
 		if (angle < 0.0) angle += 360.0;
 
-		double facingAngle = (int)facing * 60.0;
+		double facingAngle = (int)facing * 60.0 + 60.0;
 		double relAngle = (angle - facingAngle) % 360.0;
 		if (relAngle < 0.0) relAngle += 360.0;
 

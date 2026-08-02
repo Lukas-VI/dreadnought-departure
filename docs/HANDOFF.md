@@ -19,6 +19,7 @@
 - 本轮新增：炮击范围高亮区分射界，前/后射界使用 `mat_attack_front.tres`，侧射使用 `mat_attack.tres`。
 - 本轮修正：射界角度改为正前/正后各 60°、左右侧射各 120°，`Firepower.ForArc` 与 overlay 材质映射同步更新。
 - 本轮重构：新增 `FiringArcEvaluator`，按尖顶六角轴向坐标计算真实角度划分 Front/Rear/Port/Starboard，战斗判定与 overlay 共用同一套几何射界。
+- 本轮修正：射界整体顺时针偏转 60° 与六角格对齐；侧射材质改为 `mat_attack_side.tres`，`mat_attack.tres` 移除。
 - 以上内容已随本轮提交入库，下一手可以直接继续。
 
 ## 2. 本轮改动明细
@@ -255,7 +256,7 @@
 - 单纵阵提示冒烟：独航舰减速按钮显示“组成”，首舰转向不显示“切断”，手动选中跟随舰后转向按钮显示“切断”；左右列表出现“单纵阵 1”与“阵1/阵2”分组。
 - 多转向点冒烟：三船速度 5 执行“第一移动左转、第二移动待命、第三移动再左转”，下一回合尾舰追到第二个转向点后三船同向同排；无移动阶段连续两次转向后编队保留并正常追位。
 - 射界材质冒烟：对朝北舰船发出射程 2 的全射界高亮，正前/正后格为纯红 `mat_attack_front`，其余四向侧射格为浅红 `mat_attack`，六向材质全部符合 60°/120° 定义。
-- 几何射界冒烟：按 `FiringArcEvaluator` 的角度规则验证六邻格分类，`mat_attack_front`/`mat_attack` 选色与 60°/120° 定义一致。
+- 几何射界冒烟：按 `FiringArcEvaluator` 顺时针 60° 对齐后的角度规则验证六邻格分类，`mat_attack_front`/`mat_attack_side` 选色与 60°/120° 定义一致。
 - 编辑器新建画布 headless 冒烟：`LevelDataManager` 写入/读回 `PhaseSecondsPerShip`、`PhaseExtraSeconds`、`TorpedoPhaseEnabled`；编辑器 `editor_ui.tscn` 与主菜单 `map_select_menu.tscn` 实例化无报错。
 - 编辑器关卡设置 headless 冒烟：`ApplyScenarioSettings` 写入/读回夜战、主动权归属与鱼雷模式；编辑器“关卡设置”弹窗隐藏名称/朝向字段并正常打开。
 - 副炮 headless 冒烟：南达科他在炮击阶段对距离 3 敌舰开火，主炮与副炮各产生独立命中检定记录。

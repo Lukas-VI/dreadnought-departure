@@ -19,6 +19,8 @@ public partial class ShipComponent : Node3D
 	[Export] public float DirectionYawOffsetDegrees = 180f;
 	/// <summary>NS 尖角朝上下时，船模额外逆时针旋转 30°。</summary>
 	[Export] public float NSModelYawOffsetDegrees = 30f;
+	/// <summary>转向补间动画时长（秒）。</summary>
+	[Export] public float TurnTweenDuration = 0.2f;
 
 	// 战舰的内存纯数据（Data 不为空时会被覆盖）
 	public string ShipName { get; set; } = "HMS Dreadnought";
@@ -150,27 +152,34 @@ public partial class ShipComponent : Node3D
 	}
 
 	/// <summary>沿编队轨迹逐格移动：每到达一格立即更新 HexCoords，并按位移方向转向。</summary>
-	public virtual Tween AnimateMovePath(MapGenerator map, IReadOnlyList<Vector2I> path, float perStepDuration)
+	/// <param name="headings">逐格指定的到达后航向；为空时按相邻两格位移反推。</param>
+	public virtual Tween AnimateMovePath(MapGenerator map, IReadOnlyList<Vector2I> path, float perStepDuration,
+		IReadOnlyList<HexDirection> headings = null)
 	{
 		Tween tween = CreateTween();
 		tween.SetTrans(Tween.TransitionType.Quad);
 		tween.SetEase(Tween.EaseType.InOut);
-		foreach (Vector2I target in path)
+		Vector2I previous = HexCoords;
+		for (int i = 0; i < path.Count; i++)
 		{
+			Vector2I target = path[i];
 			Vector3 world = map.HexToWorld(target.X, target.Y);
 			Vector3 to = new Vector3(world.X, Position.Y, world.Z);
-			HexDirection dir = HexDirectionUtility.DirectionFromOffset(target - HexCoords);
+			HexDirection dir = headings != null && i < headings.Count
+				? headings[i]
+				: HexDirectionUtility.DirectionFromOffset(target - previous);
 			tween.TweenProperty(this, "position", to, perStepDuration);
 			Vector2I captured = target;
+			HexDirection capturedDir = dir;
 			tween.TweenCallback(Callable.From(() =>
 			{
 				HexCoords = captured;
-				if (Direction != dir)
+				if (Direction != capturedDir)
 				{
-					Direction = dir;
-					TurnedThisPhase = true;
+					AnimateTurnTo(capturedDir);
 				}
 			}));
+			previous = target;
 		}
 		return tween;
 	}
@@ -206,8 +215,34 @@ public partial class ShipComponent : Node3D
 
 	private void ApplyDirectionRotation()
 	{
+		RotationDegrees = new Vector3(0f, DirectionYawDegrees(_direction), 0f);
+	}
+
+	private float DirectionYawDegrees(HexDirection dir)
+	{
 		float mapOffset = _mapOrientation == HexOrientation.NSVertical ? NSModelYawOffsetDegrees : 0f;
-		RotationDegrees = new Vector3(0f, DirectionYawOffsetDegrees - (int)_direction * 60f + mapOffset, 0f);
+		return DirectionYawOffsetDegrees - (int)dir * 60f + mapOffset;
+	}
+
+	/// <summary>逻辑航向立即更新，模型沿 Y 轴平滑转到目标航向。</summary>
+	public Tween AnimateTurnTo(HexDirection target, float duration = -1f)
+	{
+		if (_direction == target) return null;
+		float turnTime = duration > 0f ? duration : Mathf.Max(0.05f, TurnTweenDuration);
+		_direction = target;
+		TurnedThisPhase = true;
+		UpdateUi();
+
+		float fromYaw = RotationDegrees.Y;
+		float toYaw = DirectionYawDegrees(target);
+		float delta = (toYaw - fromYaw + 180f) % 360f;
+		delta = ((delta + 360f) % 360f) - 180f;
+		float endYaw = fromYaw + delta;
+		Tween tween = CreateTween();
+		tween.SetTrans(Tween.TransitionType.Quad);
+		tween.SetEase(Tween.EaseType.InOut);
+		tween.TweenProperty(this, "rotation:y", Mathf.DegToRad(endYaw), turnTime);
+		return tween;
 	}
 
 /// <summary>显示/隐藏选中标记（TurnFlag 精灵）。</summary>

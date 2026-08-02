@@ -330,9 +330,7 @@ public partial class GameplayDirector : Node
 
 			if (ship.PendingDirection.HasValue)
 			{
-				ship.Direction = ship.PendingDirection.Value;
-				ship.TurnedThisPhase = true;
-				ship.UpdateUi();
+				ship.AnimateTurnTo(ship.PendingDirection.Value);
 				bus.EmitLog($"{ship.ShipName} 转向待命生效 → {ship.Direction}");
 			}
 
@@ -569,32 +567,40 @@ public partial class GameplayDirector : Node
 		if (!IsShipAlive(lead) || steps <= 0) return 0f;
 
 		var leadVisited = new List<Vector2I> { lead.HexCoords };
+		var leadHeadings = new List<HexDirection> { lead.Direction };
 		for (int i = 0; i < steps; i++)
+		{
 			leadVisited.Add(leadVisited[i] + off);
+			leadHeadings.Add(lead.Direction);
+		}
 
 		occupied.Remove(lead.HexCoords);
 		occupied.Add(leadVisited[steps]);
 		occupiedShips[leadVisited[steps]] = lead;
 		float perStep = 0.2f + 0.35f / Math.Max(1, steps);
-		lead.AnimateMovePath(_mapGenerator, leadVisited.Skip(1).ToList(), perStep);
+		lead.AnimateMovePath(_mapGenerator, leadVisited.Skip(1).ToList(), perStep,
+			leadHeadings.Skip(1).ToList());
 
 		var aheadVisited = leadVisited;
+		var aheadHeadings = leadHeadings;
 		for (int k = 1; k < chain.Count; k++)
 		{
 			var follower = chain[k];
 			if (!IsShipAlive(follower)) continue;
 			int followerSteps = Math.Min(steps, aheadVisited.Count - 1);
 			if (followerSteps <= 0) continue;
-			var path = new List<Vector2I>();
-			for (int j = 0; j < followerSteps; j++)
-				path.Add(aheadVisited[j]);
+			var path = aheadVisited.GetRange(0, followerSteps);
+			var headings = aheadHeadings.GetRange(0, followerSteps);
 			occupied.Remove(follower.HexCoords);
 			occupied.Add(path[followerSteps - 1]);
 			occupiedShips[path[followerSteps - 1]] = follower;
-			follower.AnimateMovePath(_mapGenerator, path, perStep);
+			follower.AnimateMovePath(_mapGenerator, path, perStep, headings);
 			var nextAhead = new List<Vector2I> { follower.HexCoords };
 			nextAhead.AddRange(path);
 			aheadVisited = nextAhead;
+			var nextHeadings = new List<HexDirection> { follower.Direction };
+			nextHeadings.AddRange(headings);
+			aheadHeadings = nextHeadings;
 		}
 		return 0.35f + steps * 0.2f;
 	}

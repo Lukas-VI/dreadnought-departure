@@ -86,10 +86,10 @@ public partial class AIController : Node, IUnitController
 		int diff = ((int)best - (int)ship.Direction + 6) % 6;
 		if (diff == 0) return;
 
-		ship.Direction = diff <= 3
+		HexDirection next = diff <= 3
 			? HexDirectionUtility.TurnRight(ship.Direction)
 			: HexDirectionUtility.TurnLeft(ship.Direction);
-		ship.TurnedThisPhase = true;
+		ship.AnimateTurnTo(next);
 		Log(null, $"{ship.ShipName} 转向 → {ship.Direction}");
 	}
 

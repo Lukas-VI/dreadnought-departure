@@ -101,11 +101,15 @@ public static class MoveRulesEvaluator
 	/// </summary>
 	public static FormationResult DetectLineAhead(
 		ShipComponent unit,
-		List<ShipComponent> allFriendly)
+		List<ShipComponent> allFriendly,
+		HexDirection? directionOverride = null,
+		int? speedOverride = null)
 	{
 		var result = new FormationResult();
 		if (unit == null || allFriendly.Count < 2) return result;
-		var forward = HexDirectionUtility.Offset(unit.Direction);
+		HexDirection unitDirection = directionOverride ?? unit.Direction;
+		int unitSpeed = speedOverride ?? unit.CurrentSpeed;
+		var forward = HexDirectionUtility.Offset(unitDirection);
 		var backward = -forward;
 		var chain = new List<ShipComponent>();
 		var visited = new HashSet<ShipComponent>();
@@ -117,7 +121,7 @@ public static class MoveRulesEvaluator
 			visited.Add(current);
 			chain.Insert(0, current);
 			var ahead = allFriendly.FirstOrDefault(s => s != current && s.CurrentHp > 0
-				&& s.Direction == unit.Direction && s.CurrentSpeed == unit.CurrentSpeed
+				&& s.Direction == unitDirection && s.CurrentSpeed == unitSpeed
 				&& s.HexCoords == current.HexCoords + forward);
 			if (ahead == null) break;
 			current = ahead;
@@ -128,7 +132,7 @@ public static class MoveRulesEvaluator
 		while (true)
 		{
 			var follower = allFriendly.FirstOrDefault(s => s != current && s.CurrentHp > 0
-				&& s.Direction == unit.Direction && s.CurrentSpeed == unit.CurrentSpeed
+				&& s.Direction == unitDirection && s.CurrentSpeed == unitSpeed
 				&& s.HexCoords == current.HexCoords + backward && !visited.Contains(s));
 			if (follower == null) break;
 			chain.Add(follower);

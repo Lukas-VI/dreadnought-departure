@@ -95,20 +95,66 @@ public partial class BattleUIController : Control
 
 	private void AddShipRows(VBoxContainer box, List<ShipComponent> ships)
 	{
+		var assignments = BuildFormationAssignments(ships);
+		var renderedGroups = new HashSet<int>();
 		foreach (var ship in ships)
 		{
-			bool inFormation = ship.FormationLead != null
-				|| MoveRulesEvaluator.DetectLineAhead(ship, ships).IsInFormation;
-			var row = new Button
+			if (assignments.TryGetValue(ship, out var entry))
 			{
-				Text = (inFormation ? "单纵阵 · " : "") + FormatShipRow(ship),
-				Alignment = HorizontalAlignment.Left,
-				CustomMinimumSize = new Vector2(0, 32)
-			};
-			var hex = ship.HexCoords;
-			row.Pressed += () => GetNode<EventBus>("../../EventBus").EmitSignal("HexClicked", hex);
-			box.AddChild(row);
+				if (renderedGroups.Add(entry.Group))
+					box.AddChild(new Label
+					{
+						Text = $"单纵阵 {entry.Group}",
+						CustomMinimumSize = new Vector2(0, 22),
+						HorizontalAlignment = HorizontalAlignment.Left
+					});
+				AddShipRow(box, ship, $"阵{entry.Index} · ");
+			}
+			else
+			{
+				AddShipRow(box, ship, "");
+			}
 		}
+	}
+
+	private void AddShipRow(VBoxContainer box, ShipComponent ship, string prefix)
+	{
+		var row = new Button
+		{
+			Text = prefix + FormatShipRow(ship),
+			Alignment = HorizontalAlignment.Left,
+			CustomMinimumSize = new Vector2(0, 32)
+		};
+		var hex = ship.HexCoords;
+		row.Pressed += () => GetNode<EventBus>("../../EventBus").EmitSignal("HexClicked", hex);
+		box.AddChild(row);
+	}
+
+	/// <summary>按当前几何关系把同速同向、首尾相邻的舰船分成单纵阵组；组内阵号从 1 开始。</summary>
+	private static Dictionary<ShipComponent, (int Group, int Index)> BuildFormationAssignments(
+		List<ShipComponent> ships)
+	{
+		var assignments = new Dictionary<ShipComponent, (int Group, int Index)>();
+		var used = new HashSet<ShipComponent>();
+		int groupNumber = 1;
+		foreach (var ship in ships)
+		{
+			if (used.Contains(ship)) continue;
+			var formation = MoveRulesEvaluator.DetectLineAhead(ship, ships);
+			if (formation.IsInFormation && ReferenceEquals(formation.LeadShip, ship))
+			{
+				for (int i = 0; i < formation.Ships.Count; i++)
+					assignments[formation.Ships[i]] = (groupNumber, i + 1);
+				groupNumber++;
+				foreach (var member in formation.Ships)
+					used.Add(member);
+			}
+			else
+			{
+				used.Add(ship);
+			}
+		}
+		return assignments;
 	}
 
 	private static string FormatShipRow(ShipComponent ship)

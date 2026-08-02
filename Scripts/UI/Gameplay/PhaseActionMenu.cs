@@ -1,4 +1,5 @@
 using Godot;
+using System;
 using System.Collections.Generic;
 
 namespace DreadnoughtDeparture.Core;
@@ -36,15 +37,24 @@ public partial class PhaseActionMenu : Control
 		}
 
 		ClearCards();
+		var friendly = new List<ShipComponent>();
+		foreach (Node node in GetTree().GetNodesInGroup("Ships"))
+			if (node is ShipComponent s && GodotObject.IsInstanceValid(s)
+				&& s.BattleSide == ship.BattleSide)
+				friendly.Add(s);
+
 		foreach (string id in actions)
 		{
 			int cost = ActionCost(ship, id);
 			bool enabled = IsActionEnabled(ship, phase, id, director);
 			bool highlighted = IsPendingAction(ship, id);
+			string formationLabel = FormationEffectLabel(ship, friendly, id);
+			bool threeLine = formationLabel.Length > 0;
 			var btn = new Button
 			{
-				Text = $"{LabelFor(id)}\n{(cost > 0 ? $"-{cost} CP" : "无消耗")}",
-				CustomMinimumSize = new Vector2(CardWidth, CardHeight + 12f),
+				Text = $"{LabelFor(id)}\n{(cost > 0 ? $"-{cost} CP" : "无消耗")}"
+					+ (threeLine ? $"\n{formationLabel}" : ""),
+				CustomMinimumSize = new Vector2(CardWidth, CardHeight + (threeLine ? 24f : 12f)),
 				Disabled = !enabled
 			};
 			if (highlighted)
@@ -59,6 +69,10 @@ public partial class PhaseActionMenu : Control
 				btn.Scale = new Vector2(0.98f, 0.98f);
 				btn.Modulate = new Color(0.55f, 0.55f, 0.55f, 1f);
 			}
+			else if (formationLabel == "组成")
+				btn.Modulate = new Color(0.45f, 1f, 0.6f, 1f);
+			else if (formationLabel == "切断")
+				btn.Modulate = new Color(1f, 0.6f, 0.42f, 1f);
 			btn.Pressed += () => EmitSignal(SignalName.ActionSelected, id);
 			_row.AddChild(btn);
 		}
@@ -111,6 +125,41 @@ public partial class PhaseActionMenu : Control
 		"radar" => 0,
 		_ => 0
 	};
+
+	/// <summary>预测变速/转向后是否与附近舰船组成或切断单纵阵。</summary>
+	private static string FormationEffectLabel(
+		ShipComponent ship, List<ShipComponent> friendly, string id)
+	{
+		int? speedOverride = null;
+		HexDirection? directionOverride = null;
+		switch (id)
+		{
+			case "speed_up":
+				speedOverride = ship.CurrentSpeed + 1;
+				break;
+			case "speed_down":
+				speedOverride = ship.CurrentSpeed - 1;
+				break;
+			case "turn_left":
+				directionOverride = HexDirectionUtility.TurnLeft(ship.Direction);
+				break;
+			case "turn_right":
+				directionOverride = HexDirectionUtility.TurnRight(ship.Direction);
+				break;
+			default:
+				return "";
+		}
+
+		var currentFormation = MoveRulesEvaluator.DetectLineAhead(ship, friendly);
+		bool current = currentFormation.IsInFormation;
+		// 首舰变速/转向按编队整体执行（变速同步全队、转向走贪吃蛇轨迹），不会切断编队。
+		if (current && ReferenceEquals(currentFormation.LeadShip, ship)) return "";
+		bool predicted = MoveRulesEvaluator.DetectLineAhead(
+			ship, friendly, directionOverride, speedOverride).IsInFormation;
+		if (!current && predicted) return "组成";
+		if (current && !predicted) return "切断";
+		return "";
+	}
 
 	/// <summary>雷达技能可用条件：配表有雷达且未到中破（D1 中破起禁用雷达）。</summary>
 	private static bool CanUseRadar(ShipComponent ship)

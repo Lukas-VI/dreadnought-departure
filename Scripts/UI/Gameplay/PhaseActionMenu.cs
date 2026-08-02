@@ -27,6 +27,7 @@ public partial class PhaseActionMenu : Control
 	/// <summary>按当前阶段为指定舰船构建允许的操作并弹出；无可用操作则隐藏。</summary>
 	public void ShowFor(ShipComponent ship, BattlePhase phase)
 	{
+		var director = GetNodeOrNull<GameplayDirector>("../../..");
 		var actions = AllowedActions(ship, phase);
 		if (actions.Count == 0)
 		{
@@ -37,11 +38,27 @@ public partial class PhaseActionMenu : Control
 		ClearCards();
 		foreach (string id in actions)
 		{
+			int cost = ActionCost(ship, id);
+			bool enabled = IsActionEnabled(ship, phase, id, director);
+			bool highlighted = IsPendingAction(ship, id);
 			var btn = new Button
 			{
-				Text = LabelFor(id),
-				CustomMinimumSize = new Vector2(CardWidth, CardHeight)
+				Text = $"{LabelFor(id)}\n{(cost > 0 ? $"-{cost} CP" : "无消耗")}",
+				CustomMinimumSize = new Vector2(CardWidth, CardHeight + 12f),
+				Disabled = !enabled
 			};
+			if (highlighted)
+			{
+				btn.Position = new Vector2(0f, -4f);
+				btn.Scale = new Vector2(1.06f, 1.06f);
+				btn.Modulate = new Color(1f, 1f, 0.55f, 1f);
+			}
+			else if (!enabled)
+			{
+				btn.Position = new Vector2(0f, 3f);
+				btn.Scale = new Vector2(0.98f, 0.98f);
+				btn.Modulate = new Color(0.55f, 0.55f, 0.55f, 1f);
+			}
 			btn.Pressed += () => EmitSignal(SignalName.ActionSelected, id);
 			_row.AddChild(btn);
 		}
@@ -78,9 +95,7 @@ public partial class PhaseActionMenu : Control
 				list.Add("turn_right");
 				break;
 			case BattlePhase.Gunfire:
-				if (ship.MainAmmo > 0 && ship.DamageState != DamageState.Heavy
-					&& ship.DamageState != DamageState.Sunk)
-					list.Add("attack");
+				list.Add("attack");
 				if (ship.Data?.SkillIds != null)
 					list.AddRange(ship.Data.SkillIds);
 				break;
@@ -88,6 +103,44 @@ public partial class PhaseActionMenu : Control
 		list.Add("skip");
 		return list;
 	}
+
+	private static int ActionCost(ShipComponent ship, string id) => id switch
+	{
+		"speed_up" or "speed_down" or "turn_left" or "turn_right" => 1,
+		"attack" => ship.ShipClass == "BB" ? 2 : 1,
+		_ => 0
+	};
+
+	private static bool IsActionEnabled(ShipComponent ship, BattlePhase phase, string id,
+		GameplayDirector director)
+	{
+		if (id == "skip") return true;
+		int cp = director?.CurrentCP ?? 0;
+		int cost = ActionCost(ship, id);
+		if (cp < cost) return false;
+		return id switch
+		{
+			"speed_up" => phase == BattlePhase.SpeedAdjust
+				&& SpeedTable.CanAdjustSpeed(ship.CurrentSpeed, ship.CurrentSpeed + 1, ship.MaxSpeedForCurrentState),
+			"speed_down" => phase == BattlePhase.SpeedAdjust
+				&& SpeedTable.CanAdjustSpeed(ship.CurrentSpeed, ship.CurrentSpeed - 1, ship.MaxSpeedForCurrentState),
+			"turn_left" or "turn_right" => phase is BattlePhase.SpeedAdjust
+				or BattlePhase.MovePhase1 or BattlePhase.MovePhase2 or BattlePhase.MovePhase3,
+			"attack" => phase == BattlePhase.Gunfire && ship.MainAmmo > 0
+				&& ship.DamageState != DamageState.Heavy && ship.DamageState != DamageState.Sunk,
+			_ => true
+		};
+	}
+
+	private static bool IsPendingAction(ShipComponent ship, string id) => id switch
+	{
+		"speed_up" => ship.PendingSpeed > ship.CurrentSpeed,
+		"speed_down" => ship.PendingSpeed >= 0 && ship.PendingSpeed < ship.CurrentSpeed,
+		"turn_left" => ship.PendingDirection == HexDirectionUtility.TurnLeft(ship.Direction),
+		"turn_right" => ship.PendingDirection == HexDirectionUtility.TurnRight(ship.Direction),
+		"attack" => ship.PendingAttackTarget != null,
+		_ => false
+	};
 
 	/// <summary>整张菜单从底部中心弹入：缩放 + 透明度 Back 缓动。</summary>
 	private void PlayPopAnimation()

@@ -17,6 +17,8 @@
 [ext_resource type="Script" uid="uid://dtfiv2b70gcek" path="res://Scripts/Battle/BattleInputDetector.cs" id="16_5mbgg"]
 [ext_resource type="Script" uid="uid://di2d08rc2hscm" path="res://Scripts/Battle/PlayerController.cs" id="16_swwb8"]
 [ext_resource type="Script" uid="uid://bojdwvcl6nn2k" path="res://Scripts/Battle/AIController.cs" id="17_f4hcl"]
+[ext_resource type="Script" path="res://Scripts/Battle/BattleShipOverlayController.cs" id="18_overlay"]
+[ext_resource type="Texture2D" uid="uid://dkxjjvgf6gemw" path="res://assets/texture/Emotions/emote_alert.png" id="19_flag"]
 [ext_resource type="PackedScene" uid="uid://brj4gpw3mqqgl" path="res://Scenes/UI/Gameplay/BattleUI.tscn" id="21_fm2jp"]
 [ext_resource type="PackedScene" path="res://Scenes/UI/Menu/GameplayMenu/pause_menu.tscn" id="22_psmn"]
 
@@ -74,6 +76,10 @@ TilePrefabs = Dictionary[String, PackedScene]({
 [node name="UnitSpawner" type="Node3D" parent="." unique_id=183500773]
 script = ExtResource("15_n1ain")
 DefaultShipPrefab = ExtResource("8_2oujk")
+
+[node name="BattleShipOverlay" type="Node3D" parent="." unique_id=1811993000]
+script = ExtResource("18_overlay")
+TurnFlagTexture = ExtResource("19_flag")
 
 [node name="GameplayCameraRig" type="Node3D" parent="." unique_id=980798976]
 transform = Transform3D(0.8660254, 0, -0.5, 0, 1, 0, 0.5, 0, 0.8660254, 0, 0, 0)

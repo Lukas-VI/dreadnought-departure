@@ -2,6 +2,28 @@
   "Name": "1",
   "MapType": "day",
   "Orientation": "ew",
+  "PlayerCommand": 5,
+  "EnemyCommand": 4,
+  "PlayerInitialCP": 8,
+  "EnemyInitialCP": 8,
+  "InitiativeValue": 5,
+  "InitiativeOwner": "player",
+  "BasicVision": 6,
+  "TorpedoModePlayer": 7,
+  "TorpedoModeEnemy": 4,
+  "MaxTurns": 18,
+  "TorpedoPhaseEnabled": false,
+  "PhaseSecondsPerShip": [
+    5,
+    5,
+    5,
+    5,
+    5,
+    10,
+    10,
+    0
+  ],
+  "PhaseExtraSeconds": 5,
   "Version": 3,
   "Terrain": {
     "-1,0": 1,
@@ -229,14 +251,14 @@
   "Ships": {
     "-1,-2": [
       {
-        "ShipId": "dreadnought",
+        "ShipId": "frigate",
         "Direction": 2,
         "Speed": 0
       }
     ],
     "0,1": [
       {
-        "ShipId": "frigate",
+        "ShipId": "dreadnought",
         "Direction": 0,
         "Speed": 0
       }
@@ -244,7 +266,7 @@
     "-2,-1": [
       {
         "ShipId": "dreadnought",
-        "Direction": 1,
+        "Direction": 0,
         "Speed": 0
       }
     ]

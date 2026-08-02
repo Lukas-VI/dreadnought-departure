@@ -9,7 +9,7 @@
 - 编辑器到游玩场景的数据链路已打通：编辑器画布 JSON 被 `LevelDataManager` 加载，`UnitSpawner` 按 `ShipId` 生成舰船。
 - 分支上已完成第一版“分阶段逐船操作”：每个玩家阶段按存活舰船顺序排队，自动选中队首并弹出底部操作菜单。
 - 本轮又完成：底部弹性菜单替代轮盘、三个移动阶段各自推进时立即惯性移动（Tween）、相机滚轮缩放联动仰角、旧场景路径修复、炮击点击失效修复、新建画布地图朝向（E/W 与 N/S）。
-- 本轮继续完成：敌方 AI 接入阶段管线、胜负判定与战斗结果面板、岛屿阻挡移动、炮击射界限制、移动碰撞占位、主炮有限弹药、敌方行动演出镜头、航向锥形移动预览、规则数据卡与玩法文档、关卡初设数据链路、纸质速力表奇偶、延迟降速、堆叠上限 2、运行时舰船目录、3D 六角朝向修正、Label3D 状态化与左右信息面板。
+- 本轮继续完成：敌方 AI 接入阶段管线、胜负判定与战斗结果面板、岛屿阻挡移动、炮击射界限制、移动碰撞占位、主炮有限弹药、敌方行动演出镜头、单格下一到达预览、规则数据卡与玩法文档、关卡初设数据链路、纸质速力表奇偶、延迟降速、堆叠上限 2、运行时舰船目录、3D 六角朝向修正、Label3D 状态化与左右信息面板、鱼雷阶段开关、待命指令预览。
 - 以上内容大部分仍在工作区未提交（见第 4 节），下一手可以直接继续。
 
 ## 2. 本轮改动明细
@@ -83,13 +83,40 @@
 
 - `ShipList.tres` / `ShipList.cs` 已移除：`UnitSpawner` 不再按旧 TileId 查表，`ShipCatalog` 运行时扫描 `res://Data/Ships` 与 `res://Ships`，目录名即 ShipId。
 - `HexMath` / `MapGenerator` / `UnitSpawner` / `BattleInputDetector` 改为朝向相关投影：EW 用平边投影，NS 用尖角投影，NS 地块各自旋转 30°；撤销了此前盲加的全局 -60° 基准旋转。
+- `ShipComponent` 增加 NS 地图船模偏移：NS 模式下船模额外逆时针旋转 30°，避免船头指向顶点。
 
 ### 战斗信息展示
 
-- `ShipComponent.UpdateUi` 改为仅输出状态词（小破/中破/大破/沉没/离场/转向），无损时隐藏；新增 `TurnedThisPhase` / `IsOffMap` 运行时状态。
+- `ShipComponent.UpdateUi` 改为仅输出异常状态词（小破/中破/大破/沉没/离场/转向），无损时不显示、转向只显示“转向”；新增 `TurnedThisPhase` / `IsOffMap` 运行时状态。
+- 沉没时 `StatusText` 只返回“沉没”；船体不销毁，尸体留在原位持续显示沉没标签。
+- `Label3D` / `TurnFlag` 已从 `Ships/BaseShip/ship_3d.tscn` 移除，新增 `BattleShipOverlayController` 在战斗场景统一创建并同步位置。
+- 临时元素生命周期加固：TurnFlag 切换时只保留当前焦点，GridOverlay 显示前强制清空，Label3D 周期同步显隐。
+- `AIController.TakeTurn` 改为异步逐船演出：每艘敌舰行动前发 `CameraTopDownRequested` 并等待约 0.45 秒。
+- `BattleShipOverlayController` 将 Label3D / 旗标挂到船体子节点，随舰船 Tween 同步移动。
 - 阶段标签改为进度显示：只显示“第 X 回合 · 当前阶段”，CP 移到左侧指挥面板。
 - `BattleUI` 新增左、右信息面板：左侧显示指挥值/CP 与我方全部登场舰船，右侧显示敌方全部登场舰船；底部保留战斗日志。
+- 左右舰船列表改为按钮：点击我方船可快捷选中，点击敌方船可快捷查看并复用炮击目标选择链路。
 - 已记录后续折叠规则：大战场按单纵阵 / 舰级 / 激活参战折叠，当前先完整列表。
+
+### 阶段限时
+
+- `PhaseSecondsPerShip` / `PhaseExtraSeconds` 已进入关卡 JSON 数据模型，默认 `5,5,5,5,5,10,10,0` + 额外 5 秒。
+- `GameplayDirector` 用 `_Process` 倒计时：全体指定后倒计时继续，归零或手动推进时提交 pending、未选择船默认待命并轮到敌方；敌方 AI 完成后自动推进阶段。
+- `BattleUI` 阶段控制区新增 `ProgressBar` 与倒计时标签，`PhaseTimerUpdated` 信号驱动。
+- 行动未推进前允许点击其他我方舰船重选（取消当前 pending 行动）。
+- `PhaseActionMenu` 操作卡片改为两行文本（动作 + CP 消耗），已选动作上浮高亮，CP 不足或受损等不可执行动作灰化下沉。
+
+### 待命指令与鱼雷开关
+
+- 速度、转向、炮击改为 pending：`ShipComponent` 保存 `PendingSpeed` / `PendingDirection` / `PendingAttackTarget`，`GameplayDirector.AdvancePhase` 手动推进时统一提交。
+- pending 期间显示预测到达格与相机预览；全部舰船下达指令后不再自动选中第一艘、菜单收起、相机拉高等待点击推进。
+- 关卡 JSON 新增 `TorpedoPhaseEnabled`，默认关闭；未启用时 `Gunfire → EndTurn` 跳过鱼雷阶段。
+
+### 性能优化
+
+- 3D 地形瓦片统一关闭阴影，200+ 瓦片场景显著减少渲染开销。
+- `PhaseTimerUpdated` 改为 0.05 秒节流发送，避免逐帧驱动进度条刷新。
+- 主菜单 → 画布选择 → 战斗场景的完整链路已在 headless 下验证可加载；若实际设备仍有卡顿，下一步做地形 MultiMesh 合批。
 
 ### 弹药系统
 
@@ -99,7 +126,7 @@
 ### 分阶段惯性移动
 
 - `GameplayDirector.AdvancePhase` 在离开第一/二/三移动阶段时，按 `SpeedTable.MoveForPhase(speed, phase)` 立即执行该阶段位移，动画结束后再切换阶段。
-- 选中船时按当前航向与总移动力高亮前方 120° 锥形可到达格（`OverlayArcDrawRequested`），供玩家预判机动方向。
+- 选中船时只高亮当前指令后下一移动阶段将到达的单个格子（`MoveTargetHighlighted`），转向/加减速后按 pending 方向与速度刷新。
 - 回合不再按奇偶区分，`SpeedTable` 对 `"+"` 档位每阶段统一 +1 格。
 - 结算阶段 `DoEndTurnSettlement` 只落实 `PendingDamage`，不再执行移动。
 - `ShipComponent` 新增 `public virtual Tween AnimateMoveTo(MapGenerator map, Vector2I target, float duration)`，子类可覆写播放模型专属动画。
@@ -139,6 +166,8 @@
 - 规则 headless 冒烟：编辑器 `NewMap` 可写入关卡初设；四艘舰船资源/场景可加载；南达科他受 21 点损伤后连推七个阶段到下一回合速度调整阶段，延迟降速流程无报错。
 - 目录冒烟：移除 `ShipList` 后，战斗场景仍能通过 `ShipCatalog` 从运行时目录生成舰船，且 3D 地图生成无报错。
 - NS 投影冒烟：空 NS 地图放入 (0,0)/(1,0)/(0,1)/(-1,1) 后，3D 瓦片中心呈 0°/60°/120° 尖角六边形排列，无错位留空。
+- 限时冒烟：阶段倒计时标签随时间递减，进度条可见且数值同步更新。
+- pending 冒烟：速度指令写入 pending 后 `CurrentSpeed` 不变；手动推进后提交速度并自动接敌方、推进到下一阶段。
 - 尚未做真人编辑器内点击验证。
 
 ## 4. Git 状态与提交建议
@@ -161,6 +190,7 @@
   - `Scripts/Battle/IUnitController.cs`
   - `Scripts/Battle/MoveRulesEvaluator.cs`
   - `Scripts/Battle/GridOverlayController.cs`
+  - `Scripts/Battle/BattleShipOverlayController.cs`
   - `Scripts/Battle/CombatRulesEvaluator.cs`
   - `Scripts/Data/Ship/ShipData.cs`
   - `Ships/Cruiser/cruiser_data.tres`、`Ships/Cruiser/cruiser.tscn`
@@ -185,3 +215,9 @@
 - 分阶段移动未处理目标格占用/堆叠，后续需要碰撞或堆叠规则。
 - 夜战照明阶段（`ReconLighting`）只有逻辑占位，尚无探照灯/照明弹玩法。
 - 后续可做：舰船专属移动动画、炮口火光/水花特效、技能菜单卡片化、战役流程。
+
+## 6. 测试纪律
+
+- 运行 Godot headless 测试后，不得按进程名批量 `Stop-Process`，否则可能误杀用户打开的带窗口 Godot 编辑器。
+- 只清理本次测试自己启动的精确 PID：启动时记录 PID，结束后仅对该 PID 做收尾。
+- 若进程已自行退出，不要执行任何 Godot 进程清理。

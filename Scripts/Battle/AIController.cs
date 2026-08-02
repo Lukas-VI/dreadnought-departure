@@ -12,7 +12,7 @@ namespace DreadnoughtDeparture.Core;
 /// </summary>
 public partial class AIController : Node, IUnitController
 {
-	public void TakeTurn(List<ShipComponent> myUnits, List<ShipComponent> enemyUnits,
+	public async void TakeTurn(List<ShipComponent> myUnits, List<ShipComponent> enemyUnits,
 		MapGenerator map, GridOverlayController overlay, BattleHudBroker hud,
 		BattlePhase phase, Action onComplete)
 	{
@@ -30,6 +30,10 @@ public partial class AIController : Node, IUnitController
 			if (target == null) break;
 
 			int dist = BattleRulesEvaluator.GetHexDistance(ship.HexCoords, target.HexCoords);
+			if (map != null)
+				EventBus.Instance?.EmitSignal("CameraTopDownRequested",
+					map.HexToWorld(ship.HexCoords.X, ship.HexCoords.Y));
+			await ToSignal(GetTree().CreateTimer(0.45f), "timeout");
 
 			if (phase == BattlePhase.Gunfire && dist <= ship.AttackRange
 				&& ship.MainAmmo > 0 && CombatRulesEvaluator.CanFireInArc(ship, target))

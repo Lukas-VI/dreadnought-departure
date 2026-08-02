@@ -50,6 +50,13 @@ public partial class GameplayDirector : Node
 	private bool _settling;
 	private bool _enemyActing;
 	private bool _battleEnded;
+	private bool _playerFinishedThisPhase;
+	private float _phaseTimerRemaining;
+	private float _phaseTimerTotal;
+	private bool _phaseTimerRunning;
+	private bool _timerForPlayer = true;
+	private float _timerEmitAccumulator;
+	private bool _enemyTurnRunThisPhase;
 
 	private static readonly string[] PhaseLabels =
 	{
@@ -71,6 +78,23 @@ public partial class GameplayDirector : Node
 		bus.AdvancePhaseClicked += AdvancePhase;
 		bus.PlayerSideFinished += OnPlayerSideFinished;
 		CallDeferred(MethodName.LaunchBattleField);
+	}
+
+	public override void _Process(double delta)
+	{
+		if (!_phaseTimerRunning) return;
+		_phaseTimerRemaining = Mathf.Max(0f, _phaseTimerRemaining - (float)delta);
+		_timerEmitAccumulator += (float)delta;
+		if (_timerEmitAccumulator >= 0.05f)
+		{
+			_timerEmitAccumulator = 0f;
+			EmitPhaseTimerUpdated();
+		}
+		if (_phaseTimerRemaining <= 0f)
+		{
+			_phaseTimerRunning = false;
+			OnPhaseTimerExpired();
+		}
 	}
 
 	public void LaunchBattleField()
@@ -101,19 +125,37 @@ public partial class GameplayDirector : Node
 
 		// 启动首阶段
 		if (CheckBattleEnd()) return;
-		_player.BeginPhaseAction(this, _playerShips, _enemyShips, _mapGenerator, _overlay);
+		BeginPlayerPhase();
 	}
 
 	private void OnPlayerSideFinished()
 	{
+		_playerFinishedThisPhase = true;
+		CancelPhaseTimer();
 		if (_battleEnded || _enemyActing) return;
 		RunEnemyTurn();
+	}
+
+	/// <summary>启动玩家阶段：重置待命状态、启动玩家倒计时，再进入逐船操作。</summary>
+	private void BeginPlayerPhase()
+	{
+		_playerFinishedThisPhase = false;
+		_enemyTurnRunThisPhase = false;
+		foreach (var ship in _playerShips)
+			if (IsShipAlive(ship))
+			{
+				ship.ClearPendingCommands();
+				ship.UpdateUi();
+			}
+		StartPhaseTimer(true);
+		_player.BeginPhaseAction(this, _playerShips, _enemyShips, _mapGenerator, _overlay);
 	}
 
 	/// <summary>玩家侧操作队列清空后，同一阶段内接续敌方 AI 操作。</summary>
 	private void RunEnemyTurn()
 	{
 		_enemyActing = true;
+		_enemyTurnRunThisPhase = true;
 		var bus = GetNode<EventBus>("EventBus");
 		bus.EmitSignal("OverlayClearRequested");
 
@@ -126,7 +168,7 @@ public partial class GameplayDirector : Node
 			return;
 		}
 
-		bus.EmitLog($"🤖 敌方行动：{PhaseLabels[(int)_currentPhase]}");
+		bus.EmitLog($"敌方行动：{PhaseLabels[(int)_currentPhase]}");
 		FocusOnEnemyTurn(aliveEnemies);
 		_ai.TakeTurn(aliveEnemies, alivePlayers, _mapGenerator, _overlay, _hud,
 			_currentPhase, OnEnemySideFinished);
@@ -146,7 +188,10 @@ public partial class GameplayDirector : Node
 	private void OnEnemySideFinished()
 	{
 		_enemyActing = false;
-		GetNode<EventBus>("EventBus").EmitLog("✅ 敌方行动完成，可推进阶段");
+		CancelPhaseTimer();
+		if (_battleEnded) return;
+		GetNode<EventBus>("EventBus").EmitLog("敌方行动完成，推进阶段");
+		CallDeferred(nameof(AdvancePhase));
 	}
 
 	/// <summary>推进到下一个阶段；从移动阶段离开时先执行该阶段的惯性移动。</summary>
@@ -156,6 +201,14 @@ public partial class GameplayDirector : Node
 		if (_enemyActing)
 		{
 			GetNode<EventBus>("EventBus").EmitLog("敌方行动中，请稍候");
+			return;
+		}
+		CancelPhaseTimer();
+		CommitPendingCommands();
+		if (!_enemyTurnRunThisPhase)
+		{
+			_playerFinishedThisPhase = true;
+			RunEnemyTurn();
 			return;
 		}
 
@@ -200,6 +253,7 @@ public partial class GameplayDirector : Node
 		// 照明阶段仅在夜战地图启用；白天从 MovePhase3 直接跳到 Gunfire。
 		bool isNight = _dataManager?.IsNightBattle ?? false;
 		bool skipLighting = _currentPhase == BattlePhase.MovePhase3 && !isNight;
+		bool skipTorpedo = _currentPhase == BattlePhase.Gunfire && !_dataManager.TorpedoPhaseEnabled;
 
 		_currentPhase = _currentPhase switch
 		{
@@ -208,7 +262,7 @@ public partial class GameplayDirector : Node
 			BattlePhase.MovePhase2    => BattlePhase.MovePhase3,
 			BattlePhase.MovePhase3    => skipLighting ? BattlePhase.Gunfire : BattlePhase.ReconLighting,
 			BattlePhase.ReconLighting => BattlePhase.Gunfire,
-			BattlePhase.Gunfire       => BattlePhase.Torpedo,
+			BattlePhase.Gunfire       => skipTorpedo ? BattlePhase.EndTurn : BattlePhase.Torpedo,
 			BattlePhase.Torpedo       => BattlePhase.EndTurn,
 			BattlePhase.EndTurn       => BattlePhase.SpeedAdjust,
 			_                         => BattlePhase.SpeedAdjust,
@@ -216,6 +270,8 @@ public partial class GameplayDirector : Node
 
 		if (skipLighting)
 			GetNode<EventBus>("EventBus").EmitSignal("LogMessage", "白天地图，跳过视野/照明阶段");
+		if (skipTorpedo)
+			GetNode<EventBus>("EventBus").EmitSignal("LogMessage", "鱼雷阶段未启用，跳过");
 
 		if (_currentPhase == BattlePhase.SpeedAdjust)
 		{
@@ -224,7 +280,10 @@ public partial class GameplayDirector : Node
 			ApplyDeferredSpeedCaps();
 			foreach (var ship in _playerShips.Concat(_enemyShips))
 				if (IsShipAlive(ship))
+				{
 					ship.TurnedThisPhase = false;
+					ship.UpdateUi();
+				}
 			GetNode<EventBus>("EventBus").EmitSignal("LogMessage",
 				$"—— 第 {_turnNumber} 回合 ——");
 		}
@@ -242,7 +301,98 @@ public partial class GameplayDirector : Node
 
 		// 可玩家交互的阶段自动启动
 		if (IsPlayerActionPhase(_currentPhase))
-			_player.BeginPhaseAction(this, _playerShips, _enemyShips, _mapGenerator, _overlay);
+			BeginPlayerPhase();
+	}
+
+	/// <summary>手动推进时提交所有我方船的待命指令：速度、转向、炮击。</summary>
+	private void CommitPendingCommands()
+	{
+		var bus = GetNode<EventBus>("EventBus");
+		foreach (var ship in _playerShips)
+		{
+			if (!IsShipAlive(ship))
+			{
+				ship.ClearPendingCommands();
+				continue;
+			}
+
+			if (ship.PendingSpeed >= 0)
+			{
+				int old = ship.CurrentSpeed;
+				ship.CurrentSpeed = ship.PendingSpeed;
+				bus.EmitLog($"{ship.ShipName} 航速待命生效 {old} → {ship.CurrentSpeed}");
+			}
+
+			if (ship.PendingDirection.HasValue)
+			{
+				ship.Direction = ship.PendingDirection.Value;
+				ship.TurnedThisPhase = true;
+				ship.UpdateUi();
+				bus.EmitLog($"{ship.ShipName} 转向待命生效 → {ship.Direction}");
+			}
+
+			if (ship.PendingAttackTarget != null && GodotObject.IsInstanceValid(ship.PendingAttackTarget))
+			{
+				ShipComponent target = ship.PendingAttackTarget;
+				int attackCost = ship.ShipClass == "BB" ? 2 : 1;
+				if (TryConsumeCP(attackCost) && ship.MainAmmo > 0
+					&& CombatRulesEvaluator.CanFireInArc(ship, target))
+				{
+					ship.MainAmmo--;
+					var (_, _, desc) = CombatRulesEvaluator.FireEx(ship, target, ship.PendingAttackDistance);
+					bus.EmitLog(desc);
+				}
+				else
+				{
+					bus.EmitLog($"{ship.ShipName} 炮击未执行（CP 或条件不足）");
+				}
+			}
+
+			ship.ClearPendingCommands();
+		}
+	}
+
+	private void StartPhaseTimer(bool forPlayer)
+	{
+		CancelPhaseTimer();
+		if (_dataManager?.PhaseSecondsPerShip == null) return;
+		int phase = (int)_currentPhase;
+		if (phase < 0 || phase >= _dataManager.PhaseSecondsPerShip.Length) return;
+		int perShip = _dataManager.PhaseSecondsPerShip[phase];
+		if (perShip <= 0) return;
+		int count = forPlayer ? _playerShips.Count(IsShipAlive) : _enemyShips.Count(IsShipAlive);
+		if (count <= 0) return;
+		_phaseTimerTotal = Math.Max(1, perShip * count + _dataManager.PhaseExtraSeconds);
+		_phaseTimerRemaining = _phaseTimerTotal;
+		_phaseTimerRunning = true;
+		_timerForPlayer = forPlayer;
+		_timerEmitAccumulator = 0f;
+		EmitPhaseTimerUpdated();
+	}
+
+	private void CancelPhaseTimer()
+	{
+		if (!_phaseTimerRunning) return;
+		_phaseTimerRunning = false;
+		EmitPhaseTimerUpdated();
+	}
+
+	private void OnPhaseTimerExpired()
+	{
+		if (_battleEnded || _settling) return;
+		if (_enemyActing) return;
+		if (!_playerFinishedThisPhase)
+		{
+			_playerFinishedThisPhase = true;
+			CommitPendingCommands();
+			RunEnemyTurn();
+		}
+	}
+
+	private void EmitPhaseTimerUpdated()
+	{
+		GetNode<EventBus>("EventBus").EmitSignal("PhaseTimerUpdated",
+			_phaseTimerRemaining, _phaseTimerTotal);
 	}
 
 	private static bool IsPlayerActionPhase(BattlePhase p) => p switch

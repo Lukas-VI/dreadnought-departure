@@ -17,6 +17,8 @@ public partial class ShipComponent : Node3D
 	[Export] public HexDirection InitialDirection = HexDirection.N;
 	[Export] public int InitialSpeed;
 	[Export] public float DirectionYawOffsetDegrees = 180f;
+	/// <summary>NS 尖角朝上下时，船模额外逆时针旋转 30°。</summary>
+	[Export] public float NSModelYawOffsetDegrees = 30f;
 
 	// 战舰的内存纯数据（Data 不为空时会被覆盖）
 	public string ShipName { get; set; } = "HMS Dreadnought";
@@ -33,6 +35,11 @@ public partial class ShipComponent : Node3D
 	public bool TurnedThisPhase;
 	/// <summary>是否已离场（Label3D 状态用，暂由外部规则触发）。</summary>
 	public bool IsOffMap;
+	/// <summary>待命指令：推进阶段前只做预览，不立即生效。</summary>
+	public int PendingSpeed = -1;
+	public HexDirection? PendingDirection;
+	public ShipComponent PendingAttackTarget;
+	public int PendingAttackDistance;
 	public int TileSourceId; // 兼容字段：来自旧 2D 编辑器的 tile ID
 	/// <summary>阵营（由生成点决定），用于敌我分组。</summary>
 	public GenerationSide BattleSide = GenerationSide.Player;
@@ -43,10 +50,9 @@ public partial class ShipComponent : Node3D
 	/// <summary>本回合炮击的判定记录，回合结算时打印到 InfoLabel。</summary>
 	public List<string> PendingShotChecks { get; } = new();
 
-	private Label3D _hpLabel;
-	private Sprite3D _turnFlag;
 	private HexDirection _direction = HexDirection.N;
 	private int _currentSpeed;
+	private HexOrientation _mapOrientation = HexOrientation.EWHorizontal;
 
 	public HexDirection Direction
 	{
@@ -70,23 +76,42 @@ public partial class ShipComponent : Node3D
 	}
 
 	public int DamageTaken => Mathf.Max(0, MaxHp - CurrentHp);
-	public DamageState DamageState => Data != null
-		? Data.GetDamageState(DamageTaken)
-		: (CurrentHp <= 0 ? DamageState.Sunk : DamageState.Intact);
+	public DamageState DamageState
+	{
+		get
+		{
+			if (CurrentHp <= 0) return DamageState.Sunk;
+			if (Data != null) return Data.GetDamageState(DamageTaken);
+			if (MaxHp <= 0) return DamageState.Intact;
+			float pct = (float)DamageTaken / MaxHp;
+			if (pct >= 0.8f) return DamageState.Heavy;
+			if (pct >= 0.5f) return DamageState.Moderate;
+			if (pct >= 0.25f) return DamageState.Light;
+			return DamageState.Intact;
+		}
+	}
 	public int MaxSpeedForCurrentState => Data?.MaxSpeedForState(DamageState) ?? MaxSpeed;
+
+	/// <summary>清空待命指令（推进阶段开始时或重选船时调用）。</summary>
+	public void ClearPendingCommands()
+	{
+		PendingSpeed = -1;
+		PendingDirection = null;
+		PendingAttackTarget = null;
+		PendingAttackDistance = 0;
+	}
 
 	// 子类覆写这个方法，不用再写一遍 AddToGroup / 找 Label3D
 /// <summary>初始化：加入 Ships 分组、获取 Label3D/Flag、应用配表数据、设置初始方向与航速。</summary>
 	public override void _Ready()
 	{
 		AddToGroup("Ships");
-		_hpLabel = GetNode<Label3D>("Label3D");
-		_turnFlag = GetNodeOrNull<Sprite3D>("TurnFlag");
 		SetupAttributes();   // ← 留给子类的钩子
 		if (Data != null) ApplyData(Data);  // ← 预制体自带配表，自动注入
+		_mapOrientation = GetNodeOrNull<LevelDataManager>("../../LevelDataManager")?.MapOrientation
+			?? HexOrientation.EWHorizontal;
 		Direction = InitialDirection;
 		CurrentSpeed = InitialSpeed;
-		if (_turnFlag != null) _turnFlag.Visible = false;  // 初始隐藏flag
 		UpdateUi();
 	}
 
@@ -146,13 +171,14 @@ public partial class ShipComponent : Node3D
 
 	private void ApplyDirectionRotation()
 	{
-		RotationDegrees = new Vector3(0f, DirectionYawOffsetDegrees - (int)_direction * 60f, 0f);
+		float mapOffset = _mapOrientation == HexOrientation.NSVertical ? NSModelYawOffsetDegrees : 0f;
+		RotationDegrees = new Vector3(0f, DirectionYawOffsetDegrees - (int)_direction * 60f + mapOffset, 0f);
 	}
 
 /// <summary>显示/隐藏选中标记（TurnFlag 精灵）。</summary>
 	public void ShowSelected(bool visible)
 	{
-		if (_turnFlag != null) _turnFlag.Visible = visible;
+		EventBus.Instance?.EmitSignal("ShipSelectionChanged", this, visible);
 	}
 
 /// <summary>直接损伤，扣减 CurrentHp 并检查沉没。</summary>
@@ -177,30 +203,40 @@ public partial class ShipComponent : Node3D
 		if (DamageState == DamageState.Sunk)
 		{
 			GD.Print($"{ShipName} 沉没！");
-			QueueFree();
+			UpdateUi();
 			return;
 		}
 	}
 
 	public void UpdateUi()
 	{
-		if (_hpLabel == null) return;
-		bool showStatus = DamageState != DamageState.Intact || IsOffMap || TurnedThisPhase;
-		_hpLabel.Visible = showStatus;
-		if (showStatus)
+		EventBus.Instance?.EmitSignal("ShipStatusChanged", this);
+	}
+
+	/// <summary>是否需要显示状态 Label3D。</summary>
+	public bool ShouldShowStatus
+		=> DamageState != DamageState.Intact || IsOffMap || TurnedThisPhase;
+
+	/// <summary>当前状态文本：小破/中破/大破/沉没 + 离场 + 转向，无损时不输出。</summary>
+	public string StatusText
+	{
+		get
 		{
+			if (DamageState == DamageState.Sunk) return "沉没";
 			var status = new List<string>();
-			status.Add(DamageState switch
+			if (DamageState != DamageState.Intact)
 			{
-				DamageState.Intact => "无损",
-				DamageState.Light => "小破",
-				DamageState.Moderate => "中破",
-				DamageState.Heavy => "大破",
-				_ => "沉没"
-			});
+				status.Add(DamageState switch
+				{
+					DamageState.Light => "小破",
+					DamageState.Moderate => "中破",
+					DamageState.Heavy => "大破",
+					_ => "沉没"
+				});
+			}
 			if (IsOffMap) status.Add("离场");
 			if (TurnedThisPhase) status.Add("转向");
-			_hpLabel.Text = string.Join("\n", status);
+			return string.Join("\n", status);
 		}
 	}
 }

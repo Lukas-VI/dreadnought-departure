@@ -91,6 +91,11 @@ public partial class LevelDataManager : Node
 	public int TorpedoModePlayer { get; private set; } = 7;
 	public int TorpedoModeEnemy { get; private set; } = 4;
 	public int MaxTurns { get; private set; } = 18;
+	/// <summary>鱼雷阶段是否启用；当前鱼雷玩法未实现，默认关闭。</summary>
+	public bool TorpedoPhaseEnabled { get; private set; }
+	/// <summary>各阶段每船限时（秒）：速度/三移动/视野/炮击/鱼雷/结算。</summary>
+	public int[] PhaseSecondsPerShip { get; private set; } = { 5, 5, 5, 5, 5, 10, 10, 0 };
+	public int PhaseExtraSeconds { get; private set; } = 5;
 	/// <summary>地图六角格朝向：EW 平行边水平 / NS 尖角上下。</summary>
 	public HexOrientation MapOrientation { get; private set; } = HexOrientation.EWHorizontal;
 	/// <summary>是否由画布菜单的 RuntimeMapRequest 自动打开了画布；编辑器据此决定是否默认显示画布列表。</summary>
@@ -273,7 +278,8 @@ public partial class LevelDataManager : Node
 	/// <summary>新建空白画布（内存中清空，未落盘）。</summary>
 	public void NewMap(string name, HexOrientation orientation = HexOrientation.EWHorizontal,
 		int playerCommand = 5, int enemyCommand = 4, int playerCP = 8, int enemyCP = 8,
-		int initiativeValue = 5, string initiativeOwner = "player", int vision = 6, int maxTurns = 18)
+		int initiativeValue = 5, string initiativeOwner = "player", int vision = 6, int maxTurns = 18,
+		int[] phaseSecondsPerShip = null, int phaseExtraSeconds = 5, bool torpedoPhaseEnabled = false)
 	{
 		CurrentMapName = string.IsNullOrWhiteSpace(name) ? "untitled" : name.Trim();
 		MapType = "day";
@@ -286,6 +292,11 @@ public partial class LevelDataManager : Node
 		InitiativeOwner = initiativeOwner;
 		BasicVision = vision;
 		MaxTurns = maxTurns;
+		PhaseSecondsPerShip = phaseSecondsPerShip != null && phaseSecondsPerShip.Length >= 8
+			? (int[])phaseSecondsPerShip.Clone()
+			: new[] { 5, 5, 5, 5, 5, 10, 10, 0 };
+		PhaseExtraSeconds = phaseExtraSeconds;
+		TorpedoPhaseEnabled = torpedoPhaseEnabled;
 		_currentJsonPath = $"{DefaultExportFolder}/{CurrentMapName}.json";
 		ClearAll();
 	}
@@ -332,6 +343,9 @@ public partial class LevelDataManager : Node
 		public int TorpedoModePlayer { get; set; } = 7;
 		public int TorpedoModeEnemy { get; set; } = 4;
 		public int MaxTurns { get; set; } = 18;
+		public bool TorpedoPhaseEnabled { get; set; }
+		public int[] PhaseSecondsPerShip { get; set; } = { 5, 5, 5, 5, 5, 10, 10, 0 };
+		public int PhaseExtraSeconds { get; set; } = 5;
 		public int Version { get; set; } = 3;
 		public Dictionary<string, int> Terrain { get; set; } = new();
 		public Dictionary<string, GenerationPointData> Generation { get; set; } = new();
@@ -345,6 +359,14 @@ public partial class LevelDataManager : Node
 	{
 		var parts = s.Split(',');
 		return new Vector2I(int.Parse(parts[0]), int.Parse(parts[1]));
+	}
+
+	private static int[] ReadIntArray(JsonElement element)
+	{
+		var result = new List<int>();
+		foreach (JsonElement item in element.EnumerateArray())
+			result.Add(item.GetInt32());
+		return result.ToArray();
 	}
 
 	/// <summary>把内存表写入 JSON 文件。</summary>
@@ -365,7 +387,10 @@ public partial class LevelDataManager : Node
 			BasicVision = BasicVision,
 			TorpedoModePlayer = TorpedoModePlayer,
 			TorpedoModeEnemy = TorpedoModeEnemy,
-			MaxTurns = MaxTurns
+			MaxTurns = MaxTurns,
+			TorpedoPhaseEnabled = TorpedoPhaseEnabled,
+			PhaseSecondsPerShip = (int[])PhaseSecondsPerShip.Clone(),
+			PhaseExtraSeconds = PhaseExtraSeconds
 		};
 		foreach (var kv in TerrainSources) data.Terrain[SerializeKey(kv.Key)] = kv.Value;
 		foreach (var kv in GenerationPoints) data.Generation[SerializeKey(kv.Key)] = kv.Value;
@@ -477,6 +502,14 @@ public partial class LevelDataManager : Node
 		TorpedoModePlayer = root.TryGetProperty("TorpedoModePlayer", out JsonElement tp) ? tp.GetInt32() : 7;
 		TorpedoModeEnemy = root.TryGetProperty("TorpedoModeEnemy", out JsonElement te) ? te.GetInt32() : 4;
 		MaxTurns = root.TryGetProperty("MaxTurns", out JsonElement maxTurns) ? maxTurns.GetInt32() : 18;
+		TorpedoPhaseEnabled = root.TryGetProperty("TorpedoPhaseEnabled", out JsonElement torpedoEnabled)
+			&& torpedoEnabled.ValueKind == JsonValueKind.True;
+		PhaseSecondsPerShip = root.TryGetProperty("PhaseSecondsPerShip", out JsonElement phaseSeconds)
+			? ReadIntArray(phaseSeconds)
+			: new[] { 5, 5, 5, 5, 5, 10, 10, 0 };
+		PhaseExtraSeconds = root.TryGetProperty("PhaseExtraSeconds", out JsonElement phaseExtra)
+			? phaseExtra.GetInt32()
+			: 5;
 		GD.Print($"地图已加载: {path} (地形 {TerrainSources.Count}, 生成点 {GenerationPoints.Count}, 船 {ShipSpawns.Count}, 类型 {MapType}, 朝向 {MapOrientation})");
 		return true;
 	}

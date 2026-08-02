@@ -53,7 +53,7 @@ public partial class PlayerController : Node, IUnitController
 		if (_pendingShips.Count == 0)
 		{
 			GetNode<EventBus>("../EventBus").EmitSignal("LogMessage",
-				"⏸ 本阶段没有可操作的舰船，请推进阶段");
+				"舰船均已下达指令，请推进阶段");
 			NotifyPlayerFinished();
 			return;
 		}
@@ -88,21 +88,20 @@ public partial class PlayerController : Node, IUnitController
 		}
 
 		_selected = null;
-		bus.EmitSignal("LogMessage", "⏸ 本阶段全部舰船已行动，请推进阶段");
-		NotifyPlayerFinished();
+		bus.EmitSignal("LogMessage", "舰船均已下达指令，请推进阶段");
+		FocusPlayerFleet();
 	}
 
 	/// <summary>选中船：点亮标记、更新 HUD、弹出操作菜单并俯视运镜到船体中心。</summary>
 	private void SelectShip(ShipComponent ship)
 	{
+		if (_selected != null && !ReferenceEquals(_selected, ship))
+			_selected.ShowSelected(false);
 		_selected = ship;
 		_selected.ShowSelected(true);
 		var bus = GetNode<EventBus>("../EventBus");
-		int totalMove = 0;
-		bool oddTurn = (_director?.TurnNumber ?? 1) % 2 == 1;
-		for (int p = 1; p <= 3; p++)
-			totalMove += SpeedTable.MoveForPhase(ship.CurrentSpeed, p, oddTurn);
-		bus.EmitSignal("OverlayArcDrawRequested", ship.HexCoords, (int)ship.Direction, totalMove);
+		bus.EmitSignal("OverlayClearRequested");
+		PreviewNextArrival(ship);
 		bus.EmitSignal("ShipInfoRequested", ship);
 		bus.EmitSignal("ActionSelected", "_show_menu");
 		bus.EmitSignal("CameraTopDownRequested", ShipWorld(ship));
@@ -117,6 +116,7 @@ public partial class PlayerController : Node, IUnitController
 
 		if (actionId == "skip")
 		{
+			_selected.ClearPendingCommands();
 			GetNode<EventBus>("../EventBus").EmitSignal("LogMessage", $"⏭ {_selected.ShipName} 待命");
 			EndAction();
 			return;
@@ -173,22 +173,9 @@ public partial class PlayerController : Node, IUnitController
 		if (cpCost > 0 && _director != null && !_director.TryConsumeCP(cpCost))
 		{ RejectAction($"❌ CP 不足（需要 {cpCost}，剩余 {_director.CurrentCP}）"); return; }
 
-		_selected.CurrentSpeed = wish;
+		_selected.PendingSpeed = wish;
 		GetNode<EventBus>("../EventBus").EmitSignal("LogMessage",
-			$"⚙ 航速 {old} → {wish}（消耗 {cpCost} CP）");
-
-		// 运镜反馈：以船与按新航速推算的回合末到达格的中点为焦点。
-		if (_map != null && _director != null)
-		{
-			int total = 0;
-			bool oddTurn = (_director?.TurnNumber ?? 1) % 2 == 1;
-			for (int p = 1; p <= 3; p++)
-				total += SpeedTable.MoveForPhase(wish, p, oddTurn);
-			Vector2I off = HexDirectionUtility.Offset(_selected.Direction);
-			Vector2I target = _selected.HexCoords + off * total;
-			GetNode<EventBus>("../EventBus").EmitSignal("CameraFocusBetweenRequested",
-				ShipWorld(_selected), _map.HexToWorld(target.X, target.Y));
-		}
+			$"⚙ 航速待命 {old} → {wish}（消耗 {cpCost} CP，推进后生效）");
 
 		EndAction();
 	}
@@ -206,6 +193,16 @@ public partial class PlayerController : Node, IUnitController
 
 		if (_pendingAction != null)
 		{
+			var other = _myUnits.Find(s =>
+				s != _selected && s.HexCoords == hex
+				&& GodotObject.IsInstanceValid(s) && s.CurrentHp > 0);
+			if (other != null)
+			{
+				_pendingAction = null;
+				_selected.ClearPendingCommands();
+				SelectShip(other);
+				return;
+			}
 			ExecutePendingAction(hex);
 			return;
 		}
@@ -226,16 +223,9 @@ public partial class PlayerController : Node, IUnitController
 		var ship = _myUnits.Find(s =>
 			s.HexCoords == hex && GodotObject.IsInstanceValid(s) && s.CurrentHp > 0);
 		if (ship == null) return;
-
-		if (_pendingShips.Count == 0 || !ReferenceEquals(_pendingShips.Peek(), ship))
-		{
-			var next = _pendingShips.Count > 0 ? _pendingShips.Peek() : null;
-			GetNode<EventBus>("../EventBus").EmitSignal("LogMessage",
-				next != null ? $"⏳ 请先操作 {next.ShipName}" : "⏸ 本阶段没有待操作舰船");
-			return;
-		}
-
-		_pendingShips.Dequeue();
+		_pendingAction = null;
+		if (_selected != null && !ReferenceEquals(_selected, ship))
+			_selected.ClearPendingCommands();
 		SelectShip(ship);
 	}
 
@@ -253,13 +243,13 @@ public partial class PlayerController : Node, IUnitController
 		if (!CombatRulesEvaluator.CanFireInArc(_selected, target))
 		{ RejectAction("❌ 目标不在当前舰炮射界内！"); return; }
 
-		_selected.MainAmmo--;
-		// 选中敌方后：以船与敌舰中点为焦点，再执行射击。
+		_selected.PendingAttackTarget = target;
+		_selected.PendingAttackDistance = d;
+		// 选中敌方后：以船与敌舰中点为焦点，炮击在推进阶段才结算。
 		GetNode<EventBus>("../EventBus").EmitSignal("CameraFocusBetweenRequested",
 			ShipWorld(_selected), ShipWorld(target));
-
-		(bool hit, int dmg, string desc) = CombatRulesEvaluator.FireEx(_selected, target, d);
-		GetNode<EventBus>("../EventBus").EmitSignal("CombatResult", desc);
+		GetNode<EventBus>("../EventBus").EmitSignal("LogMessage",
+			$"🔫 {_selected.ShipName} 炮击待命 → {target.ShipName}（推进后结算）");
 		EndAction();
 	}
 
@@ -274,10 +264,10 @@ public partial class PlayerController : Node, IUnitController
 				int cost = MoveRulesEvaluator.TurnCostToFace(_selected.Direction, nd);
 				if (_director != null && !_director.TryConsumeCP(cost))
 				{ _pendingAction = null; RejectAction($"❌ 转向需要 {cost} CP"); return; }
-				_selected.Direction = nd;
-				_selected.TurnedThisPhase = true;
+				_selected.PendingDirection = nd;
 				GetNode<EventBus>("../EventBus").EmitSignal("LogMessage",
-					$"↩ 左转 60°→ 航向 {nd}（消耗 {cost} CP）");
+					$"↩ 左转待命 → 航向 {nd}（消耗 {cost} CP，推进后生效）");
+				EndAction();
 				break;
 			}
 			case "turn_right":
@@ -286,10 +276,10 @@ public partial class PlayerController : Node, IUnitController
 				int cost = MoveRulesEvaluator.TurnCostToFace(_selected.Direction, nd);
 				if (_director != null && !_director.TryConsumeCP(cost))
 				{ _pendingAction = null; RejectAction($"❌ 转向需要 {cost} CP"); return; }
-				_selected.Direction = nd;
-				_selected.TurnedThisPhase = true;
+				_selected.PendingDirection = nd;
 				GetNode<EventBus>("../EventBus").EmitSignal("LogMessage",
-					$"↪ 右转 60°→ 航向 {nd}（消耗 {cost} CP）");
+					$"↪ 右转待命 → 航向 {nd}（消耗 {cost} CP，推进后生效）");
+				EndAction();
 				break;
 			}
 			default:
@@ -297,8 +287,39 @@ public partial class PlayerController : Node, IUnitController
 				break;
 		}
 
-		GetNode<EventBus>("../EventBus").EmitSignal("CameraTopDownRequested", ShipWorld(_selected));
-		EndAction();
+	}
+
+	/// <summary>只高亮当前指令后下一移动阶段将到达的单个格子。</summary>
+	private void PreviewNextArrival(ShipComponent ship)
+	{
+		if (_map == null || _director == null) return;
+		var bus = GetNode<EventBus>("../EventBus");
+		bus.EmitSignal("OverlayClearRequested");
+		int speed = ship.PendingSpeed >= 0 ? ship.PendingSpeed : ship.CurrentSpeed;
+		HexDirection dir = ship.PendingDirection ?? ship.Direction;
+		int movePhase = _director.CurrentMovePhase > 0 ? _director.CurrentMovePhase : 1;
+		bool oddTurn = _director.TurnNumber % 2 == 1;
+		int steps = SpeedTable.MoveForPhase(speed, movePhase, oddTurn);
+		if (steps <= 0) return;
+		Vector2I target = ship.HexCoords + HexDirectionUtility.Offset(dir) * steps;
+		bus.EmitSignal("MoveTargetHighlighted", target);
+		bus.EmitSignal("CameraFocusBetweenRequested", ShipWorld(ship), _map.HexToWorld(target.X, target.Y));
+	}
+
+	/// <summary>全部舰船下达指令后拉高相机，等待玩家点击推进。</summary>
+	private void FocusPlayerFleet()
+	{
+		if (_map == null) return;
+		Vector3 center = Vector3.Zero;
+		int count = 0;
+		foreach (var ship in _myUnits)
+			if (GodotObject.IsInstanceValid(ship) && ship.CurrentHp > 0)
+			{
+				center += ShipWorld(ship);
+				count++;
+			}
+		if (count > 0) center /= count;
+		GetNode<EventBus>("../EventBus").EmitSignal("CameraFocusRequested", center, 32f, 60f);
 	}
 
 	/// <summary>进入炮击待命时拉高镜头，让射程圈完整可见。</summary>

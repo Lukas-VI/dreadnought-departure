@@ -50,6 +50,7 @@ public partial class GridOverlayController : Node
 	// 机动目标：只高亮惯性推算的唯一到达格
 	public void HighlightMoveTarget(Vector2I target)
 	{
+		ClearOverlay();
 		if (_targets.TryGetValue(target, out var mesh) && GodotObject.IsInstanceValid(mesh))
 			mesh.MaterialOverride = MoveMaterial;
 	}

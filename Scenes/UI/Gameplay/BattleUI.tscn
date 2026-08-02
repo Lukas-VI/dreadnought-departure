@@ -21,28 +21,6 @@ grow_vertical = 2
 mouse_filter = 1
 script = ExtResource("1_t3eps")
 
-[node name="MarginLabel" type="MarginContainer" parent="." unique_id=567644586]
-layout_mode = 1
-anchors_preset = 3
-anchor_left = 1.0
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = -1.0
-offset_top = -45.0
-grow_horizontal = 0
-grow_vertical = 0
-size_flags_horizontal = 8
-size_flags_vertical = 4
-
-[node name="PhasePanel" type="PanelContainer" parent="MarginLabel" unique_id=1811992100]
-layout_mode = 2
-
-[node name="PhaseLabel" type="Label" parent="MarginLabel/PhasePanel" unique_id=1811992101]
-layout_mode = 2
-theme_override_font_sizes/font_size = 22
-text = "第 1 回合 · 1 速度"
-
 [node name="InfoLabel" type="Label" parent="." unique_id=209796006]
 layout_mode = 1
 offset_right = 1.0
@@ -111,7 +89,36 @@ layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/separation = 4
 
-[node name="MarginContainer2" type="MarginContainer" parent="." unique_id=48820018]
+[node name="TimerMergin" type="MarginContainer" parent="." unique_id=284678017]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -384.0
+offset_bottom = 43.0
+grow_horizontal = 0
+
+[node name="TimerPanel" type="PanelContainer" parent="TimerMergin" unique_id=1811992200]
+layout_mode = 2
+
+[node name="TimerBox" type="VBoxContainer" parent="TimerMergin/TimerPanel" unique_id=1811992201]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="CountdownLabel" type="Label" parent="TimerMergin/TimerPanel/TimerBox" unique_id=1811992203]
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+text = "20.0s"
+horizontal_alignment = 1
+
+[node name="TimerBar" type="ProgressBar" parent="TimerMergin/TimerPanel/TimerBox" unique_id=1811992202]
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+max_value = 20.0
+value = 20.0
+show_percentage = false
+
+[node name="PhaseControlMargin" type="MarginContainer" parent="." unique_id=48820018]
 layout_mode = 1
 anchors_preset = 3
 anchor_left = 1.0
@@ -127,23 +134,23 @@ size_flags_vertical = 10
 theme_override_constants/margin_left = 32
 theme_override_constants/margin_top = 32
 
-[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer2" unique_id=1654392172]
+[node name="VBoxContainer" type="VBoxContainer" parent="PhaseControlMargin" unique_id=1654392172]
 layout_mode = 2
 
-[node name="LableContainer" type="PanelContainer" parent="MarginContainer2/VBoxContainer" unique_id=876921666]
-custom_minimum_size = Vector2(256, 32)
+[node name="LableContainer" type="PanelContainer" parent="PhaseControlMargin/VBoxContainer" unique_id=876921666]
+custom_minimum_size = Vector2(384, 48)
 layout_mode = 2
 
-[node name="Label" type="Label" parent="MarginContainer2/VBoxContainer/LableContainer" unique_id=292437397]
+[node name="PhaseLabel" type="Label" parent="PhaseControlMargin/VBoxContainer/LableContainer" unique_id=292437397]
 layout_mode = 2
 size_flags_vertical = 1
 label_settings = SubResource("LabelSettings_vwq26")
 
-[node name="BtnPanel" type="PanelContainer" parent="MarginContainer2/VBoxContainer" unique_id=260824244]
+[node name="BtnPanel" type="PanelContainer" parent="PhaseControlMargin/VBoxContainer" unique_id=260824244]
 layout_mode = 2
 size_flags_horizontal = 10
 
-[node name="EndTurnBtn" type="Button" parent="MarginContainer2/VBoxContainer/BtnPanel" unique_id=1645166062]
+[node name="EndTurnBtn" type="Button" parent="PhaseControlMargin/VBoxContainer/BtnPanel" unique_id=1645166062]
 custom_minimum_size = Vector2(256, 128)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -225,6 +232,6 @@ text = "重试"
 layout_mode = 2
 text = "返回主菜单"
 
-[connection signal="pressed" from="MarginContainer2/VBoxContainer/BtnPanel/EndTurnBtn" to="." method="_OnEndTurnPressed"]
+[connection signal="pressed" from="PhaseControlMargin/VBoxContainer/BtnPanel/EndTurnBtn" to="." method="_OnEndTurnPressed"]
 [connection signal="pressed" from="ResultOverlay/Center/Panel/Box/Buttons/RetryButton" to="." method="_OnResultRetryPressed"]
 [connection signal="pressed" from="ResultOverlay/Center/Panel/Box/Buttons/ExitButton" to="." method="_OnResultExitPressed"]

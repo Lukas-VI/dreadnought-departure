@@ -4,7 +4,7 @@
 
 [resource]
 script = ExtResource("1_l2fsf")
-ShipName = "南达科他 (South Dakota)"
+ShipName = "南达科他"
 ShipClass = "BB"
 PV = 42
 MaxHp = 42

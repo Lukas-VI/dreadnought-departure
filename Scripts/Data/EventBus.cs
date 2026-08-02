@@ -22,6 +22,8 @@ public partial class EventBus : Node
 	[Signal] public delegate void ActionSelectedEventHandler(string actionId);
 	[Signal] public delegate void LogMessageEventHandler(string message);
 	[Signal] public delegate void ShipInfoRequestedEventHandler(ShipComponent ship);
+	[Signal] public delegate void ShipStatusChangedEventHandler(ShipComponent ship);
+	[Signal] public delegate void ShipSelectionChangedEventHandler(ShipComponent ship, bool selected);
 	[Signal] public delegate void OverlayDrawRequestedEventHandler(Vector2I center, int move, int attack, int state);
 	[Signal] public delegate void OverlayArcDrawRequestedEventHandler(Vector2I center, int direction, int range);
 	[Signal] public delegate void OverlayClearRequestedEventHandler();
@@ -36,6 +38,7 @@ public partial class EventBus : Node
 	[Signal] public delegate void PhaseChangedEventHandler(string phaseName, int phaseIndex, int turnNumber);
 	[Signal] public delegate void AdvancePhaseClickedEventHandler();
 	[Signal] public delegate void CpUpdatedEventHandler(int current, int max);
+	[Signal] public delegate void PhaseTimerUpdatedEventHandler(float remaining, float total);
 
 	public override void _Ready()
 	{

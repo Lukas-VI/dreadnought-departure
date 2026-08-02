@@ -63,7 +63,12 @@ public partial class MapGenerator : Node3D
 
 			// 记录生成的 Mesh 引用，留给 GridOverlayController 变色用
 			var meshInst = tileInstance.GetNodeOrNull<MeshInstance3D>("MeshInstance3D");
-			if (meshInst != null) SpawnedTileMeshes[coords] = meshInst;
+			if (meshInst != null)
+			{
+				// 地形瓦片数量大，关闭阴影可显著降低渲染开销。
+				meshInst.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
+				SpawnedTileMeshes[coords] = meshInst;
+			}
 		}
 
 	}

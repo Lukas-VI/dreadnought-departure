@@ -19,6 +19,9 @@ public partial class BattleUIController : Control
 	private Label _commandLabel;
 	private VBoxContainer _playerShipList;
 	private VBoxContainer _enemyShipList;
+	private Control _timerPanel;
+	private ProgressBar _timerBar;
+	private Label _countdownLabel;
 	private int _phaseIndex;
 
 	public override void _Ready()
@@ -26,12 +29,15 @@ public partial class BattleUIController : Control
 		_hud = GetNodeOrNull<BattleHudBroker>("InfoLabel");
 		_actionMenu = GetNodeOrNull<PhaseActionMenu>("ActionMenu");
 
-		_phaseLabel = GetNodeOrNull<Label>("MarginLabel/PhasePanel/PhaseLabel");
+		_phaseLabel = GetNodeOrNull<Label>("PhaseControlMargin/VBoxContainer/LableContainer/PhaseLabel");
 		_resultOverlay = GetNodeOrNull<Control>("ResultOverlay");
 		_resultLabel = GetNodeOrNull<Label>("ResultOverlay/Center/Panel/Box/ResultLabel");
 		_commandLabel = GetNodeOrNull<Label>("LeftPanel/Box/CommandLabel");
 		_playerShipList = GetNodeOrNull<VBoxContainer>("LeftPanel/Box/PlayerShipList");
 		_enemyShipList = GetNodeOrNull<VBoxContainer>("RightPanel/Box/EnemyShipList");
+		_timerPanel = GetNodeOrNull<Control>("PhaseControlMargin/VBoxContainer/TimerPanel");
+		_timerBar = GetNodeOrNull<ProgressBar>("TimerMergin/TimerPanel/TimerBox/TimerBar");
+		_countdownLabel = GetNodeOrNull<Label>("TimerMergin/TimerPanel/TimerBox/CountdownLabel");
 
 		var bus = GetNode<EventBus>("../../EventBus");
 		bus.LogMessage += (msg) => _hud?.DisplayConsoleLog(msg);
@@ -41,6 +47,7 @@ public partial class BattleUIController : Control
 		bus.OverlayClearRequested += HideActionMenu;
 		bus.PhaseChanged += OnPhaseChanged;
 		bus.CpUpdated += OnCpUpdated;
+		bus.PhaseTimerUpdated += OnPhaseTimerUpdated;
 		bus.BattleEnded += OnBattleEnded;
 
 		if (_actionMenu != null)
@@ -74,7 +81,14 @@ public partial class BattleUIController : Control
 		foreach (Node node in GetTree().GetNodesInGroup("Ships"))
 		{
 			if (node is not ShipComponent ship || !GodotObject.IsInstanceValid(ship)) continue;
-			var row = new Label { Text = FormatShipRow(ship) };
+			var row = new Button
+			{
+				Text = FormatShipRow(ship),
+				Alignment = HorizontalAlignment.Left,
+				CustomMinimumSize = new Vector2(0, 32)
+			};
+			var hex = ship.HexCoords;
+			row.Pressed += () => GetNode<EventBus>("../../EventBus").EmitSignal("HexClicked", hex);
 			if (ship.BattleSide == GenerationSide.Enemy)
 				_enemyShipList.AddChild(row);
 			else
@@ -85,7 +99,7 @@ public partial class BattleUIController : Control
 	private static string FormatShipRow(ShipComponent ship)
 	{
 		if (ship == null) return "未选中";
-		return $"{ship.ShipName}  HP {ship.CurrentHp}/{ship.MaxHp}  {ship.DamageState}  " +
+		return $"{ship.ShipName}\n HP {ship.CurrentHp}/{ship.MaxHp}  {ship.DamageState}  " +
 			$"速 {ship.CurrentSpeed}/{ship.MaxSpeedForCurrentState}";
 	}
 
@@ -117,6 +131,19 @@ public partial class BattleUIController : Control
 	{
 		if (_commandLabel != null)
 			_commandLabel.Text = $"指挥值 {max / 2} | CP {current}/{max}";
+	}
+
+	private void OnPhaseTimerUpdated(float remaining, float total)
+	{
+		if (_timerPanel != null)
+			_timerPanel.Visible = total > 0f;
+		if (_timerBar != null)
+		{
+			_timerBar.MaxValue = Mathf.Max(total, 1f);
+			_timerBar.Value = Mathf.Clamp(remaining, 0f, total);
+		}
+		if (_countdownLabel != null)
+			_countdownLabel.Text = total > 0f ? $"{remaining:0.0}s" : "";
 	}
 
 	/// <summary>隐藏底部操作菜单。</summary>

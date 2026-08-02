@@ -52,16 +52,20 @@ theme_override_font_sizes/font_size = 20
 text = "指挥值 0 | CP 0/0"
 horizontal_alignment = 1
 
-[node name="LeftPanel" type="PanelContainer" parent="." unique_id=1811992001]
+[node name="LeftPanel" type="MarginContainer" parent="." unique_id=1811992001]
 layout_mode = 1
-anchors_preset = 0
-anchor_top = 0.0
-anchor_bottom = 0.0
+anchors_preset = 4
+anchor_top = 0.5
+anchor_bottom = 0.5
 offset_left = 16.0
-offset_top = 104.0
-offset_right = 300.0
-offset_bottom = 520.0
-grow_vertical = 1
+offset_top = -124.0
+offset_right = 144.0
+offset_bottom = 132.0
+grow_vertical = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
 
 [node name="Box" type="VBoxContainer" parent="LeftPanel" unique_id=1811992002]
 layout_mode = 2
@@ -78,25 +82,28 @@ size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
 [node name="PlayerShipList" type="VBoxContainer" parent="LeftPanel/Box/PlayerScroll" unique_id=1811992006]
-custom_minimum_size = Vector2(32, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 4
 
-[node name="RightPanel" type="PanelContainer" parent="." unique_id=1811992011]
+[node name="RightPanel" type="MarginContainer" parent="." unique_id=1811992011]
 layout_mode = 1
-anchors_preset = 1
+anchors_preset = 6
 anchor_left = 1.0
-anchor_top = 0.0
+anchor_top = 0.5
 anchor_right = 1.0
-anchor_bottom = 0.0
-offset_left = -300.0
-offset_top = 104.0
-offset_right = -16.0
-offset_bottom = 520.0
+anchor_bottom = 0.5
+offset_left = -168.0
+offset_top = -148.0
+offset_right = -40.0
+offset_bottom = 108.0
 grow_horizontal = 0
-grow_vertical = 1
+grow_vertical = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
 
 [node name="Box" type="VBoxContainer" parent="RightPanel" unique_id=1811992012]
 layout_mode = 2

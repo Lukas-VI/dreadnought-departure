@@ -14,7 +14,12 @@ public partial class LobbyMenuController : Control
 	[Export] public string MainMenuPath = "res://Scenes/UI/Menu/MainMenu/main_menu.tscn";
 	[Export] public string BattleMenuPath = "res://Scenes/UI/Network/pvp_battle_menu.tscn";
 
-	private sealed record RoomInfo(string Id, string Status, List<string> Players, string OwnerId);
+	private sealed record RoomInfo(
+		string Id,
+		string Status,
+		List<string> Players,
+		string OwnerId,
+		bool HasMap);
 
 	private ItemList _roomList;
 	private VBoxContainer _detailBox;
@@ -26,6 +31,9 @@ public partial class LobbyMenuController : Control
 	private Button _joinButton;
 	private Button _startButton;
 	private Button _leaveButton;
+	private Button _uploadMapButton;
+	private Button _downloadMapButton;
+	private FileDialog _mapFileDialog;
 	private string _selectedRoomId = "";
 	private string _myUserId = "";
 	private List<RoomInfo> _rooms = new();
@@ -147,6 +155,16 @@ public partial class LobbyMenuController : Control
 		var placeholder = new Label { Text = "选择房间查看详情" };
 		placeholder.AddThemeFontSizeOverride("font_size", 18);
 		_detailBox.AddChild(placeholder);
+
+		_mapFileDialog = new FileDialog
+		{
+			Access = FileDialog.AccessEnum.Filesystem,
+			FileMode = FileDialog.FileModeEnum.OpenFile,
+			Title = "选择地图 JSON",
+		};
+		_mapFileDialog.AddFilter("*.json", "地图 JSON");
+		_mapFileDialog.FileSelected += OnMapFileSelected;
+		AddChild(_mapFileDialog);
 	}
 
 	private async void RefreshRooms()
@@ -302,6 +320,25 @@ public partial class LobbyMenuController : Control
 		}
 
 		bool isMember = room.Players.Contains(_myUserId);
+		bool isOwner = room.OwnerId == _myUserId;
+		string mapText = room.HasMap
+			? $"地图：已上传（{PvpMapState.MapName}）"
+			: "地图：未上传";
+		_detailBox.AddChild(new Label { Text = mapText });
+
+		var mapButtons = new HBoxContainer();
+		mapButtons.AddThemeConstantOverride("separation", 8);
+		_uploadMapButton = MakeButton("上传地图", () => _mapFileDialog.PopupCentered());
+		_uploadMapButton.Disabled = !isOwner;
+		_uploadMapButton.Visible = isOwner;
+		mapButtons.AddChild(_uploadMapButton);
+
+		_downloadMapButton = MakeButton("下载地图", () => _ = OnDownloadMapAsync(room.Id));
+		_downloadMapButton.Disabled = !room.HasMap || isOwner;
+		_downloadMapButton.Visible = !isOwner && room.HasMap;
+		mapButtons.AddChild(_downloadMapButton);
+		_detailBox.AddChild(mapButtons);
+
 		var buttons = new HBoxContainer();
 		buttons.AddThemeConstantOverride("separation", 8);
 
@@ -310,7 +347,7 @@ public partial class LobbyMenuController : Control
 		buttons.AddChild(_joinButton);
 
 		_startButton = MakeButton("开始战斗", () => _ = OnStartBattleAsync());
-		_startButton.Disabled = !isMember || room.OwnerId != _myUserId || room.Status != "ready";
+		_startButton.Disabled = !isMember || !isOwner || room.Status != "ready";
 		buttons.AddChild(_startButton);
 
 		_leaveButton = MakeButton("离开房间", () => _ = OnLeaveRoomAsync());
@@ -394,6 +431,14 @@ public partial class LobbyMenuController : Control
 		{
 			_leaveButton.Disabled = busy;
 		}
+		if (_uploadMapButton != null)
+		{
+			_uploadMapButton.Disabled = busy;
+		}
+		if (_downloadMapButton != null)
+		{
+			_downloadMapButton.Disabled = busy;
+		}
 	}
 
 	private async Task OnLeaveRoomAsync()
@@ -423,6 +468,69 @@ public partial class LobbyMenuController : Control
 		}
 	}
 
+	private async void OnMapFileSelected(string path)
+	{
+		string text = FileAccess.GetFileAsString(path);
+		if (string.IsNullOrEmpty(text))
+		{
+			_statusLabel.Text = "读取地图失败";
+			return;
+		}
+
+		SetBusy(true);
+		try
+		{
+			using var document = JsonDocument.Parse(text);
+			JsonElement map = document.RootElement.Clone();
+			string name = map.TryGetProperty("Name", out JsonElement nameProp)
+				? nameProp.GetString() ?? ""
+				: System.IO.Path.GetFileNameWithoutExtension(path);
+			PvpMapState.MapJson = text;
+			PvpMapState.MapName = name;
+			await NetworkClient.Instance.UploadMapAsync(_selectedRoomId, map);
+			_statusLabel.Text = $"地图 {name} 已上传";
+			RefreshRooms();
+		}
+		catch (Exception ex)
+		{
+			_statusLabel.Text = $"地图上传失败：{ex.Message}";
+		}
+		finally
+		{
+			SetBusy(false);
+		}
+	}
+
+	private async Task OnDownloadMapAsync(string roomId)
+	{
+		SetBusy(true);
+		try
+		{
+			JsonElement result = await NetworkClient.Instance.DownloadMapAsync(roomId);
+			if (!result.TryGetProperty("map", out JsonElement map) ||
+				map.ValueKind != JsonValueKind.Object)
+			{
+				_statusLabel.Text = "房间没有地图";
+				return;
+			}
+
+			PvpMapState.MapJson = map.GetRawText();
+			PvpMapState.MapName = map.TryGetProperty("Name", out JsonElement nameProp)
+				? nameProp.GetString() ?? roomId
+				: roomId;
+			_statusLabel.Text = $"地图 {PvpMapState.MapName} 已下载";
+			RefreshRooms();
+		}
+		catch (Exception ex)
+		{
+			_statusLabel.Text = $"地图下载失败：{ex.Message}";
+		}
+		finally
+		{
+			SetBusy(false);
+		}
+	}
+
 	private async Task OnBackToMainMenuAsync()
 	{
 		try
@@ -437,6 +545,8 @@ public partial class LobbyMenuController : Control
 			// 断线清理也会兜底，忽略离开失败。
 		}
 		NetworkClient.Instance.Logout();
+		PvpMapState.MapJson = "";
+		PvpMapState.MapName = "";
 		GetTree().ChangeSceneToFile(MainMenuPath);
 	}
 
@@ -466,7 +576,9 @@ public partial class LobbyMenuController : Control
 			}
 		}
 
-		return new RoomInfo(id, status, players, ownerId);
+		bool hasMap = element.TryGetProperty("hasMap", out JsonElement hasMapProp) &&
+			hasMapProp.ValueKind == JsonValueKind.True;
+		return new RoomInfo(id, status, players, ownerId, hasMap);
 	}
 
 	private static Button MakeButton(string text, Action action)

@@ -234,6 +234,8 @@ public partial class NetworkClient : Node
 		_wsAuthenticated = false;
 		_reconnectTimer = 0;
 		_pendingWsMessages.Clear();
+		PvpMapState.MapJson = "";
+		PvpMapState.MapName = "";
 		if (_ws != null)
 		{
 			_ws.Close();
@@ -287,6 +289,16 @@ public partial class NetworkClient : Node
 	public async Task<JsonElement> LeaveRoomAsync(string roomId)
 	{
 		return await RequestAsync("/api/lobby/leave", "POST", new { roomId });
+	}
+
+	public async Task<JsonElement> UploadMapAsync(string roomId, JsonElement map)
+	{
+		return await RequestAsync($"/api/lobby/rooms/{roomId}/map", "PUT", map);
+	}
+
+	public async Task<JsonElement> DownloadMapAsync(string roomId)
+	{
+		return await RequestAsync($"/api/lobby/rooms/{roomId}/map", "GET");
 	}
 
 	public async Task<JsonElement> StartBattleAsync(string roomId)
@@ -417,4 +429,11 @@ public static class PvpFlowState
 {
 	public static string PendingRoomId = "";
 	public static string PendingBattleId = "";
+}
+
+/// <summary>PvP 房间缓存的地图 JSON，双方进入战斗前共用。</summary>
+public static class PvpMapState
+{
+	public static string MapJson = "";
+	public static string MapName = "";
 }

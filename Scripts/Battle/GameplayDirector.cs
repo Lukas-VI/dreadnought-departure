@@ -70,6 +70,8 @@ public partial class GameplayDirector : Node
 	private int _lastRemoteTurn = -1;
 	private bool _remoteCommandsSent;
 	private bool _remotePhaseActive;
+	private bool _remoteMyTurn;
+	private Button _advanceButton;
 	private readonly Dictionary<string, ShipComponent> _remoteShips = new();
 	private readonly Dictionary<ShipComponent, FormationTrail> _formationTrails = new();
 
@@ -314,11 +316,27 @@ public partial class GameplayDirector : Node
 		if (status == "active" && myTurn && !_remotePhaseActive)
 		{
 			_remotePhaseActive = true;
+			_remoteMyTurn = true;
 			CallDeferred(nameof(BeginPlayerPhase));
 		}
 		else if (!myTurn || status != "active")
 		{
 			_remotePhaseActive = false;
+			_remoteMyTurn = myTurn;
+		}
+		RefreshAdvanceButton();
+	}
+
+	private void RefreshAdvanceButton()
+	{
+		if (_advanceButton == null)
+		{
+			_advanceButton = GetNodeOrNull<Button>(
+				"CanvasLayer/BattleUI/PhaseControlMargin/VBoxContainer/BtnPanel/EndTurnBtn");
+		}
+		if (_advanceButton != null)
+		{
+			_advanceButton.Disabled = !_remoteMyTurn || _remoteCommandsSent;
 		}
 	}
 
@@ -517,14 +535,10 @@ public partial class GameplayDirector : Node
 		if (_remotePvp)
 		{
 			CancelPhaseTimer();
-			if (!_remoteCommandsSent)
+			if (_remoteMyTurn && !_remoteCommandsSent)
 			{
 				_remotePhaseActive = false;
 				SendRemoteCommands();
-			}
-			else
-			{
-				NetworkClient.Instance.SendWsBattleAdvance(PvpFlowState.PendingBattleId);
 			}
 			return;
 		}

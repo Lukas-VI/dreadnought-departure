@@ -333,6 +333,10 @@ public partial class LobbyMenuController : Control
 		_downloadMapButton.Visible = !isOwner && room.HasMap;
 		mapButtons.AddChild(_downloadMapButton);
 		_detailBox.AddChild(mapButtons);
+		if (!isOwner && room.HasMap && string.IsNullOrEmpty(PvpMapState.MapJson))
+		{
+			_ = OnDownloadMapAsync(room.Id);
+		}
 
 		var buttons = new HBoxContainer();
 		buttons.AddThemeConstantOverride("separation", 8);
@@ -342,7 +346,7 @@ public partial class LobbyMenuController : Control
 		buttons.AddChild(_joinButton);
 
 		_startButton = MakeButton("开始战斗", () => _ = OnStartBattleAsync());
-		_startButton.Disabled = !isMember || !isOwner || room.Status != "ready";
+		_startButton.Disabled = !isMember || !isOwner || room.Status != "ready" || !room.HasMap;
 		buttons.AddChild(_startButton);
 
 		_leaveButton = MakeButton("离开房间", () => _ = OnLeaveRoomAsync());

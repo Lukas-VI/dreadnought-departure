@@ -246,13 +246,15 @@ public partial class PauseMenuController : Control
 			_pvpCommandBox.AddChild(new Label { Text = "等待对方提交指令..." });
 		}
 
-		AddPvpCommand("推进结算", () =>
+		var advanceButton = MakeButton("提交待命并推进", () =>
 		{
-			if (!string.IsNullOrEmpty(PvpFlowState.PendingBattleId))
+			if (myTurn)
 			{
-				NetworkClient.Instance.SendWsBattleAdvance(PvpFlowState.PendingBattleId);
+				SendPvpCommand("wait");
 			}
 		});
+		advanceButton.Disabled = !myTurn;
+		_pvpCommandBox.AddChild(advanceButton);
 	}
 
 	private int MyPvpSide(JsonElement state)

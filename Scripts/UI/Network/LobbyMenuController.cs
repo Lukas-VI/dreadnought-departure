@@ -252,7 +252,14 @@ public partial class LobbyMenuController : Control
 		SetBusy(true);
 		try
 		{
-			await NetworkClient.Instance.JoinRoomAsync(_selectedRoomId);
+			JsonElement joinedRoom = await NetworkClient.Instance.JoinRoomAsync(_selectedRoomId);
+			if (joinedRoom.TryGetProperty("hasMap", out JsonElement hasMapProp) &&
+				hasMapProp.ValueKind == JsonValueKind.True &&
+				string.IsNullOrEmpty(PvpMapState.MapJson) &&
+				joinedRoom.TryGetProperty("id", out JsonElement joinedRoomId))
+			{
+				await OnDownloadMapAsync(joinedRoomId.GetString() ?? _selectedRoomId);
+			}
 			SubscribeRoom(_selectedRoomId);
 			RefreshRooms();
 		}

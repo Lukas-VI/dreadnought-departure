@@ -31,49 +31,72 @@ label_settings = SubResource("LabelSettings_t3eps")
 script = ExtResource("2_t3eps")
 metadata/_edit_use_anchors_ = true
 
+[node name="TopCenterPanel" type="PanelContainer" parent="." unique_id=1811992301]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -280.0
+offset_top = 8.0
+offset_right = 280.0
+offset_bottom = 92.0
+grow_horizontal = 2
+
+[node name="Box" type="VBoxContainer" parent="TopCenterPanel" unique_id=1811992302]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="CommandLabel" type="Label" parent="TopCenterPanel/Box" unique_id=1811992303]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "指挥值 0 | CP 0/0"
+horizontal_alignment = 1
+
 [node name="LeftPanel" type="PanelContainer" parent="." unique_id=1811992001]
 layout_mode = 1
-anchors_preset = 4
-anchor_top = 0.5
-anchor_bottom = 0.5
+anchors_preset = 0
+anchor_top = 0.0
+anchor_bottom = 0.0
 offset_left = 16.0
-offset_top = -280.0
-offset_right = 360.0
-offset_bottom = 280.0
-grow_vertical = 2
+offset_top = 104.0
+offset_right = 300.0
+offset_bottom = 520.0
+grow_vertical = 1
 
 [node name="Box" type="VBoxContainer" parent="LeftPanel" unique_id=1811992002]
 layout_mode = 2
 theme_override_constants/separation = 8
-
-[node name="CommandLabel" type="Label" parent="LeftPanel/Box" unique_id=1811992003]
-layout_mode = 2
-theme_override_font_sizes/font_size = 22
-text = "指挥值 0 | CP 0/0"
 
 [node name="PlayerTitle" type="Label" parent="LeftPanel/Box" unique_id=1811992004]
 layout_mode = 2
 theme_override_font_sizes/font_size = 18
 text = "我方舰船"
 
-[node name="PlayerShipList" type="VBoxContainer" parent="LeftPanel/Box" unique_id=1811992005]
+[node name="PlayerScroll" type="ScrollContainer" parent="LeftPanel/Box" unique_id=1811992005]
 layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="PlayerShipList" type="VBoxContainer" parent="LeftPanel/Box/PlayerScroll" unique_id=1811992006]
+custom_minimum_size = Vector2(32, 0)
+layout_mode = 2
+size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 4
 
 [node name="RightPanel" type="PanelContainer" parent="." unique_id=1811992011]
 layout_mode = 1
-anchors_preset = 6
+anchors_preset = 1
 anchor_left = 1.0
-anchor_top = 0.5
+anchor_top = 0.0
 anchor_right = 1.0
-anchor_bottom = 0.5
-offset_left = -360.0
-offset_top = -280.0
+anchor_bottom = 0.0
+offset_left = -300.0
+offset_top = 104.0
 offset_right = -16.0
-offset_bottom = 280.0
+offset_bottom = 520.0
 grow_horizontal = 0
-grow_vertical = 2
+grow_vertical = 1
 
 [node name="Box" type="VBoxContainer" parent="RightPanel" unique_id=1811992012]
 layout_mode = 2
@@ -84,8 +107,14 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 18
 text = "敌方舰船"
 
-[node name="EnemyShipList" type="VBoxContainer" parent="RightPanel/Box" unique_id=1811992014]
+[node name="EnemyScroll" type="ScrollContainer" parent="RightPanel/Box" unique_id=1811992014]
 layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="EnemyShipList" type="VBoxContainer" parent="RightPanel/Box/EnemyScroll" unique_id=1811992015]
+layout_mode = 2
+size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 4
 

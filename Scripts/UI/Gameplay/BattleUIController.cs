@@ -33,9 +33,9 @@ public partial class BattleUIController : Control
 		_phaseLabel = GetNodeOrNull<Label>("PhaseControlMargin/VBoxContainer/LableContainer/PhaseLabel");
 		_resultOverlay = GetNodeOrNull<Control>("ResultOverlay");
 		_resultLabel = GetNodeOrNull<Label>("ResultOverlay/Center/Panel/Box/ResultLabel");
-		_commandLabel = GetNodeOrNull<Label>("LeftPanel/Box/CommandLabel");
-		_playerShipList = GetNodeOrNull<VBoxContainer>("LeftPanel/Box/PlayerShipList");
-		_enemyShipList = GetNodeOrNull<VBoxContainer>("RightPanel/Box/EnemyShipList");
+		_commandLabel = GetNodeOrNull<Label>("TopCenterPanel/Box/CommandLabel");
+		_playerShipList = GetNodeOrNull<VBoxContainer>("LeftPanel/Box/PlayerScroll/PlayerShipList");
+		_enemyShipList = GetNodeOrNull<VBoxContainer>("RightPanel/Box/EnemyScroll/EnemyShipList");
 		_timerPanel = GetNodeOrNull<Control>("PhaseControlMargin/VBoxContainer/TimerPanel");
 		_timerBar = GetNodeOrNull<ProgressBar>("TimerMergin/TimerPanel/TimerBox/TimerBar");
 		_countdownLabel = GetNodeOrNull<Label>("TimerMergin/TimerPanel/TimerBox/CountdownLabel");

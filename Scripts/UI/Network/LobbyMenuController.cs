@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading.Tasks;
+using DreadnoughtDeparture.Core;
 using DreadnoughtDeparture.Network;
 
 namespace DreadnoughtDeparture.UI.Network;
@@ -13,6 +14,7 @@ public partial class LobbyMenuController : Control
 	[Export] public string LoginMenuPath = "res://Scenes/UI/Network/login_menu.tscn";
 	[Export] public string MainMenuPath = "res://Scenes/UI/Menu/MainMenu/main_menu.tscn";
 	[Export] public string BattleMenuPath = "res://Scenes/UI/Network/pvp_battle_menu.tscn";
+	[Export] public string MapSelectMenuPath = "res://Scenes/UI/Menu/MainMenu/map_select_menu.tscn";
 
 	private sealed record RoomInfo(
 		string Id,
@@ -33,7 +35,6 @@ public partial class LobbyMenuController : Control
 	private Button _leaveButton;
 	private Button _uploadMapButton;
 	private Button _downloadMapButton;
-	private FileDialog _mapFileDialog;
 	private string _selectedRoomId = "";
 	private string _myUserId = "";
 	private List<RoomInfo> _rooms = new();
@@ -56,6 +57,7 @@ public partial class LobbyMenuController : Control
 		_wsStatusLabel.Text = "连接中...";
 		OnConnectionChanged(NetworkClient.Instance.IsWebSocketConnected);
 		_ = LoadMeAsync();
+		_ = AutoUploadPendingMapAsync();
 		RefreshRooms();
 	}
 
@@ -156,15 +158,6 @@ public partial class LobbyMenuController : Control
 		placeholder.AddThemeFontSizeOverride("font_size", 18);
 		_detailBox.AddChild(placeholder);
 
-		_mapFileDialog = new FileDialog
-		{
-			Access = FileDialog.AccessEnum.Filesystem,
-			FileMode = FileDialog.FileModeEnum.OpenFile,
-			Title = "选择地图 JSON",
-		};
-		_mapFileDialog.AddFilter("*.json", "地图 JSON");
-		_mapFileDialog.FileSelected += OnMapFileSelected;
-		AddChild(_mapFileDialog);
 	}
 
 	private async void RefreshRooms()
@@ -328,7 +321,7 @@ public partial class LobbyMenuController : Control
 
 		var mapButtons = new HBoxContainer();
 		mapButtons.AddThemeConstantOverride("separation", 8);
-		_uploadMapButton = MakeButton("上传地图", () => _mapFileDialog.PopupCentered());
+		_uploadMapButton = MakeButton("选择战役地图", OnSelectMapPressed);
 		_uploadMapButton.Disabled = !isOwner;
 		_uploadMapButton.Visible = isOwner;
 		mapButtons.AddChild(_uploadMapButton);
@@ -468,8 +461,30 @@ public partial class LobbyMenuController : Control
 		}
 	}
 
-	private async void OnMapFileSelected(string path)
+	private void OnSelectMapPressed()
 	{
+		if (string.IsNullOrEmpty(_selectedRoomId))
+		{
+			return;
+		}
+		PvpMapState.PendingUploadRoomId = _selectedRoomId;
+		MapSelectMenuController.PendingMode = "pvp";
+		GetTree().ChangeSceneToFile(MapSelectMenuPath);
+	}
+
+	private async Task AutoUploadPendingMapAsync()
+	{
+		if (string.IsNullOrEmpty(PvpMapState.PendingUploadRoomId) ||
+			string.IsNullOrEmpty(PvpMapState.PendingUploadFileName))
+		{
+			return;
+		}
+
+		string roomId = PvpMapState.PendingUploadRoomId;
+		string fileName = PvpMapState.PendingUploadFileName;
+		PvpMapState.PendingUploadRoomId = "";
+		PvpMapState.PendingUploadFileName = "";
+		string path = $"{LevelDataManager.DefaultExportFolder}/{fileName}";
 		string text = FileAccess.GetFileAsString(path);
 		if (string.IsNullOrEmpty(text))
 		{
@@ -484,12 +499,15 @@ public partial class LobbyMenuController : Control
 			JsonElement map = document.RootElement.Clone();
 			string name = map.TryGetProperty("Name", out JsonElement nameProp)
 				? nameProp.GetString() ?? ""
-				: System.IO.Path.GetFileNameWithoutExtension(path);
+				: System.IO.Path.GetFileNameWithoutExtension(fileName);
 			PvpMapState.MapJson = text;
 			PvpMapState.MapName = name;
-			await NetworkClient.Instance.UploadMapAsync(_selectedRoomId, map);
+			await NetworkClient.Instance.UploadMapAsync(roomId, map);
 			_statusLabel.Text = $"地图 {name} 已上传";
-			RefreshRooms();
+			if (_selectedRoomId == roomId)
+			{
+				RefreshRooms();
+			}
 		}
 		catch (Exception ex)
 		{

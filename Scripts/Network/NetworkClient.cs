@@ -436,4 +436,6 @@ public static class PvpMapState
 {
 	public static string MapJson = "";
 	public static string MapName = "";
+	public static string PendingUploadFileName = "";
+	public static string PendingUploadRoomId = "";
 }

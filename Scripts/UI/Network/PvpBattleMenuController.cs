@@ -1,7 +1,9 @@
 using Godot;
 using System;
+using System.Collections.Generic;
 using System.Text;
 using System.Text.Json;
+using DreadnoughtDeparture.Core;
 using DreadnoughtDeparture.Network;
 
 namespace DreadnoughtDeparture.UI.Network;
@@ -21,12 +23,22 @@ public partial class PvpBattleMenuController : Control
 	private Label _commandStatusLabel;
 	private VBoxContainer _commandBox;
 	private RichTextLabel _log;
+	private Label _3dHint;
+	private SubViewportContainer _viewportContainer;
+	private SubViewport _viewport;
+	private Node3D _world;
+	private LevelDataManager _levelData;
+	private MapGenerator _mapGenerator;
+	private Node3D _shipsRoot;
+	private readonly Dictionary<string, ShipComponent> _ships3D = new();
+	private bool _3dReady;
 	private string _lastPhase = "";
 	private int _lastTurn = -1;
 
 	public override void _Ready()
 	{
 		BuildUi();
+		Setup3DView();
 		NetworkClient.Instance.WsMessageReceived += OnWsMessage;
 		NetworkClient.Instance.ConnectionStateChanged += OnConnectionChanged;
 		NetworkClient.Instance.WsClosed += OnWsClosed;
@@ -138,8 +150,34 @@ public partial class PvpBattleMenuController : Control
 		row.AddChild(MakeButton("调试骰值 3d100", SendDebugRoll));
 		infoBox.AddChild(row);
 
-		var logPanel = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-		body.AddChild(logPanel);
+		var rightPanel = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+		rightPanel.AddThemeConstantOverride("separation", 8);
+		body.AddChild(rightPanel);
+
+		_3dHint = new Label { Text = "3D 战场：等待地图..." };
+		rightPanel.AddChild(_3dHint);
+
+		_viewportContainer = new SubViewportContainer
+		{
+			Stretch = true,
+			CustomMinimumSize = new Vector2(640, 360),
+			SizeFlagsVertical = SizeFlags.ExpandFill,
+		};
+		rightPanel.AddChild(_viewportContainer);
+
+		_viewport = new SubViewport
+		{
+			Size = new Vector2I(800, 600),
+			RenderTargetUpdateMode = SubViewport.UpdateMode.Always,
+			OwnWorld3D = true,
+		};
+		_viewportContainer.AddChild(_viewport);
+
+		_world = new Node3D { Name = "PvpWorld" };
+		_viewport.AddChild(_world);
+
+		var logPanel = new PanelContainer { CustomMinimumSize = new Vector2(0, 220) };
+		rightPanel.AddChild(logPanel);
 		var logBox = new VBoxContainer();
 		logBox.AddThemeConstantOverride("separation", 8);
 		logPanel.AddChild(logBox);
@@ -266,7 +304,147 @@ public partial class PvpBattleMenuController : Control
 
 		UpdateShips(state);
 		UpdateCommandStatus(state);
+		UpdateShips3D(state);
 		BuildCommandButtons(state, status);
+	}
+
+	private void Setup3DView()
+	{
+		if (_3dReady)
+		{
+			return;
+		}
+		if (string.IsNullOrEmpty(PvpMapState.MapJson))
+		{
+			_3dHint.Text = "3D 战场：等待地图...";
+			return;
+		}
+
+		_3dHint.Text = "3D 战场：生成中...";
+		_levelData = new LevelDataManager
+		{
+			AutoLoadOnReady = false,
+			MapId = "pvp_download",
+		};
+		_world.AddChild(_levelData);
+		if (!_levelData.LoadMapFromJson(PvpMapState.MapJson))
+		{
+			_3dHint.Text = "3D 战场：地图加载失败";
+			return;
+		}
+
+		_mapGenerator = new MapGenerator
+		{
+			DefaultTilePrefab = ResourceLoader.Load<PackedScene>(
+				"res://Scenes/Map/Tile/hex_tile_3d.tscn"),
+			TilePrefabs = new Godot.Collections.Dictionary<string, PackedScene>
+			{
+				["ocean"] = ResourceLoader.Load<PackedScene>(
+					"res://Scenes/Map/Tile/Prefab/hex_tile_ocean.tscn"),
+				["island"] = ResourceLoader.Load<PackedScene>(
+					"res://Scenes/Map/Tile/Prefab/hex_tile_island.tscn"),
+				["default"] = ResourceLoader.Load<PackedScene>(
+					"res://Scenes/Map/Tile/hex_tile_3d.tscn"),
+			},
+		};
+		_mapGenerator.AddChild(new Node3D { Name = "MapContainer" });
+		_world.AddChild(_mapGenerator);
+		_mapGenerator.BuildMap(_levelData.TerrainData);
+
+		_shipsRoot = new Node3D { Name = "PvpShips" };
+		_world.AddChild(_shipsRoot);
+
+		var camera = new Camera3D { Current = true };
+		camera.Position = new Vector3(0, 30, 16);
+		camera.RotationDegrees = new Vector3(-55, 0, 0);
+		_world.AddChild(camera);
+
+		_3dReady = true;
+		_3dHint.Text = $"3D 战场：{PvpMapState.MapName}";
+	}
+
+	private void UpdateShips3D(JsonElement state)
+	{
+		if (!_3dReady || _mapGenerator == null)
+		{
+			return;
+		}
+		if (!state.TryGetProperty("ships", out JsonElement ships))
+		{
+			return;
+		}
+
+		var seen = new HashSet<string>();
+		foreach (JsonElement ship in ships.EnumerateArray())
+		{
+			string id = ship.TryGetProperty("id", out JsonElement idProp)
+				? idProp.GetString() ?? ""
+				: "";
+			if (string.IsNullOrEmpty(id))
+			{
+				continue;
+			}
+
+			JsonElement hex = ship.TryGetProperty("hex", out JsonElement hexProp)
+				? hexProp
+				: default;
+			if (hex.ValueKind != JsonValueKind.Array || hex.GetArrayLength() < 2)
+			{
+				continue;
+			}
+
+			int facing = ship.TryGetProperty("facing", out JsonElement facingProp)
+				? facingProp.GetInt32()
+				: 0;
+			int speed = ship.TryGetProperty("speed", out JsonElement speedProp)
+				? speedProp.GetInt32()
+				: 0;
+			int hp = ship.TryGetProperty("hp", out JsonElement hpProp)
+				? hpProp.GetInt32()
+				: 0;
+			int maxHp = ship.TryGetProperty("maxHp", out JsonElement maxHpProp)
+				? maxHpProp.GetInt32()
+				: 0;
+
+			if (!_ships3D.TryGetValue(id, out ShipComponent component))
+			{
+				PackedScene prefab = ResourceLoader.Load<PackedScene>(
+					"res://Ships/BaseShip/ship_3d.tscn");
+				if (prefab == null)
+				{
+					continue;
+				}
+				component = prefab.Instantiate<ShipComponent>();
+				_shipsRoot.AddChild(component);
+				_ships3D[id] = component;
+			}
+
+			seen.Add(id);
+			component.MoveToHex(
+				_mapGenerator,
+				new Vector2I(hex[0].GetInt32(), hex[1].GetInt32()));
+			component.AnimateTurnTo((HexDirection)(facing % 6));
+			component.CurrentSpeed = speed;
+			if (maxHp > 0)
+			{
+				component.MaxHp = maxHp;
+				component.CurrentHp = Math.Clamp(hp, 0, maxHp);
+			}
+		}
+
+		var stale = new List<string>();
+		foreach (string key in _ships3D.Keys)
+		{
+			if (!seen.Contains(key))
+			{
+				stale.Add(key);
+			}
+		}
+		foreach (string key in stale)
+		{
+			_ships3D[key].QueueFree();
+			_ships3D.Remove(key);
+		}
 	}
 
 	private void UpdateShips(JsonElement state)

@@ -351,6 +351,19 @@ public partial class LevelDataManager : Node
 		return true;
 	}
 
+	/// <summary>从 PvP 下载/上传的 JSON 字符串加载地图，供 3D 战场生成。</summary>
+	public bool LoadMapFromJson(string json)
+	{
+		if (string.IsNullOrEmpty(json)) return false;
+		string path = "user://maps/pvp_download.json";
+		DirAccess.MakeDirRecursiveAbsolute("user://maps");
+		using var file = FileAccess.Open(path, FileAccess.ModeFlags.Write);
+		if (file == null) return false;
+		file.StoreString(json);
+		_currentJsonPath = path;
+		return LoadFromJson(path);
+	}
+
 	/// <summary>删除导出文件夹内的画布文件。</summary>
 	public void DeleteMap(string fileName)
 	{

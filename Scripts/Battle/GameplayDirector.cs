@@ -209,6 +209,7 @@ public partial class GameplayDirector : Node
 			_turnNumber = turn;
 			_currentPhase = RemotePhaseToLocal(phase);
 			_remoteCommandsSent = false;
+			CancelPhaseTimer();
 			EmitPhaseChanged();
 			bus.EmitLog($"—— PvP 第 {turn} 回合 · {phase} ——");
 		}
@@ -324,6 +325,10 @@ public partial class GameplayDirector : Node
 			_remotePhaseActive = false;
 			_remoteMyTurn = myTurn;
 		}
+		if (status == "active" && !myTurn && !_phaseTimerRunning)
+		{
+			StartPhaseTimer(false);
+		}
 		RefreshAdvanceButton();
 	}
 
@@ -347,6 +352,7 @@ public partial class GameplayDirector : Node
 		NetworkClient.Instance.SendWsBattleShipsCommand(
 			PvpFlowState.PendingBattleId,
 			ships);
+		StartPhaseTimer(false);
 		GetNode<EventBus>("EventBus").EmitLog($"PvP 已提交 {ships.Count} 艘船指令");
 	}
 
@@ -726,7 +732,7 @@ public partial class GameplayDirector : Node
 		if (_battleEnded || _settling) return;
 		if (_remotePvp)
 		{
-			if (!_remoteCommandsSent)
+			if (_timerForPlayer && !_remoteCommandsSent)
 			{
 				_remotePhaseActive = false;
 				SendRemoteCommands();

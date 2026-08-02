@@ -32,8 +32,13 @@ public partial class UnitSpawner : Node3D
 				ship.BattleSide = spawnData.Side;
 
 				Vector3 pos = HexToWorld(coords.X, coords.Y);
+				Vector2I forwardOff = HexDirectionUtility.Offset(spawnData.Direction);
+				Vector3 forward = HexToWorld(forwardOff.X, forwardOff.Y) - HexToWorld(0, 0);
+				forward.Y = 0f;
+				Vector3 lateral = new Vector3(forward.Z, 0f, -forward.X);
+				if (lateral.LengthSquared() > 0f) lateral = lateral.Normalized();
 				ship.Position = new Vector3(pos.X, ShipComponent.StackBaseY, pos.Z);
-				ship.ApplyStackOffset(i, kvp.Value.Count);
+				ship.ApplyStackOffset(i, kvp.Value.Count, lateral);
 				ship.ApplyInitialState(spawnData.Direction, spawnData.Speed);
 				LevelDataManager.BattlefieldUnits[coords] = ship; // 注册到全局战场表
 			}

@@ -765,8 +765,19 @@ public partial class GameplayDirector : Node
 			{
 				var stacked = sideGroup.ToList();
 				for (int i = 0; i < stacked.Count; i++)
-					stacked[i].ApplyStackOffset(i, stacked.Count);
+					stacked[i].ApplyStackOffset(i, stacked.Count, LateralAxisFor(stacked[i]));
 			}
+	}
+
+	private Vector3 LateralAxisFor(ShipComponent ship)
+	{
+		Vector2I off = HexDirectionUtility.Offset(ship.Direction);
+		Vector3 forward = _mapGenerator.HexToWorld(off.X, off.Y)
+			- _mapGenerator.HexToWorld(0, 0);
+		forward.Y = 0f;
+		if (forward.LengthSquared() < 0.0001f) return Vector3.Right;
+		forward = forward.Normalized();
+		return new Vector3(forward.Z, 0f, -forward.X);
 	}
 
 	public BattlePhase CurrentPhase => _currentPhase;

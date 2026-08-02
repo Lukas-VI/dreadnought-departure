@@ -156,6 +156,12 @@ public partial class GameplayDirector : Node
 	private void StartRemotePvp()
 	{
 		GetNode<EventBus>("EventBus").EmitLog("PvP 远程战场已启动，等待服务端状态...");
+		if (!string.IsNullOrEmpty(PvpMapState.MapJson) &&
+			_dataManager.TerrainSources.Count == 0)
+		{
+			_dataManager.LoadMapFromJson(PvpMapState.MapJson);
+			_mapGenerator.BuildMap(_dataManager.TerrainData);
+		}
 		if (!string.IsNullOrEmpty(PvpFlowState.PendingRoomId))
 		{
 			NetworkClient.Instance.SendWsJoinRoom(PvpFlowState.PendingRoomId);
@@ -220,6 +226,20 @@ public partial class GameplayDirector : Node
 		}
 
 		var seen = new HashSet<string>();
+		int mySide = 0;
+		if (state.TryGetProperty("players", out JsonElement players))
+		{
+			int index = 0;
+			foreach (JsonElement player in players.EnumerateArray())
+			{
+				if (player.GetString() == NetworkClient.Instance.UserId)
+				{
+					mySide = index;
+					break;
+				}
+				index++;
+			}
+		}
 		foreach (JsonElement ship in ships.EnumerateArray())
 		{
 			string id = ship.TryGetProperty("id", out JsonElement idProp)
@@ -269,7 +289,9 @@ public partial class GameplayDirector : Node
 			}
 
 			seen.Add(id);
-			component.BattleSide = side == 0 ? GenerationSide.Player : GenerationSide.Enemy;
+			component.BattleSide = side == mySide
+				? GenerationSide.Player
+				: GenerationSide.Enemy;
 			Vector2I coords = new Vector2I(hex[0].GetInt32(), hex[1].GetInt32());
 			component.MoveToHex(_mapGenerator, coords);
 			component.AnimateTurnTo((HexDirection)(facing % 6));

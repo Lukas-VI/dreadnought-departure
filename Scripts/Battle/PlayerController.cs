@@ -335,8 +335,9 @@ public partial class PlayerController : Node, IUnitController
 					{
 						formationShips[i].FormationLead = _selected;
 						formationShips[i].FormationIndex = i;
+						if (formationShips[i].HexCoords == _selected.HexCoords)
+							formationShips[i].PendingDirection = nd;
 					}
-					_selected.PendingDirection = nd;
 					GetNode<EventBus>("../EventBus").EmitSignal("LogMessage",
 						$"↩ 编队左转待命 → 航向 {nd}（首船转向，{formationShips.Count} 艘按轨迹跟随，{cost} CP）");
 				}
@@ -366,8 +367,9 @@ public partial class PlayerController : Node, IUnitController
 					{
 						formationShips[i].FormationLead = _selected;
 						formationShips[i].FormationIndex = i;
+						if (formationShips[i].HexCoords == _selected.HexCoords)
+							formationShips[i].PendingDirection = nd;
 					}
-					_selected.PendingDirection = nd;
 					GetNode<EventBus>("../EventBus").EmitSignal("LogMessage",
 						$"↪ 编队右转待命 → 航向 {nd}（首船转向，{formationShips.Count} 艘按轨迹跟随，{cost} CP）");
 				}

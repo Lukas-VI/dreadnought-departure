@@ -626,7 +626,9 @@ public partial class GameplayDirector : Node
 		FormationTrail trail = GetOrBuildFormationTrail(lead, chain);
 		int leadIndex = trail.Cells.Count - 1;
 		// 首舰转向在推进阶段已生效；即使本阶段不移动，也要更新当前格的轨迹航向。
-		trail.Headings[leadIndex] = lead.Direction;
+		for (int i = 0; i < trail.Cells.Count; i++)
+			if (trail.Cells[i] == lead.HexCoords)
+				trail.Headings[i] = lead.Direction;
 		if (steps <= 0) return 0f;
 
 		for (int i = 0; i < steps; i++)

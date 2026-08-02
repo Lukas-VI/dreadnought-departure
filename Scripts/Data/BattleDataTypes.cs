@@ -143,12 +143,16 @@ public enum UnitTacticalState { Idle = 0, Actioned = 1, Sunk = 2 }
 public struct Firepower
 {
 	public int Forward, Side, Backward;
-	public int ForArc(HexDirection shipDir, HexDirection targetDir)
+	public int ForArc(FiringArc arc) => arc switch
 	{
-		int diff = ((int)targetDir - (int)shipDir + 6) % 6;
-		// 正前/正后各 60°，左右侧射各 120°（每侧覆盖两个相邻六向）。
-		return diff switch { 0 => Forward, 3 => Backward, _ => Side };
-	}
+		FiringArc.Front => Forward,
+		FiringArc.Rear => Backward,
+		_ => Side
+	};
+
+	/// <summary>按六角格真实角度判定目标所在射界并返回对应火力值。</summary>
+	public int ForArc(Vector2I shipHex, Vector2I targetHex, HexDirection shipDir)
+		=> ForArc(FiringArcEvaluator.GetArc(shipHex, targetHex, shipDir));
 }
 
 

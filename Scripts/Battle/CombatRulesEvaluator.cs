@@ -49,16 +49,15 @@ public static class CombatRulesEvaluator
 	{
 		if (!CanFire(attacker)) return false;
 		if (attacker.Data == null) return true;
-		HexDirection targetDir = MoveRulesEvaluator.DirectionTo(attacker.HexCoords, defender.HexCoords);
-		return attacker.Data.Firepower.ForArc(attacker.Direction, targetDir) > 0
-			|| attacker.Data.SecondaryFirepower.ForArc(attacker.Direction, targetDir) > 0;
+		return attacker.Data.Firepower.ForArc(attacker.HexCoords, defender.HexCoords, attacker.Direction) > 0
+			|| attacker.Data.SecondaryFirepower.ForArc(attacker.HexCoords, defender.HexCoords, attacker.Direction) > 0;
 	}
 
-	private static int ArcPower(ShipComponent attacker, HexDirection targetDir, bool secondary)
+	private static int ArcPower(ShipComponent attacker, FiringArc arc, bool secondary)
 	{
 		if (attacker.Data == null) return 6;
 		Firepower fp = secondary ? attacker.Data.SecondaryFirepower : attacker.Data.Firepower;
-		return fp.ForArc(attacker.Direction, targetDir);
+		return fp.ForArc(arc);
 	}
 
 	/// <summary>副炮基础火力：优先用配表值，未配置时按主炮伤害与口径比例折算。</summary>
@@ -109,8 +108,9 @@ public static class CombatRulesEvaluator
 				Detail = $"{attacker.ShipName} 大破/沉没，无法射击"
 			};
 		}
-		HexDirection targetDir = MoveRulesEvaluator.DirectionTo(attacker.HexCoords, defender.HexCoords);
-		int arcPower = ArcPower(attacker, targetDir, secondary);
+		FiringArc arc = FiringArcEvaluator.GetArc(
+			attacker.HexCoords, defender.HexCoords, attacker.Direction);
+		int arcPower = ArcPower(attacker, arc, secondary);
 		if (arcPower <= 0)
 		{
 			return new ShotCheck
@@ -161,11 +161,12 @@ public static class CombatRulesEvaluator
 	public static (bool hit, int damage, string desc) FireEx(ShipComponent attacker, ShipComponent defender, int distanceHex,
 		bool radarUsed = false)
 	{
-		HexDirection targetDir = MoveRulesEvaluator.DirectionTo(attacker.HexCoords, defender.HexCoords);
+		FiringArc arc = FiringArcEvaluator.GetArc(
+			attacker.HexCoords, defender.HexCoords, attacker.Direction);
 		bool mainArc = attacker.Data == null
-			|| attacker.Data.Firepower.ForArc(attacker.Direction, targetDir) > 0;
+			|| attacker.Data.Firepower.ForArc(attacker.HexCoords, defender.HexCoords, attacker.Direction) > 0;
 		bool secondaryArc = attacker.Data != null
-			&& attacker.Data.SecondaryFirepower.ForArc(attacker.Direction, targetDir) > 0;
+			&& attacker.Data.SecondaryFirepower.ForArc(attacker.HexCoords, defender.HexCoords, attacker.Direction) > 0;
 		if (!mainArc && !secondaryArc)
 		{
 			defender.PendingShotChecks.Add(

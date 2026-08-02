@@ -48,16 +48,17 @@ public partial class GridOverlayController : Node
 			if (dist <= moveRange && dist > 0) mesh.MaterialOverride = MoveMaterial;
 			else if (dist <= attackRange && dist > moveRange)
 			{
-				int diff = ((int)MoveRulesEvaluator.DirectionTo(center, coords)
-					- (int)direction + 6) % 6;
-				int arcBit = diff switch
+				FiringArc arc = FiringArcEvaluator.GetArc(center, coords, direction);
+				int arcBit = arc switch
 				{
-					0 => 1,
-					3 => 4,
+					FiringArc.Front => 1,
+					FiringArc.Rear => 4,
 					_ => 2
 				};
 				if ((arcMask & arcBit) == 0) continue;
-				mesh.MaterialOverride = diff is 0 or 3 ? AttackFrontMaterial : AttackMaterial;
+				mesh.MaterialOverride = arc is FiringArc.Front or FiringArc.Rear
+					? AttackFrontMaterial
+					: AttackMaterial;
 			}
 		}
 	}

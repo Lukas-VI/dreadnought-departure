@@ -52,6 +52,12 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "船坞"
 
+[node name="BtnPvp" type="Button" parent="CenterContainer/VBoxContainer" unique_id=1446092044]
+custom_minimum_size = Vector2(300, 60)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "PvP 联机"
+
 [node name="BtnQuit" type="Button" parent="CenterContainer/VBoxContainer" unique_id=1602749771]
 custom_minimum_size = Vector2(300, 60)
 layout_mode = 2
@@ -61,4 +67,5 @@ text = "退出"
 [connection signal="pressed" from="CenterContainer/VBoxContainer/BtnEditor" to="." method="_OnEditorPressed"]
 [connection signal="pressed" from="CenterContainer/VBoxContainer/BtnCampaign" to="." method="_OnCampaignPressed"]
 [connection signal="pressed" from="CenterContainer/VBoxContainer/BtnDock" to="." method="_OnDockPressed"]
+[connection signal="pressed" from="CenterContainer/VBoxContainer/BtnPvp" to="." method="_OnPvpPressed"]
 [connection signal="pressed" from="CenterContainer/VBoxContainer/BtnQuit" to="." method="_OnQuitPressed"]

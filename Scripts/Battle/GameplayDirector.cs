@@ -504,6 +504,7 @@ public partial class GameplayDirector : Node
 			foreach (var ship in _playerShips.Concat(_enemyShips))
 				if (GodotObject.IsInstanceValid(ship) && ship.PendingDamage > 0)
 					ship.ApplyPendingDamage();
+			RefreshStackOffsets();
 			RefreshCommandValues();
 
 			foreach (var ship in _playerShips.Concat(_enemyShips))
@@ -533,14 +534,10 @@ public partial class GameplayDirector : Node
 	{
 		float longest = 0f;
 		var bus = GetNode<EventBus>("EventBus");
-		var occupied = new HashSet<Vector2I>();
-		var occupiedShips = new Dictionary<Vector2I, ShipComponent>();
+		var occupiedShips = new Dictionary<Vector2I, List<ShipComponent>>();
 		foreach (var ship in _playerShips.Concat(_enemyShips))
 			if (IsShipAlive(ship))
-			{
-				occupied.Add(ship.HexCoords);
-				occupiedShips[ship.HexCoords] = ship;
-			}
+				AddStackOccupant(occupiedShips, ship.HexCoords, ship);
 
 		bool oddTurn = _turnNumber % 2 == 1;
 		var ordered = new List<ShipComponent>();
@@ -587,30 +584,30 @@ public partial class GameplayDirector : Node
 			if (chain != null)
 			{
 				longest = Mathf.Max(longest,
-					AnimateFormationChain(chain, phase, oddTurn, bus, occupied, occupiedShips));
+					AnimateFormationChain(chain, phase, oddTurn, bus, occupiedShips));
 				i += chain.Count - 1;
 				continue;
 			}
 			longest = Mathf.Max(longest,
-				AnimateStraightShip(ship, phase, oddTurn, bus, occupied, occupiedShips));
+				AnimateStraightShip(ship, phase, oddTurn, bus, occupiedShips));
 		}
 
 		if (longest > 0f)
 			await ToSignal(GetTree().CreateTimer(longest + 0.1f), "timeout");
+		RefreshStackOffsets();
 	}
 
 	private float AnimateStraightShip(ShipComponent ship, int phase, bool oddTurn, EventBus bus,
-		HashSet<Vector2I> occupied, Dictionary<Vector2I, ShipComponent> occupiedShips)
+		Dictionary<Vector2I, List<ShipComponent>> occupiedShips)
 	{
 		int requestedSteps = MoveRulesEvaluator.MovementForPhase(ship.CurrentSpeed, phase, oddTurn);
 		Vector2I off = HexDirectionUtility.Offset(ship.Direction);
-		int steps = ResolveMoveSteps(ship, requestedSteps, off, bus, occupied, occupiedShips);
+		int steps = ResolveMoveSteps(ship, requestedSteps, off, bus, occupiedShips);
 		if (!IsShipAlive(ship) || steps <= 0) return 0f;
 
 		Vector2I target = ship.HexCoords + off * steps;
-		occupied.Remove(ship.HexCoords);
-		occupied.Add(target);
-		occupiedShips[target] = ship;
+		RemoveStackOccupant(occupiedShips, ship.HexCoords, ship);
+		AddStackOccupant(occupiedShips, target, ship);
 		float duration = 0.35f + steps * 0.2f;
 		ship.AnimateMoveTo(_mapGenerator, target, duration);
 		return duration;
@@ -618,12 +615,12 @@ public partial class GameplayDirector : Node
 
 	/// <summary>单纵阵按首舰轨迹推进：后船逐格消费首舰历史轨迹，到达每个转向格时立即转向。</summary>
 	private float AnimateFormationChain(List<ShipComponent> chain, int phase, bool oddTurn, EventBus bus,
-		HashSet<Vector2I> occupied, Dictionary<Vector2I, ShipComponent> occupiedShips)
+		Dictionary<Vector2I, List<ShipComponent>> occupiedShips)
 	{
 		ShipComponent lead = chain[0];
 		int requestedSteps = MoveRulesEvaluator.MovementForPhase(lead.CurrentSpeed, phase, oddTurn);
 		Vector2I off = HexDirectionUtility.Offset(lead.Direction);
-		int steps = ResolveMoveSteps(lead, requestedSteps, off, bus, occupied, occupiedShips);
+		int steps = ResolveMoveSteps(lead, requestedSteps, off, bus, occupiedShips);
 		if (!IsShipAlive(lead)) return 0f;
 
 		FormationTrail trail = GetOrBuildFormationTrail(lead, chain);
@@ -640,9 +637,8 @@ public partial class GameplayDirector : Node
 
 		var leadPath = trail.Cells.GetRange(leadIndex + 1, steps);
 		var leadHeadings = trail.Headings.GetRange(leadIndex + 1, steps);
-		occupied.Remove(lead.HexCoords);
-		occupied.Add(trail.Cells[^1]);
-		occupiedShips[trail.Cells[^1]] = lead;
+		RemoveStackOccupant(occupiedShips, lead.HexCoords, lead);
+		AddStackOccupant(occupiedShips, trail.Cells[^1], lead);
 		float perStep = 0.2f + 0.35f / Math.Max(1, steps);
 		lead.AnimateMovePath(_mapGenerator, leadPath, perStep, leadHeadings);
 
@@ -656,9 +652,8 @@ public partial class GameplayDirector : Node
 			if (followerSteps <= 0) continue;
 			var path = trail.Cells.GetRange(followerIndex + 1, followerSteps);
 			var headings = trail.Headings.GetRange(followerIndex + 1, followerSteps);
-			occupied.Remove(follower.HexCoords);
-			occupied.Add(path[followerSteps - 1]);
-			occupiedShips[path[followerSteps - 1]] = follower;
+			RemoveStackOccupant(occupiedShips, follower.HexCoords, follower);
+			AddStackOccupant(occupiedShips, path[followerSteps - 1], follower);
 			follower.AnimateMovePath(_mapGenerator, path, perStep, headings);
 		}
 		return 0.35f + steps * 0.2f;
@@ -686,11 +681,11 @@ public partial class GameplayDirector : Node
 	}
 
 	private int ResolveMoveSteps(ShipComponent ship, int requestedSteps, Vector2I off, EventBus bus,
-		HashSet<Vector2I> occupied, Dictionary<Vector2I, ShipComponent> occupiedShips)
+		Dictionary<Vector2I, List<ShipComponent>> occupiedShips)
 	{
 		int steps = MoveRulesEvaluator.AdvanceSteps(ship.HexCoords, ship.Direction, requestedSteps,
 			hex => (_dataManager?.IsIsland(hex) ?? false)
-				|| (occupied.Contains(hex) && hex != ship.HexCoords));
+				|| !CanStackEnter(ship, hex, occupiedShips));
 		if (steps >= requestedSteps) return steps;
 
 		Vector2I blockedHex = ship.HexCoords + off * (steps + 1);
@@ -701,8 +696,9 @@ public partial class GameplayDirector : Node
 			RefreshCommandValues();
 			return 0;
 		}
-		if (occupiedShips.TryGetValue(blockedHex, out var blocker) && blocker != ship)
+		if (occupiedShips.TryGetValue(blockedHex, out var blockers) && blockers.Count > 0)
 		{
+			var blocker = blockers[0];
 			if (CollisionRulesEvaluator.IsCollision())
 			{
 				int hullSum = ship.MaxHp + blocker.MaxHp;
@@ -723,6 +719,54 @@ public partial class GameplayDirector : Node
 			bus.EmitLog($"⚠️ {ship.ShipName} 前方受阻，仅推进 {steps} 格");
 		}
 		return steps;
+	}
+
+	private static void AddStackOccupant(
+		Dictionary<Vector2I, List<ShipComponent>> occupants, Vector2I hex, ShipComponent ship)
+	{
+		if (!occupants.TryGetValue(hex, out var list))
+		{
+			list = new List<ShipComponent>();
+			occupants[hex] = list;
+		}
+		if (!list.Contains(ship)) list.Add(ship);
+	}
+
+	private static void RemoveStackOccupant(
+		Dictionary<Vector2I, List<ShipComponent>> occupants, Vector2I hex, ShipComponent ship)
+	{
+		if (occupants.TryGetValue(hex, out var list))
+		{
+			list.Remove(ship);
+			if (list.Count == 0) occupants.Remove(hex);
+		}
+	}
+
+	/// <summary>同阵营单格最多 2 艘；敌舰占位或已满 2 艘时不可进入。</summary>
+	private static bool CanStackEnter(ShipComponent ship, Vector2I hex,
+		Dictionary<Vector2I, List<ShipComponent>> occupants)
+	{
+		if (!occupants.TryGetValue(hex, out var list) || list.Count == 0) return true;
+		if (hex == ship.HexCoords) return true;
+		if (list.Any(s => s.BattleSide != ship.BattleSide)) return false;
+		return list.Count < 2;
+	}
+
+	/// <summary>按同格同阵营堆叠序号自动调整模型 y 高度。</summary>
+	public void RefreshStackOffsets()
+	{
+		var groups = new Dictionary<Vector2I, List<ShipComponent>>();
+		foreach (var ship in _playerShips.Concat(_enemyShips))
+			if (IsShipAlive(ship))
+				AddStackOccupant(groups, ship.HexCoords, ship);
+
+		foreach (var group in groups)
+			foreach (var sideGroup in group.Value.GroupBy(s => s.BattleSide))
+			{
+				int index = 0;
+				foreach (var ship in sideGroup)
+					ship.ApplyStackOffset(index++);
+			}
 	}
 
 	public BattlePhase CurrentPhase => _currentPhase;

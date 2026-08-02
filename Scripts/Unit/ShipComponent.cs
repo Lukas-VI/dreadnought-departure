@@ -23,7 +23,7 @@ public partial class ShipComponent : Node3D
 	[Export] public float TurnTweenDuration = 0.2f;
 	/// <summary>堆叠基准高度；并排时按 Z 轴左右错开。</summary>
 	public const float StackBaseY = 0.3f;
-	public const float StackZStep = 0.5f;
+	public const float StackZStep = 1.25f;
 
 	// 战舰的内存纯数据（Data 不为空时会被覆盖）
 	public string ShipName { get; set; } = "HMS Dreadnought";
@@ -142,12 +142,12 @@ public partial class ShipComponent : Node3D
 		Position = new Vector3(world.X, StackBaseY, world.Z);
 	}
 
-	/// <summary>按堆叠序号沿舰船局部侧向轴左右并排，Y 始终保持同一水平高度。</summary>
-	public void ApplyStackOffset(int index, int total, Vector3 lateralAxis)
+	/// <summary>基于六角格中心按堆叠序号沿舰船局部侧向轴左右并排，Y 始终保持同一水平高度。</summary>
+	public void ApplyStackOffset(int index, int total, Vector3 hexCenter, Vector3 lateralAxis)
 	{
 		float zOffset = total <= 1 ? 0f : (index - (total - 1) / 2f) * StackZStep;
 		Vector3 offset = lateralAxis * zOffset;
-		Position = new Vector3(Position.X, StackBaseY, Position.Z) + offset;
+		Position = new Vector3(hexCenter.X, StackBaseY, hexCenter.Z) + offset;
 	}
 	/// <summary>移动阶段惯性移动动画：从当前位置平滑移动到目标六角格，完成后更新 HexCoords。子类可覆写播放专属动画。</summary>
 	public virtual Tween AnimateMoveTo(MapGenerator map, Vector2I target, float duration)

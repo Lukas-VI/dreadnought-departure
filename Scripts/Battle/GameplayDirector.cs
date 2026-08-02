@@ -765,7 +765,11 @@ public partial class GameplayDirector : Node
 			{
 				var stacked = sideGroup.ToList();
 				for (int i = 0; i < stacked.Count; i++)
-					stacked[i].ApplyStackOffset(i, stacked.Count, LateralAxisFor(stacked[i]));
+				{
+					var ship = stacked[i];
+					Vector3 hexCenter = _mapGenerator.HexToWorld(ship.HexCoords.X, ship.HexCoords.Y);
+					ship.ApplyStackOffset(i, stacked.Count, hexCenter, LateralAxisFor(ship));
+				}
 			}
 	}
 

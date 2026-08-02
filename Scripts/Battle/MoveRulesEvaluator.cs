@@ -111,33 +111,59 @@ public static class MoveRulesEvaluator
 		int unitSpeed = speedOverride ?? unit.CurrentSpeed;
 		var forward = HexDirectionUtility.Offset(unitDirection);
 		var backward = -forward;
+
+		// 按格子收集同向同速的船，同格堆叠视为同一“列”。
+		var cells = new Dictionary<Vector2I, List<ShipComponent>>();
+		foreach (var s in allFriendly)
+		{
+			if (!GodotObject.IsInstanceValid(s) || s.CurrentHp <= 0
+				|| s.Direction != unitDirection || s.CurrentSpeed != unitSpeed)
+				continue;
+			if (!cells.TryGetValue(s.HexCoords, out var list))
+			{
+				list = new List<ShipComponent>();
+				cells[s.HexCoords] = list;
+			}
+			if (!list.Contains(s)) list.Add(s);
+		}
+
+		if (!cells.TryGetValue(unit.HexCoords, out var startColumn))
+		{
+			startColumn = new List<ShipComponent> { unit };
+			cells[unit.HexCoords] = startColumn;
+		}
+		else if (!startColumn.Contains(unit))
+		{
+			startColumn.Add(unit);
+		}
+
 		var chain = new List<ShipComponent>();
 		var visited = new HashSet<ShipComponent>();
 
-		// 沿舰艏方向找前面的船，直到队首。
-		ShipComponent current = unit;
-		while (true)
+		// 从紧邻的前格向队首推进，最后倒序放入链首。
+		var aheadColumns = new List<List<ShipComponent>>();
+		Vector2I cursor = unit.HexCoords + forward;
+		while (cells.TryGetValue(cursor, out var column) && column.Count > 0)
 		{
-			visited.Add(current);
-			chain.Insert(0, current);
-			var ahead = allFriendly.FirstOrDefault(s => s != current && s.CurrentHp > 0
-				&& s.Direction == unitDirection && s.CurrentSpeed == unitSpeed
-				&& s.HexCoords == current.HexCoords + forward);
-			if (ahead == null) break;
-			current = ahead;
+			aheadColumns.Add(column);
+			cursor += forward;
 		}
+		for (int i = aheadColumns.Count - 1; i >= 0; i--)
+			foreach (var s in aheadColumns[i])
+				if (visited.Add(s))
+					chain.Add(s);
 
-		// 从 unit 沿船尾方向收集跟随者。
-		current = unit;
-		while (true)
+		foreach (var s in startColumn)
+			if (visited.Add(s))
+				chain.Add(s);
+
+		cursor = unit.HexCoords + backward;
+		while (cells.TryGetValue(cursor, out var column) && column.Count > 0)
 		{
-			var follower = allFriendly.FirstOrDefault(s => s != current && s.CurrentHp > 0
-				&& s.Direction == unitDirection && s.CurrentSpeed == unitSpeed
-				&& s.HexCoords == current.HexCoords + backward && !visited.Contains(s));
-			if (follower == null) break;
-			chain.Add(follower);
-			visited.Add(follower);
-			current = follower;
+			foreach (var s in column)
+				if (visited.Add(s))
+					chain.Add(s);
+			cursor += backward;
 		}
 
 		if (chain.Count < 2) return result;
@@ -200,12 +226,15 @@ public static class MoveRulesEvaluator
 			if (members.Count < 2) continue;
 			bool adjacent = true;
 			for (int i = 1; i < members.Count; i++)
-				if (BattleRulesEvaluator.GetHexDistance(
-					members[i - 1].HexCoords, members[i].HexCoords) != 1)
+			{
+				int step = BattleRulesEvaluator.GetHexDistance(
+					members[i - 1].HexCoords, members[i].HexCoords);
+				if (step != 0 && step != 1)
 				{
 					adjacent = false;
 					break;
 				}
+			}
 			if (!adjacent) continue;
 			for (int i = 0; i < members.Count; i++)
 			{

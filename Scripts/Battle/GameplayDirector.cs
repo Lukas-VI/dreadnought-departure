@@ -339,7 +339,8 @@ public partial class GameplayDirector : Node
 					&& CombatRulesEvaluator.CanFireInArc(ship, target))
 				{
 					ship.MainAmmo--;
-					var (_, _, desc) = CombatRulesEvaluator.FireEx(ship, target, ship.PendingAttackDistance);
+					var (_, _, desc) = CombatRulesEvaluator.FireEx(ship, target,
+						ship.PendingAttackDistance, ship.PendingRadarUsed);
 					bus.EmitLog(desc);
 				}
 				else
@@ -468,10 +469,15 @@ public partial class GameplayDirector : Node
 	private async System.Threading.Tasks.Task AnimateMovePhase(int phase)
 	{
 		float longest = 0f;
+		var bus = GetNode<EventBus>("EventBus");
 		var occupied = new HashSet<Vector2I>();
+		var occupiedShips = new Dictionary<Vector2I, ShipComponent>();
 		foreach (var ship in _playerShips.Concat(_enemyShips))
 			if (IsShipAlive(ship))
+			{
 				occupied.Add(ship.HexCoords);
+				occupiedShips[ship.HexCoords] = ship;
+			}
 
 		foreach (var ship in _playerShips.Concat(_enemyShips))
 		{
@@ -482,12 +488,40 @@ public partial class GameplayDirector : Node
 			int steps = MoveRulesEvaluator.AdvanceSteps(ship.HexCoords, ship.Direction,
 				requestedSteps, hex => (_dataManager?.IsIsland(hex) ?? false)
 					|| (occupied.Contains(hex) && hex != ship.HexCoords));
-			if (steps <= 0) continue;
-			if (steps < requestedSteps)
-				GetNode<EventBus>("EventBus").EmitLog(
-					$"⚠️ {ship.ShipName} 前方受阻（岛屿/舰船），仅推进 {steps} 格");
 
 			Vector2I off = HexDirectionUtility.Offset(ship.Direction);
+			if (steps < requestedSteps)
+			{
+				Vector2I blockedHex = ship.HexCoords + off * (steps + 1);
+				if (_dataManager?.IsIsland(blockedHex) ?? false)
+				{
+					bus.EmitLog($"🪨 {ship.ShipName} 撞击岛屿，直接沉没！");
+					ship.TakeDamage(ship.CurrentHp);
+					continue;
+				}
+				if (occupiedShips.TryGetValue(blockedHex, out var blocker) && blocker != ship)
+				{
+					if (CollisionRulesEvaluator.IsCollision())
+					{
+						int hullSum = ship.MaxHp + blocker.MaxHp;
+						var (rollA, dmgA) = CollisionRulesEvaluator.RollDamage(hullSum);
+						var (rollB, dmgB) = CollisionRulesEvaluator.RollDamage(hullSum);
+						bus.EmitLog($"💥 {ship.ShipName} 与 {blocker.ShipName} 发生冲撞！（{rollA}→{dmgA}，{rollB}→{dmgB}）");
+						ship.TakeDamage(dmgA);
+						blocker.TakeDamage(dmgB);
+					}
+					else
+					{
+						bus.EmitLog($"⚠️ {ship.ShipName} 前方有舰船但未发生冲撞，停在 {steps} 格前");
+					}
+				}
+				else
+				{
+					bus.EmitLog($"⚠️ {ship.ShipName} 前方受阻，仅推进 {steps} 格");
+				}
+			}
+			if (steps <= 0) continue;
+
 			Vector2I target = ship.HexCoords + off * steps;
 			occupied.Remove(ship.HexCoords);
 			occupied.Add(target);

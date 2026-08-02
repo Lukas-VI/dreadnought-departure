@@ -92,55 +92,55 @@ public static class MoveRulesEvaluator
 		public bool IsInFormation;
 		public ShipComponent LeadShip;
 		public List<ShipComponent> Followers = new();
+		public List<ShipComponent> Ships = new();
 	}
 
 	/// <summary>
-	/// 判定 unit 是否处于单纵阵中，若是则返回首舰与跟随者列表
-	/// 条件：至少 2 艘同一方舰船，朝向一致，排在一条纵线上（相邻+同向）
+	/// 判定 unit 是否处于单纵阵中，若是则返回完整编队链、首舰与跟随者列表
+	/// 条件：至少 2 艘同一方舰船，航速一致，朝向一致，首尾相邻排在一条纵线上
 	/// </summary>
 	public static FormationResult DetectLineAhead(
 		ShipComponent unit,
 		List<ShipComponent> allFriendly)
 	{
 		var result = new FormationResult();
-		if (allFriendly.Count < 2) return result;
-
-		// 找所有朝向相同的友舰
-		var sameDir = allFriendly
-			.Where(s => s != unit && s.Direction == unit.Direction)
-			.ToList();
-
-		// 向前找首舰、向后找跟随者
+		if (unit == null || allFriendly.Count < 2) return result;
 		var forward = HexDirectionUtility.Offset(unit.Direction);
 		var backward = -forward;
+		var chain = new List<ShipComponent>();
+		var visited = new HashSet<ShipComponent>();
 
+		// 沿舰艏方向找前面的船，直到队首。
 		ShipComponent current = unit;
-		// 向前走：找首舰
 		while (true)
 		{
-			Vector2I next = current.HexCoords + forward;
-			var lead = sameDir.FirstOrDefault(s => s.HexCoords == next);
-			if (lead == null) break;
-			current = lead;
-			sameDir.Remove(lead);
+			visited.Add(current);
+			chain.Insert(0, current);
+			var ahead = allFriendly.FirstOrDefault(s => s != current && s.CurrentHp > 0
+				&& s.Direction == unit.Direction && s.CurrentSpeed == unit.CurrentSpeed
+				&& s.HexCoords == current.HexCoords + forward);
+			if (ahead == null) break;
+			current = ahead;
 		}
-		result.LeadShip = current;
 
-		// 向后走：收集跟随者
+		// 从 unit 沿船尾方向收集跟随者。
 		current = unit;
 		while (true)
 		{
-			Vector2I next = current.HexCoords + backward;
-			var follower = allFriendly
-				.Where(s => s != current && s.Direction == unit.Direction)
-				.FirstOrDefault(s => s.HexCoords == next);
+			var follower = allFriendly.FirstOrDefault(s => s != current && s.CurrentHp > 0
+				&& s.Direction == unit.Direction && s.CurrentSpeed == unit.CurrentSpeed
+				&& s.HexCoords == current.HexCoords + backward && !visited.Contains(s));
 			if (follower == null) break;
-			result.Followers.Add(follower);
+			chain.Add(follower);
+			visited.Add(follower);
 			current = follower;
 		}
 
-		result.IsInFormation = result.LeadShip != null &&
-			(result.Followers.Count > 0 || result.LeadShip != unit);
+		if (chain.Count < 2) return result;
+		result.IsInFormation = true;
+		result.Ships = chain;
+		result.LeadShip = chain[0];
+		result.Followers = chain.Skip(1).ToList();
 		return result;
 	}
 }

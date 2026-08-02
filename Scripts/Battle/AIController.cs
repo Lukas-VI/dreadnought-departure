@@ -19,12 +19,14 @@ public partial class AIController : Node, IUnitController
 		var aliveEnemies = enemyUnits
 			.Where(e => GodotObject.IsInstanceValid(e) && e.CurrentHp > 0)
 			.ToList();
+		var data = GetNodeOrNull<LevelDataManager>("../LevelDataManager");
 
 		foreach (var ship in myUnits)
 		{
 			if (!GodotObject.IsInstanceValid(ship) || ship.CurrentHp <= 0) continue;
 
 			var target = aliveEnemies
+				.Where(e => VisionRulesEvaluator.CanEngage(ship, e, data))
 				.OrderBy(e => BattleRulesEvaluator.GetHexDistance(ship.HexCoords, e.HexCoords))
 				.FirstOrDefault();
 			if (target == null) break;
@@ -39,7 +41,8 @@ public partial class AIController : Node, IUnitController
 				&& ship.MainAmmo > 0 && CombatRulesEvaluator.CanFireInArc(ship, target))
 			{
 				ship.MainAmmo--;
-				var (_, _, desc) = CombatRulesEvaluator.FireEx(ship, target, dist);
+				bool radarOnly = VisionRulesEvaluator.IsRadarOnly(ship, target, data);
+				var (_, _, desc) = CombatRulesEvaluator.FireEx(ship, target, dist, radarOnly);
 				Log(hud, desc);
 				continue;
 			}

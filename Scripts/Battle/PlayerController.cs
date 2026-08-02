@@ -16,6 +16,7 @@ namespace DreadnoughtDeparture.Core;
 public partial class PlayerController : Node, IUnitController
 {
 	private GameplayDirector _director;
+	private LevelDataManager _data;
 	private MapGenerator _map;
 	private GridOverlayController _overlay;
 	private List<ShipComponent> _myUnits;
@@ -26,6 +27,7 @@ public partial class PlayerController : Node, IUnitController
 
 	public override void _Ready()
 	{
+		_data = GetNode<LevelDataManager>("../LevelDataManager");
 		GetNode<EventBus>("../EventBus").HexClicked += OnHexClicked;
 		GetNode<EventBus>("../EventBus").ActionSelected += OnActionSelected;
 	}
@@ -81,6 +83,9 @@ public partial class PlayerController : Node, IUnitController
 		{
 			var ship = _pendingShips.Dequeue();
 			if (!GodotObject.IsInstanceValid(ship) || ship.CurrentHp <= 0)
+				continue;
+			// 头舰编队操作已给后续舰写入待命，直接跳过，玩家仍可手动点击覆盖。
+			if (ship.PendingSpeed >= 0 || ship.PendingDirection.HasValue)
 				continue;
 
 			SelectShip(ship);
@@ -170,12 +175,26 @@ public partial class PlayerController : Node, IUnitController
 		{ RejectAction($"❌ 航速调整超限（当前 {old}）"); return; }
 
 		int cpCost = Math.Abs(delta);
+		var formation = MoveRulesEvaluator.DetectLineAhead(_selected, _myUnits);
+		bool leadFormation = formation.IsInFormation && ReferenceEquals(formation.LeadShip, _selected);
+		if (leadFormation)
+			cpCost = 1;
 		if (cpCost > 0 && _director != null && !_director.TryConsumeCP(cpCost))
 		{ RejectAction($"❌ CP 不足（需要 {cpCost}，剩余 {_director.CurrentCP}）"); return; }
 
-		_selected.PendingSpeed = wish;
-		GetNode<EventBus>("../EventBus").EmitSignal("LogMessage",
-			$"⚙ 航速待命 {old} → {wish}（消耗 {cpCost} CP，推进后生效）");
+		if (leadFormation)
+		{
+			foreach (var ship in formation.Ships)
+				ship.PendingSpeed = wish;
+			GetNode<EventBus>("../EventBus").EmitSignal("LogMessage",
+				$"⚙ 编队航速待命 {old} → {wish}（{formation.Ships.Count} 艘，{cpCost} CP）");
+		}
+		else
+		{
+			_selected.PendingSpeed = wish;
+			GetNode<EventBus>("../EventBus").EmitSignal("LogMessage",
+				$"⚙ 航速待命 {old} → {wish}（消耗 {cpCost} CP，推进后生效）");
+		}
 
 		EndAction();
 	}
@@ -242,9 +261,12 @@ public partial class PlayerController : Node, IUnitController
 		{ RejectAction("❌ 目标无效或不在射程内！"); return; }
 		if (!CombatRulesEvaluator.CanFireInArc(_selected, target))
 		{ RejectAction("❌ 目标不在当前舰炮射界内！"); return; }
+		if (!VisionRulesEvaluator.CanEngage(_selected, target, _data))
+		{ RejectAction("❌ 目标不在视野或雷达范围内！"); return; }
 
 		_selected.PendingAttackTarget = target;
 		_selected.PendingAttackDistance = d;
+		_selected.PendingRadarUsed = VisionRulesEvaluator.IsRadarOnly(_selected, target, _data);
 		// 选中敌方后：以船与敌舰中点为焦点，炮击在推进阶段才结算。
 		GetNode<EventBus>("../EventBus").EmitSignal("CameraFocusBetweenRequested",
 			ShipWorld(_selected), ShipWorld(target));
@@ -262,11 +284,24 @@ public partial class PlayerController : Node, IUnitController
 			{
 				var nd = HexDirectionUtility.TurnLeft(_selected.Direction);
 				int cost = MoveRulesEvaluator.TurnCostToFace(_selected.Direction, nd);
+				var formation = MoveRulesEvaluator.DetectLineAhead(_selected, _myUnits);
+				bool leadFormation = formation.IsInFormation && ReferenceEquals(formation.LeadShip, _selected);
+				if (leadFormation) cost = 1;
 				if (_director != null && !_director.TryConsumeCP(cost))
 				{ _pendingAction = null; RejectAction($"❌ 转向需要 {cost} CP"); return; }
-				_selected.PendingDirection = nd;
-				GetNode<EventBus>("../EventBus").EmitSignal("LogMessage",
-					$"↩ 左转待命 → 航向 {nd}（消耗 {cost} CP，推进后生效）");
+				if (leadFormation)
+				{
+					foreach (var ship in formation.Ships)
+						ship.PendingDirection = nd;
+					GetNode<EventBus>("../EventBus").EmitSignal("LogMessage",
+						$"↩ 编队左转待命 → 航向 {nd}（{formation.Ships.Count} 艘，{cost} CP）");
+				}
+				else
+				{
+					_selected.PendingDirection = nd;
+					GetNode<EventBus>("../EventBus").EmitSignal("LogMessage",
+						$"↩ 左转待命 → 航向 {nd}（消耗 {cost} CP，推进后生效）");
+				}
 				EndAction();
 				break;
 			}
@@ -274,11 +309,24 @@ public partial class PlayerController : Node, IUnitController
 			{
 				var nd = HexDirectionUtility.TurnRight(_selected.Direction);
 				int cost = MoveRulesEvaluator.TurnCostToFace(_selected.Direction, nd);
+				var formation = MoveRulesEvaluator.DetectLineAhead(_selected, _myUnits);
+				bool leadFormation = formation.IsInFormation && ReferenceEquals(formation.LeadShip, _selected);
+				if (leadFormation) cost = 1;
 				if (_director != null && !_director.TryConsumeCP(cost))
 				{ _pendingAction = null; RejectAction($"❌ 转向需要 {cost} CP"); return; }
-				_selected.PendingDirection = nd;
-				GetNode<EventBus>("../EventBus").EmitSignal("LogMessage",
-					$"↪ 右转待命 → 航向 {nd}（消耗 {cost} CP，推进后生效）");
+				if (leadFormation)
+				{
+					foreach (var ship in formation.Ships)
+						ship.PendingDirection = nd;
+					GetNode<EventBus>("../EventBus").EmitSignal("LogMessage",
+						$"↪ 编队右转待命 → 航向 {nd}（{formation.Ships.Count} 艘，{cost} CP）");
+				}
+				else
+				{
+					_selected.PendingDirection = nd;
+					GetNode<EventBus>("../EventBus").EmitSignal("LogMessage",
+						$"↪ 右转待命 → 航向 {nd}（消耗 {cost} CP，推进后生效）");
+				}
 				EndAction();
 				break;
 			}

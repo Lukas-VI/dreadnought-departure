@@ -40,6 +40,7 @@ public partial class ShipComponent : Node3D
 	public HexDirection? PendingDirection;
 	public ShipComponent PendingAttackTarget;
 	public int PendingAttackDistance;
+	public bool PendingRadarUsed;
 	public int TileSourceId; // 兼容字段：来自旧 2D 编辑器的 tile ID
 	/// <summary>阵营（由生成点决定），用于敌我分组。</summary>
 	public GenerationSide BattleSide = GenerationSide.Player;
@@ -99,6 +100,7 @@ public partial class ShipComponent : Node3D
 		PendingDirection = null;
 		PendingAttackTarget = null;
 		PendingAttackDistance = 0;
+		PendingRadarUsed = false;
 	}
 
 	// 子类覆写这个方法，不用再写一遍 AddToGroup / 找 Label3D

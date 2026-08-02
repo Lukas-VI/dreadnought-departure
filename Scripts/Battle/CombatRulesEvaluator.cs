@@ -63,9 +63,13 @@ public static class CombatRulesEvaluator
 	}
 
 	// ── 完整命中判定流程：命中骰、距离衰减、装甲抵扣、伤害浮动 ──
-	public static ShotCheck ResolveShotCheck(ShipComponent attacker, ShipComponent defender, int distanceHex)
+	public static ShotCheck ResolveShotCheck(ShipComponent attacker, ShipComponent defender, int distanceHex,
+		bool radarUsed = false)
 	{
 		int threshold = HitThreshold(distanceHex);
+		if (radarUsed)
+			threshold += RadarRulesEvaluator.GetHitModifier(attacker.Data?.RadarType);
+		threshold = Mathf.Clamp(threshold, 1, 10);
 		int roll = _rng.Next(1, 11); // 1D10
 		int stateCoeff = attacker.DamageState switch
 		{
@@ -138,9 +142,10 @@ public static class CombatRulesEvaluator
 	}
 
 	// 炮击——返回命中文本供 UI 显示
-	public static (bool hit, int damage, string desc) FireEx(ShipComponent attacker, ShipComponent defender, int distanceHex)
+	public static (bool hit, int damage, string desc) FireEx(ShipComponent attacker, ShipComponent defender, int distanceHex,
+		bool radarUsed = false)
 	{
-		var check = ResolveShotCheck(attacker, defender, distanceHex);
+		var check = ResolveShotCheck(attacker, defender, distanceHex, radarUsed);
 		defender.PendingShotChecks.Add(check.Detail);
 		if (check.Hit)
 		{

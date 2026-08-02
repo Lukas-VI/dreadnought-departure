@@ -22,7 +22,7 @@
 - 本轮修正：射界整体顺时针偏转 60° 与六角格对齐；侧射材质改为 `mat_attack_side.tres`，`mat_attack.tres` 移除。
 - 本轮 UI：指挥值 / CP / PV 状态栏移到顶部居中，左右敌我舰船列表改为可滚动弹性面板；P0 状态更新为“核心闭环完成”，冲撞以简易占位，鱼雷实体玩法后推。
 - 本轮调整：左右敌我列表保持当前锚点，容器类型改为 `MarginContainer`，并保留内部 `ScrollContainer` 弹性滚动。
-- 本轮新增：同阵营单格堆叠（上限 2 艘），移动可进入友军占位格；移动结算与沉没结算后按堆叠序号自动调整模型 y 偏移。
+- 本轮新增：同阵营单格堆叠（上限 2 艘），移动可进入友军占位格；移动结算与沉没结算后按堆叠序号沿 Z 轴左右并排，Y 保持统一高度。
 - 以上内容已随本轮提交入库，下一手可以直接继续。
 
 ## 2. 本轮改动明细
@@ -262,7 +262,7 @@
 - 几何射界冒烟：按 `FiringArcEvaluator` 顺时针 60° 对齐后的角度规则验证六邻格分类，`mat_attack_front`/`mat_attack_side` 选色与 60°/120° 定义一致。
 - BattleUI 冒烟：`battle_smoke` 在指挥状态栏移至 `TopCenterPanel`、左右列表移入 `ScrollContainer` 后仍能正常完成阶段推进与炮击流程。
 - MarginContainer 冒烟：左右列表改为 `MarginContainer` 布局后 `battle_smoke` 仍能正常加载、推进阶段并完成炮击。
-- 堆叠冒烟：友军舰船在移动阶段进入同格后 `HexCoords` 相同，模型 y 自动错开 0.15；`formation_smoke` / `battle_smoke` 均通过。
+- 堆叠冒烟：友军舰船在移动阶段进入同格后 `HexCoords` 相同，Y 保持 0.3，Z 自动错开 ±0.25；`formation_smoke` / `battle_smoke` 均通过。
 - 编辑器新建画布 headless 冒烟：`LevelDataManager` 写入/读回 `PhaseSecondsPerShip`、`PhaseExtraSeconds`、`TorpedoPhaseEnabled`；编辑器 `editor_ui.tscn` 与主菜单 `map_select_menu.tscn` 实例化无报错。
 - 编辑器关卡设置 headless 冒烟：`ApplyScenarioSettings` 写入/读回夜战、主动权归属与鱼雷模式；编辑器“关卡设置”弹窗隐藏名称/朝向字段并正常打开。
 - 副炮 headless 冒烟：南达科他在炮击阶段对距离 3 敌舰开火，主炮与副炮各产生独立命中检定记录。

@@ -763,9 +763,9 @@ public partial class GameplayDirector : Node
 		foreach (var group in groups)
 			foreach (var sideGroup in group.Value.GroupBy(s => s.BattleSide))
 			{
-				int index = 0;
-				foreach (var ship in sideGroup)
-					ship.ApplyStackOffset(index++);
+				var stacked = sideGroup.ToList();
+				for (int i = 0; i < stacked.Count; i++)
+					stacked[i].ApplyStackOffset(i, stacked.Count);
 			}
 	}
 

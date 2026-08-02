@@ -21,9 +21,9 @@ public partial class ShipComponent : Node3D
 	[Export] public float NSModelYawOffsetDegrees = 30f;
 	/// <summary>转向补间动画时长（秒）。</summary>
 	[Export] public float TurnTweenDuration = 0.2f;
-	/// <summary>堆叠基准高度与每艘船的 y 间距。</summary>
+	/// <summary>堆叠基准高度；并排时按 Z 轴左右错开。</summary>
 	public const float StackBaseY = 0.3f;
-	public const float StackYStep = 0.15f;
+	public const float StackZStep = 0.5f;
 
 	// 战舰的内存纯数据（Data 不为空时会被覆盖）
 	public string ShipName { get; set; } = "HMS Dreadnought";
@@ -142,10 +142,11 @@ public partial class ShipComponent : Node3D
 		Position = new Vector3(world.X, StackBaseY, world.Z);
 	}
 
-	/// <summary>按堆叠序号设置模型 y 高度，避免同格舰船重叠。</summary>
-	public void ApplyStackOffset(int index)
+	/// <summary>按堆叠序号沿 Z 轴左右并排，Y 始终保持同一水平高度。</summary>
+	public void ApplyStackOffset(int index, int total)
 	{
-		Position = new Vector3(Position.X, StackBaseY + index * StackYStep, Position.Z);
+		float zOffset = total <= 1 ? 0f : (index - (total - 1) / 2f) * StackZStep;
+		Position = new Vector3(Position.X, StackBaseY, Position.Z + zOffset);
 	}
 	/// <summary>移动阶段惯性移动动画：从当前位置平滑移动到目标六角格，完成后更新 HexCoords。子类可覆写播放专属动画。</summary>
 	public virtual Tween AnimateMoveTo(MapGenerator map, Vector2I target, float duration)

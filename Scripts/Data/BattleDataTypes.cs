@@ -146,7 +146,8 @@ public struct Firepower
 	public int ForArc(HexDirection shipDir, HexDirection targetDir)
 	{
 		int diff = ((int)targetDir - (int)shipDir + 6) % 6;
-		return diff switch { 0 or 5 => Forward, 1 or 4 => Side, _ => Backward };
+		// 正前/正后各 60°，左右侧射各 120°（每侧覆盖两个相邻六向）。
+		return diff switch { 0 => Forward, 3 => Backward, _ => Side };
 	}
 }
 

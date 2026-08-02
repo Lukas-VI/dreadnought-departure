@@ -52,12 +52,12 @@ public partial class GridOverlayController : Node
 					- (int)direction + 6) % 6;
 				int arcBit = diff switch
 				{
-					0 or 5 => 1,
-					1 or 4 => 2,
-					_ => 4
+					0 => 1,
+					3 => 4,
+					_ => 2
 				};
 				if ((arcMask & arcBit) == 0) continue;
-				mesh.MaterialOverride = diff is 1 or 4 ? AttackMaterial : AttackFrontMaterial;
+				mesh.MaterialOverride = diff is 0 or 3 ? AttackFrontMaterial : AttackMaterial;
 			}
 		}
 	}

@@ -36,6 +36,7 @@ public partial class EditorUIController : Control
 	private ColorRect _libraryOverlay;
 	private ItemList _libraryList;
 	private CenterContainer _newDialog;
+	private Label _newTitleLabel;
 	private LineEdit _newNameEdit;
 	private OptionButton _newOrientation;
 	private SpinBox _playerCommandSpin;
@@ -45,9 +46,14 @@ public partial class EditorUIController : Control
 	private SpinBox _initiativeSpin;
 	private SpinBox _visionSpin;
 	private SpinBox _maxTurnsSpin;
+	private OptionButton _mapTypeOption;
+	private OptionButton _initiativeOwnerOption;
+	private SpinBox _torpedoModePlayerSpin;
+	private SpinBox _torpedoModeEnemySpin;
 	private SpinBox[] _phaseSecondsSpins;
 	private SpinBox _phaseExtraSpin;
 	private CheckBox _torpedoEnabledCheck;
+	private bool _editingScenario;
 	private ConfirmationDialog _deleteDialog;
 	private FileDialog _importDialog;
 	private string _pendingDelete;
@@ -96,6 +102,7 @@ public partial class EditorUIController : Control
 		_libraryOverlay = GetNode<ColorRect>("LibraryOverlay");
 		_libraryList = GetNode<ItemList>("LibraryOverlay/LibraryCenter/LibraryPanel/LibraryBox/CanvasList");
 		_newDialog = GetNode<CenterContainer>("NewDialog");
+		_newTitleLabel = GetNode<Label>("NewDialog/NewPanel/NewBox/NewTitle");
 		_newNameEdit = GetNode<LineEdit>("NewDialog/NewPanel/NewBox/NewNameEdit");
 		_newOrientation = GetNode<OptionButton>("NewDialog/NewPanel/NewBox/NewOrientation");
 		_playerCommandSpin = GetNode<SpinBox>("NewDialog/NewPanel/NewBox/PlayerCommandSpin");
@@ -105,6 +112,10 @@ public partial class EditorUIController : Control
 		_initiativeSpin = GetNode<SpinBox>("NewDialog/NewPanel/NewBox/InitiativeSpin");
 		_visionSpin = GetNode<SpinBox>("NewDialog/NewPanel/NewBox/VisionSpin");
 		_maxTurnsSpin = GetNode<SpinBox>("NewDialog/NewPanel/NewBox/MaxTurnsSpin");
+		_mapTypeOption = GetNode<OptionButton>("NewDialog/NewPanel/NewBox/PhaseScroll/PhaseBox/ScenarioMapType");
+		_initiativeOwnerOption = GetNode<OptionButton>("NewDialog/NewPanel/NewBox/PhaseScroll/PhaseBox/InitiativeOwnerOption");
+		_torpedoModePlayerSpin = GetNode<SpinBox>("NewDialog/NewPanel/NewBox/PhaseScroll/PhaseBox/TorpedoModePlayerSpin");
+		_torpedoModeEnemySpin = GetNode<SpinBox>("NewDialog/NewPanel/NewBox/PhaseScroll/PhaseBox/TorpedoModeEnemySpin");
 		_phaseSecondsSpins = new SpinBox[8];
 		for (int i = 0; i < _phaseSecondsSpins.Length; i++)
 			_phaseSecondsSpins[i] = GetNode<SpinBox>(
@@ -191,6 +202,7 @@ public partial class EditorUIController : Control
 	public void _OnDeleteCanvasPressed() => OnDeleteCanvasPressed();
 	public void _OnConfirmNewCanvas() => ConfirmNewCanvas();
 	public void _OnCancelNewDialog() => _newDialog.Visible = false;
+	public void _OnScenarioSettingsPressed() => ShowScenarioSettings();
 
 	public void _OnDeleteConfirmed()
 	{
@@ -243,38 +255,127 @@ public partial class EditorUIController : Control
 
 	private void ShowNewDialog()
 	{
+		_editingScenario = false;
+		_newTitleLabel.Text = "新建画布";
+		_newNameEdit.Visible = true;
+		_newOrientation.Visible = true;
 		_newNameEdit.Text = "";
+		ResetScenarioInputs();
 		_newDialog.Visible = true;
 		_newNameEdit.GrabFocus();
 	}
 
+	private void ShowScenarioSettings()
+	{
+		if (_data == null) return;
+		_editingScenario = true;
+		_newTitleLabel.Text = "关卡设置";
+		_newNameEdit.Visible = false;
+		_newOrientation.Visible = false;
+		PrefillScenarioInputs();
+		_newDialog.Visible = true;
+		ShowStatus("编辑当前画布的关卡初设");
+	}
+
+	private void ResetScenarioInputs()
+	{
+		_playerCommandSpin.Value = 5;
+		_enemyCommandSpin.Value = 4;
+		_playerCPSpin.Value = 8;
+		_enemyCPSpin.Value = 8;
+		_initiativeSpin.Value = 5;
+		_visionSpin.Value = 6;
+		_maxTurnsSpin.Value = 18;
+		_mapTypeOption.Selected = 0;
+		_initiativeOwnerOption.Selected = 0;
+		_torpedoModePlayerSpin.Value = 7;
+		_torpedoModeEnemySpin.Value = 4;
+		int[] defaults = { 5, 5, 5, 5, 5, 10, 10, 0 };
+		for (int i = 0; i < _phaseSecondsSpins.Length; i++)
+			_phaseSecondsSpins[i].Value = defaults[i];
+		_phaseExtraSpin.Value = 5;
+		_torpedoEnabledCheck.ButtonPressed = false;
+	}
+
+	private void PrefillScenarioInputs()
+	{
+		_playerCommandSpin.Value = _data.PlayerCommand;
+		_enemyCommandSpin.Value = _data.EnemyCommand;
+		_playerCPSpin.Value = _data.PlayerInitialCP;
+		_enemyCPSpin.Value = _data.EnemyInitialCP;
+		_initiativeSpin.Value = _data.InitiativeValue;
+		_visionSpin.Value = _data.BasicVision;
+		_maxTurnsSpin.Value = _data.MaxTurns;
+		_mapTypeOption.Selected = _data.IsNightBattle ? 1 : 0;
+		_initiativeOwnerOption.Selected = _data.InitiativeOwner == "enemy" ? 1 : 0;
+		_torpedoModePlayerSpin.Value = _data.TorpedoModePlayer;
+		_torpedoModeEnemySpin.Value = _data.TorpedoModeEnemy;
+		for (int i = 0; i < _phaseSecondsSpins.Length; i++)
+			_phaseSecondsSpins[i].Value = _data.PhaseSecondsPerShip != null && i < _data.PhaseSecondsPerShip.Length
+				? _data.PhaseSecondsPerShip[i]
+				: 5;
+		_phaseExtraSpin.Value = _data.PhaseExtraSeconds;
+		_torpedoEnabledCheck.ButtonPressed = _data.TorpedoPhaseEnabled;
+	}
+
 	private void ConfirmNewCanvas()
 	{
-		string name = _newNameEdit.Text.Trim();
-		if (string.IsNullOrEmpty(name)) { ShowStatus("画布名不能为空"); return; }
-		HexOrientation orientation = _newOrientation.Selected == 1
-			? HexOrientation.NSVertical
-			: HexOrientation.EWHorizontal;
-		_data.NewMap(
-			name,
-			orientation,
-			(int)_playerCommandSpin.Value,
-			(int)_enemyCommandSpin.Value,
-			(int)_playerCPSpin.Value,
-			(int)_enemyCPSpin.Value,
-			(int)_initiativeSpin.Value,
-			"player",
-			(int)_visionSpin.Value,
-			(int)_maxTurnsSpin.Value,
-			Array.ConvertAll(_phaseSecondsSpins, s => (int)s.Value),
-			(int)_phaseExtraSpin.Value,
-			_torpedoEnabledCheck.ButtonPressed);
-		_canvas.ClearCanvas();
-		_canvasNameLabel.Text = name;
-		_canvas.ApplyDataToLayers();
+		string mapType = _mapTypeOption.Selected == 1 ? "night" : "day";
+		string initiativeOwner = _initiativeOwnerOption.Selected == 1 ? "enemy" : "player";
+		int torpedoModePlayer = (int)_torpedoModePlayerSpin.Value;
+		int torpedoModeEnemy = (int)_torpedoModeEnemySpin.Value;
+		int[] phaseSeconds = Array.ConvertAll(_phaseSecondsSpins, s => (int)s.Value);
+		int phaseExtra = (int)_phaseExtraSpin.Value;
+		bool torpedoEnabled = _torpedoEnabledCheck.ButtonPressed;
+
+		if (_editingScenario)
+		{
+			_data.ApplyScenarioSettings(
+				(int)_playerCommandSpin.Value,
+				(int)_enemyCommandSpin.Value,
+				(int)_playerCPSpin.Value,
+				(int)_enemyCPSpin.Value,
+				(int)_initiativeSpin.Value,
+				initiativeOwner,
+				(int)_visionSpin.Value,
+				(int)_maxTurnsSpin.Value,
+				phaseSeconds,
+				phaseExtra,
+				torpedoEnabled);
+			_data.SetMapType(mapType);
+			_data.SetTorpedoModes(torpedoModePlayer, torpedoModeEnemy);
+			ShowStatus($"关卡设置已更新 {_data.CurrentMapName}");
+		}
+		else
+		{
+			string name = _newNameEdit.Text.Trim();
+			if (string.IsNullOrEmpty(name)) { ShowStatus("画布名不能为空"); return; }
+			HexOrientation orientation = _newOrientation.Selected == 1
+				? HexOrientation.NSVertical
+				: HexOrientation.EWHorizontal;
+			_data.NewMap(
+				name,
+				orientation,
+				(int)_playerCommandSpin.Value,
+				(int)_enemyCommandSpin.Value,
+				(int)_playerCPSpin.Value,
+				(int)_enemyCPSpin.Value,
+				(int)_initiativeSpin.Value,
+				initiativeOwner,
+				(int)_visionSpin.Value,
+				(int)_maxTurnsSpin.Value,
+				phaseSeconds,
+				phaseExtra,
+				torpedoEnabled);
+			_data.SetMapType(mapType);
+			_data.SetTorpedoModes(torpedoModePlayer, torpedoModeEnemy);
+			_canvas.ClearCanvas();
+			_canvasNameLabel.Text = name;
+			_canvas.ApplyDataToLayers();
+			ShowStatus($"已新建 {name}（{(_newOrientation.Selected == 1 ? "N/S 竖直向" : "E/W 水平向")}）");
+		}
 		_newDialog.Visible = false;
 		ShowCanvasLibrary(false);
-		ShowStatus($"已新建 {name}（{(_newOrientation.Selected == 1 ? "N/S 竖直向" : "E/W 水平向")}）");
 	}
 
 	private void ImportCanvas(string sourcePath)

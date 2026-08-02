@@ -16,7 +16,6 @@ GunCaliber = 40
 SecondaryForwardFire = 6
 SecondarySideFire = 10
 SecondaryBackwardFire = 6
-SecondaryGunCaliber = 12
 SecondaryAttackPower = 20
 ArmorClose = 9
 ArmorMedium = 13

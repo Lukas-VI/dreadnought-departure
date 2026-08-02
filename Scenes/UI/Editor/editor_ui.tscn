@@ -36,6 +36,10 @@ text = "保存"
 layout_mode = 2
 text = "画布列表"
 
+[node name="ScenarioSettingsButton" type="Button" parent="TopBar/TopBarBox"]
+layout_mode = 2
+text = "关卡设置"
+
 [node name="CanvasNameLabel" type="Label" parent="TopBar/TopBarBox" unique_id=2016158255]
 custom_minimum_size = Vector2(220, 0)
 layout_mode = 2
@@ -524,6 +528,34 @@ suffix = " 阶段额外秒数"
 layout_mode = 2
 text = "启用鱼雷阶段"
 
+[node name="ScenarioMapType" type="OptionButton" parent="NewDialog/NewPanel/NewBox/PhaseScroll/PhaseBox"]
+layout_mode = 2
+item_count = 2
+popup/item_0/text = "地图类型：昼战"
+popup/item_1/text = "地图类型：夜战"
+selected = 0
+
+[node name="InitiativeOwnerOption" type="OptionButton" parent="NewDialog/NewPanel/NewBox/PhaseScroll/PhaseBox"]
+layout_mode = 2
+item_count = 2
+popup/item_0/text = "主动权：玩家"
+popup/item_1/text = "主动权：敌方"
+selected = 0
+
+[node name="TorpedoModePlayerSpin" type="SpinBox" parent="NewDialog/NewPanel/NewBox/PhaseScroll/PhaseBox"]
+layout_mode = 2
+min_value = 0.0
+max_value = 10.0
+value = 7.0
+suffix = " 鱼雷模式(玩家)"
+
+[node name="TorpedoModeEnemySpin" type="SpinBox" parent="NewDialog/NewPanel/NewBox/PhaseScroll/PhaseBox"]
+layout_mode = 2
+min_value = 0.0
+max_value = 10.0
+value = 4.0
+suffix = " 鱼雷模式(敌方)"
+
 [node name="NewButtons" type="HBoxContainer" parent="NewDialog/NewPanel/NewBox" unique_id=1919196658]
 layout_mode = 2
 theme_override_constants/separation = 8
@@ -548,6 +580,7 @@ filters = PackedStringArray("*.json ; 地图 JSON")
 
 [connection signal="pressed" from="TopBar/TopBarBox/SaveButton" to="." method="_OnSavePressed"]
 [connection signal="pressed" from="TopBar/TopBarBox/CanvasListButton" to="." method="_OnCanvasListPressed"]
+[connection signal="pressed" from="TopBar/TopBarBox/ScenarioSettingsButton" to="." method="_OnScenarioSettingsPressed"]
 [connection signal="pressed" from="TopBar/TopBarBox/BackButton" to="." method="_OnBackPressed"]
 [connection signal="pressed" from="ToolBar/ToolBox/SelectToolButton" to="." method="_OnSelectToolPressed"]
 [connection signal="pressed" from="ToolBar/ToolBox/PencilToolButton" to="." method="_OnPencilToolPressed"]

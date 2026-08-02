@@ -36,6 +36,10 @@ public partial class MapSelectMenuController : Control
 	private SpinBox _initiativeSpin;
 	private SpinBox _visionSpin;
 	private SpinBox _maxTurnsSpin;
+	private OptionButton _mapTypeOption;
+	private OptionButton _initiativeOwnerOption;
+	private SpinBox _torpedoModePlayerSpin;
+	private SpinBox _torpedoModeEnemySpin;
 	private SpinBox[] _phaseSecondsSpins;
 	private SpinBox _phaseExtraSpin;
 	private CheckBox _torpedoEnabledCheck;
@@ -154,6 +158,20 @@ public partial class MapSelectMenuController : Control
 		phaseBox.AddChild(_phaseExtraSpin);
 		_torpedoEnabledCheck = new CheckBox { Text = "启用鱼雷阶段" };
 		phaseBox.AddChild(_torpedoEnabledCheck);
+		_mapTypeOption = new OptionButton();
+		_mapTypeOption.AddItem("地图类型：昼战", 0);
+		_mapTypeOption.AddItem("地图类型：夜战", 1);
+		_mapTypeOption.Selected = 0;
+		phaseBox.AddChild(_mapTypeOption);
+		_initiativeOwnerOption = new OptionButton();
+		_initiativeOwnerOption.AddItem("主动权：玩家", 0);
+		_initiativeOwnerOption.AddItem("主动权：敌方", 1);
+		_initiativeOwnerOption.Selected = 0;
+		phaseBox.AddChild(_initiativeOwnerOption);
+		_torpedoModePlayerSpin = MakeSpinBox(" 鱼雷模式(玩家)", 0, 10, 7);
+		_torpedoModeEnemySpin = MakeSpinBox(" 鱼雷模式(敌方)", 0, 10, 4);
+		phaseBox.AddChild(_torpedoModePlayerSpin);
+		phaseBox.AddChild(_torpedoModeEnemySpin);
 		content.AddChild(phaseScroll);
 		_newDialog.AddChild(content);
 		_newDialog.Confirmed += ConfirmNewCanvas;
@@ -239,10 +257,15 @@ public partial class MapSelectMenuController : Control
 		for (int i = 0; i < phaseSeconds.Length; i++) phaseSeconds[i] = (int)_phaseSecondsSpins[i].Value;
 		int phaseExtra = (int)_phaseExtraSpin.Value;
 		bool torpedoEnabled = _torpedoEnabledCheck.ButtonPressed;
+		string mapType = _mapTypeOption.Selected == 1 ? "night" : "day";
+		string initiativeOwner = _initiativeOwnerOption.Selected == 1 ? "enemy" : "player";
+		int torpedoModePlayer = (int)_torpedoModePlayerSpin.Value;
+		int torpedoModeEnemy = (int)_torpedoModeEnemySpin.Value;
 		file.StoreString($"{{\"Name\":\"{safe}\",\"Version\":3,\"Orientation\":\"{orientation}\"," +
-			$"\"PlayerCommand\":{pc},\"EnemyCommand\":{ec},\"PlayerInitialCP\":{pcp},\"EnemyInitialCP\":{ecp}," +
-			$"\"InitiativeValue\":{ini},\"InitiativeOwner\":\"player\",\"BasicVision\":{vis}," +
-			$"\"TorpedoModePlayer\":7,\"TorpedoModeEnemy\":4,\"MaxTurns\":{turns}," +
+			$"\"MapType\":\"{mapType}\",\"PlayerCommand\":{pc},\"EnemyCommand\":{ec}," +
+			$"\"PlayerInitialCP\":{pcp},\"EnemyInitialCP\":{ecp}," +
+			$"\"InitiativeValue\":{ini},\"InitiativeOwner\":\"{initiativeOwner}\",\"BasicVision\":{vis}," +
+			$"\"TorpedoModePlayer\":{torpedoModePlayer},\"TorpedoModeEnemy\":{torpedoModeEnemy},\"MaxTurns\":{turns}," +
 			$"\"TorpedoPhaseEnabled\":{(torpedoEnabled ? "true" : "false")}," +
 			$"\"PhaseSecondsPerShip\":[{string.Join(",", phaseSeconds)}],\"PhaseExtraSeconds\":{phaseExtra}," +
 			$"\"Terrain\":{{}},\"Generation\":{{}},\"Special\":{{}},\"Ships\":{{}}}}");

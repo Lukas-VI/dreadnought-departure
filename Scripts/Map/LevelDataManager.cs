@@ -301,6 +301,38 @@ public partial class LevelDataManager : Node
 		ClearAll();
 	}
 
+	/// <summary>设置地图昼夜类型，新建或编辑已有画布时调用。</summary>
+	public void SetMapType(string mapType)
+		=> MapType = string.IsNullOrEmpty(mapType) ? "day" : mapType;
+
+	/// <summary>设置双方鱼雷命中模式。</summary>
+	public void SetTorpedoModes(int playerMode, int enemyMode)
+	{
+		TorpedoModePlayer = playerMode;
+		TorpedoModeEnemy = enemyMode;
+	}
+
+	/// <summary>打开已有画布时更新关卡初设，不改变名称、朝向与地形/船表。</summary>
+	public void ApplyScenarioSettings(
+		int playerCommand, int enemyCommand, int playerCP, int enemyCP,
+		int initiativeValue, string initiativeOwner, int vision, int maxTurns,
+		int[] phaseSecondsPerShip, int phaseExtraSeconds, bool torpedoPhaseEnabled)
+	{
+		PlayerCommand = playerCommand;
+		EnemyCommand = enemyCommand;
+		PlayerInitialCP = playerCP;
+		EnemyInitialCP = enemyCP;
+		InitiativeValue = initiativeValue;
+		InitiativeOwner = string.IsNullOrEmpty(initiativeOwner) ? "player" : initiativeOwner;
+		BasicVision = vision;
+		MaxTurns = maxTurns;
+		PhaseSecondsPerShip = phaseSecondsPerShip != null && phaseSecondsPerShip.Length >= 8
+			? (int[])phaseSecondsPerShip.Clone()
+			: new[] { 5, 5, 5, 5, 5, 10, 10, 0 };
+		PhaseExtraSeconds = phaseExtraSeconds;
+		TorpedoPhaseEnabled = torpedoPhaseEnabled;
+	}
+
 	/// <summary>保存当前画布到导出文件夹，返回是否成功。</summary>
 	public bool SaveCurrentMap()
 	{

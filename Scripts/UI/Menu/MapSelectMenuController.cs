@@ -36,6 +36,9 @@ public partial class MapSelectMenuController : Control
 	private SpinBox _initiativeSpin;
 	private SpinBox _visionSpin;
 	private SpinBox _maxTurnsSpin;
+	private SpinBox[] _phaseSecondsSpins;
+	private SpinBox _phaseExtraSpin;
+	private CheckBox _torpedoEnabledCheck;
 
 	public override void _Ready()
 	{
@@ -127,6 +130,31 @@ public partial class MapSelectMenuController : Control
 		content.AddChild(_initiativeSpin);
 		content.AddChild(_visionSpin);
 		content.AddChild(_maxTurnsSpin);
+
+		var phaseHeader = new Label { Text = "阶段限时（每船秒数）" };
+		content.AddChild(phaseHeader);
+		var phaseScroll = new ScrollContainer { CustomMinimumSize = new Vector2(360, 230) };
+		var phaseBox = new VBoxContainer { CustomMinimumSize = new Vector2(340, 0) };
+		phaseScroll.AddChild(phaseBox);
+		int[] defaults = { 5, 5, 5, 5, 5, 10, 10, 0 };
+		string[] phaseNames =
+		{
+			"速度调整", "第一移动", "第二移动", "第三移动", "视野", "炮击", "鱼雷", "结算"
+		};
+		_phaseSecondsSpins = new SpinBox[phaseNames.Length];
+		for (int i = 0; i < phaseNames.Length; i++)
+		{
+			var row = new HBoxContainer();
+			row.AddChild(new Label { Text = phaseNames[i], CustomMinimumSize = new Vector2(96, 0) });
+			_phaseSecondsSpins[i] = MakeSpinBox(" 秒/船", 0, 60, defaults[i]);
+			row.AddChild(_phaseSecondsSpins[i]);
+			phaseBox.AddChild(row);
+		}
+		_phaseExtraSpin = MakeSpinBox(" 阶段额外秒数", 0, 60, 5);
+		phaseBox.AddChild(_phaseExtraSpin);
+		_torpedoEnabledCheck = new CheckBox { Text = "启用鱼雷阶段" };
+		phaseBox.AddChild(_torpedoEnabledCheck);
+		content.AddChild(phaseScroll);
 		_newDialog.AddChild(content);
 		_newDialog.Confirmed += ConfirmNewCanvas;
 		AddChild(_newDialog);
@@ -207,10 +235,16 @@ public partial class MapSelectMenuController : Control
 		int pc = (int)_playerCommandSpin.Value, ec = (int)_enemyCommandSpin.Value;
 		int pcp = (int)_playerCPSpin.Value, ecp = (int)_enemyCPSpin.Value;
 		int ini = (int)_initiativeSpin.Value, vis = (int)_visionSpin.Value, turns = (int)_maxTurnsSpin.Value;
+		int[] phaseSeconds = new int[_phaseSecondsSpins.Length];
+		for (int i = 0; i < phaseSeconds.Length; i++) phaseSeconds[i] = (int)_phaseSecondsSpins[i].Value;
+		int phaseExtra = (int)_phaseExtraSpin.Value;
+		bool torpedoEnabled = _torpedoEnabledCheck.ButtonPressed;
 		file.StoreString($"{{\"Name\":\"{safe}\",\"Version\":3,\"Orientation\":\"{orientation}\"," +
 			$"\"PlayerCommand\":{pc},\"EnemyCommand\":{ec},\"PlayerInitialCP\":{pcp},\"EnemyInitialCP\":{ecp}," +
 			$"\"InitiativeValue\":{ini},\"InitiativeOwner\":\"player\",\"BasicVision\":{vis}," +
 			$"\"TorpedoModePlayer\":7,\"TorpedoModeEnemy\":4,\"MaxTurns\":{turns}," +
+			$"\"TorpedoPhaseEnabled\":{(torpedoEnabled ? "true" : "false")}," +
+			$"\"PhaseSecondsPerShip\":[{string.Join(",", phaseSeconds)}],\"PhaseExtraSeconds\":{phaseExtra}," +
 			$"\"Terrain\":{{}},\"Generation\":{{}},\"Special\":{{}},\"Ships\":{{}}}}");
 		RefreshList();
 	}

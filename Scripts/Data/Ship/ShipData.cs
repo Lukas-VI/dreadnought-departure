@@ -36,6 +36,9 @@ public partial class ShipData : Resource
 	[Export] public int SecondaryForwardFire = 0;
 	[Export] public int SecondarySideFire = 0;
 	[Export] public int SecondaryBackwardFire = 0;
+	[Export] public int SecondaryGunCaliber = 12;
+	/// <summary>副炮基础火力；0 时按主炮 AttackPower × 口径伤害比自动折算。</summary>
+	[Export] public int SecondaryAttackPower = 0;
 
 	[Export] public int ArmorClose = 12;
 	[Export] public int ArmorMedium = 8;

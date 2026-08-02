@@ -2,7 +2,7 @@
 
 > 更新日期：2026-08-02
 > 分支：`codex/ship-operations`
-> 最后提交：`f46f9ef feat: 单纵阵、冲撞检定与视野雷达规则`
+> 最后提交：`957fc5e docs: 交接文档同步本轮提交号`
 
 ## 1. 当前状态
 
@@ -10,6 +10,7 @@
 - 分支上已完成第一版“分阶段逐船操作”：每个玩家阶段按存活舰船顺序排队，自动选中队首并弹出底部操作菜单。
 - 本轮又完成：底部弹性菜单替代轮盘、三个移动阶段各自推进时立即惯性移动（Tween）、相机滚轮缩放联动仰角、旧场景路径修复、炮击点击失效修复、新建画布地图朝向（E/W 与 N/S）。
 - 本轮继续完成：敌方 AI 接入阶段管线、胜负判定与战斗结果面板、岛屿阻挡移动、炮击射界限制、移动碰撞占位、主炮有限弹药、敌方行动演出镜头、单格下一到达预览、规则数据卡与玩法文档、关卡初设数据链路、纸质速力表奇偶、延迟降速、堆叠上限 2、运行时舰船目录、3D 六角朝向修正、Label3D 状态化与左右信息面板、鱼雷阶段开关、待命指令预览。
+- 本轮新增：编辑器新建画布阶段限时 / 鱼雷开关可视化、副炮与前后侧火力、雷达技能化。
 - 以上内容已随本轮提交入库，下一手可以直接继续。
 
 ## 2. 本轮改动明细
@@ -125,7 +126,24 @@
 ### 视野与雷达
 
 - 新增 `VisionRulesEvaluator`：基本视野 + 岛屿视线遮挡；`RadarRulesEvaluator` 按雷达型号提供距离与命中修正。
-- 玩家与 AI 炮击目标均需通过 `CanEngage`；雷达仅使用时可越过基本视野交战，并在命中判定中应用雷达修正。
+- 玩家与 AI 炮击目标均需通过 `CanEngage`；雷达激活时可越过基本视野交战，并在命中判定中应用型号修正。
+
+### 编辑器新建画布
+
+- 主菜单与编辑器内新建画布弹窗均可逐阶段配置 `PhaseSecondsPerShip`（速度/三移动/视野/炮击/鱼雷/结算每船秒数）、`PhaseExtraSeconds` 与 `TorpedoPhaseEnabled`，写入 v3 JSON。
+- `LevelDataManager.NewMap` 已接收并保存这些参数；旧地图缺省值不变。
+
+### 副炮与前后侧火力
+
+- `ShipData` 新增 `SecondaryGunCaliber` / `SecondaryAttackPower`；南达科他副炮 12cm（6-10-6）已配置。
+- `CombatRulesEvaluator` 主炮/副炮分别按前/侧/后射界独立命中检定与伤害结算；大型舰一次射击同时结算两门炮，中小型舰只结算主炮。
+- 未配置副炮火力时不影响原射击；副炮基础火力按口径比例折算或读取配表值。
+
+### 雷达技能
+
+- 雷达从自动生效改为炮击阶段技能：`ShipComponent.PendingRadarActive` 标记显式激活，中破及以上按 D1 禁用。
+- 玩家点“雷达”按钮开关不消耗行动；AI 在炮击阶段自动激活。
+- `VisionRulesEvaluator.CanEngage` / `IsRadarOnly` 接收激活标记，雷达射击继续应用 `RadarRulesEvaluator` 的型号命中修正。
 
 ### 性能优化
 
@@ -186,53 +204,24 @@
 - NS 投影冒烟：空 NS 地图放入 (0,0)/(1,0)/(0,1)/(-1,1) 后，3D 瓦片中心呈 0°/60°/120° 尖角六边形排列，无错位留空。
 - 限时冒烟：阶段倒计时标签随时间递减，进度条可见且数值同步更新。
 - pending 冒烟：速度指令写入 pending 后 `CurrentSpeed` 不变；手动推进后提交速度并自动接敌方、推进到下一阶段。
+- 编辑器新建画布 headless 冒烟：`LevelDataManager` 写入/读回 `PhaseSecondsPerShip`、`PhaseExtraSeconds`、`TorpedoPhaseEnabled`；编辑器 `editor_ui.tscn` 与主菜单 `map_select_menu.tscn` 实例化无报错。
+- 副炮 headless 冒烟：南达科他在炮击阶段对距离 3 敌舰开火，主炮与副炮各产生独立命中检定记录。
+- 雷达技能 headless 冒烟：基本视野 1、敌舰距离 6，轻巡先开雷达再炮击可选中目标，无“目标不在视野”拒绝日志。
 - 尚未做真人编辑器内点击验证。
 
 ## 4. Git 状态与提交建议
 
-- 已提交：`9d2de4c`（逐船队列、相机焦点接口、地图类型、白天地图跳照明）。
-- 未提交的本轮功能文件（建议单独 commit）：
-  - `Scripts/UI/Menu/MapSelectMenuController.cs`
-  - `Scripts/Editor/EditorSceneController.cs`
-  - `Scripts/Editor/EditorUIController.cs`
-  - `Scripts/UI/Gameplay/PhaseActionMenu.cs` + `.uid`
-  - `Scenes/UI/Gameplay/BattleUI.tscn`
-  - `Scripts/UI/Gameplay/BattleUIController.cs`
-  - `Scripts/Battle/PlayerController.cs`
-  - `Scripts/Battle/GameplayDirector.cs`
-  - `Scripts/Unit/ShipComponent.cs`
-  - `Scripts/Camera/GameplayCameraController.cs`
-  - `Ships/BaseShip/ship_3d.tscn`
-  - `Scripts/Battle/BattleInputDetector.cs`
-  - `Scripts/Battle/AIController.cs`
-  - `Scripts/Battle/IUnitController.cs`
-  - `Scripts/Battle/MoveRulesEvaluator.cs`
-  - `Scripts/Battle/GridOverlayController.cs`
-  - `Scripts/Battle/BattleShipOverlayController.cs`
-  - `Scripts/Battle/CombatRulesEvaluator.cs`
-  - `Scripts/Data/Ship/ShipData.cs`
-  - `Ships/Cruiser/cruiser_data.tres`、`Ships/Cruiser/cruiser.tscn`
-  - `Ships/Destroyer/destroyer_data.tres`、`Ships/Destroyer/destroyer.tscn`
-  - `docs/GAMEPLAY_RULES.md`
-  - `Scripts/Data/EventBus.cs`
-  - `Scripts/Map/LevelDataManager.cs`
-  - `Scripts/UI/Gameplay/BattleUIController.cs`
-  - `Scripts/Data/HexMath.cs` + `.uid`
-  - `Scripts/Editor/MapCanvasController.cs`
-  - `Scripts/Editor/ShipNameOverlay.cs`
-  - `Scenes/UI/Editor/editor_scene.tscn` + 配套 UI 场景
-  - 删除旧 `Scenes/UI/Editor/map_editor.tscn`、`Scripts/Map/EditorInputDetector.cs` + `.uid`
-  - `export/maps/2.json`
-  - 已删除程序化地块改造前生成的 `assets/texture/Tiles/*_ns.png`
-- 工作区还有用户的文件结构重构未提交（场景移动/删除、`project.godot`、`export/maps/1.json` 等），提交时应与功能改动分开。
+- 已提交：`f46f9ef`（单纵阵、冲撞检定与视野雷达规则）、`957fc5e`（交接文档同步）。
+- 本轮待提交：编辑器新建画布限时/鱼雷开关、副炮与前后侧火力、雷达技能及配套文档。
+- 涉及文件：`Scenes/UI/Editor/editor_ui.tscn`、`Scripts/Editor/EditorUIController.cs`、`Scripts/UI/Menu/MapSelectMenuController.cs`、`Scripts/Battle/{AIController,CombatRulesEvaluator,PlayerController,VisionRulesEvaluator}.cs`、`Scripts/Data/Ship/ShipData.cs`、`Scripts/UI/Gameplay/PhaseActionMenu.cs`、`Scripts/Unit/ShipComponent.cs`、三份舰船 `.tres` 与三份文档。
 
 ## 5. 已知问题与下一步
 
 - 真人编辑器内炮击、分阶段移动动画、滚轮缩放需要实际点击验证。
-- 敌方 AI 仍未接入阶段管线（`AIController` 仍是占位）。
-- 分阶段移动未处理目标格占用/堆叠，后续需要碰撞或堆叠规则。
+- 冲撞目前是简化 A3 表，完整表 A3 与移动后超堆叠检定尚未精确实现。
 - 夜战照明阶段（`ReconLighting`）只有逻辑占位，尚无探照灯/照明弹玩法。
-- 后续可做：舰船专属移动动画、炮口火光/水花特效、技能菜单卡片化、战役流程。
+- 烟幕、照明弹、鱼雷仍是后续实体玩法；雷达技能已接入，探照灯未做。
+- 后续可做：主动权规则、完整 A3 冲撞表与超堆叠检定、鱼雷阶段、烟幕/照明弹技能、舰船专属移动动画与炮口火光/水花特效。
 
 ## 6. 测试纪律
 

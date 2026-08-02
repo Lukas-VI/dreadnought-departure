@@ -1,4 +1,5 @@
 using Godot;
+using System;
 using System.Collections.Generic;
 
 namespace DreadnoughtDeparture.Core;
@@ -44,6 +45,9 @@ public partial class EditorUIController : Control
 	private SpinBox _initiativeSpin;
 	private SpinBox _visionSpin;
 	private SpinBox _maxTurnsSpin;
+	private SpinBox[] _phaseSecondsSpins;
+	private SpinBox _phaseExtraSpin;
+	private CheckBox _torpedoEnabledCheck;
 	private ConfirmationDialog _deleteDialog;
 	private FileDialog _importDialog;
 	private string _pendingDelete;
@@ -101,6 +105,12 @@ public partial class EditorUIController : Control
 		_initiativeSpin = GetNode<SpinBox>("NewDialog/NewPanel/NewBox/InitiativeSpin");
 		_visionSpin = GetNode<SpinBox>("NewDialog/NewPanel/NewBox/VisionSpin");
 		_maxTurnsSpin = GetNode<SpinBox>("NewDialog/NewPanel/NewBox/MaxTurnsSpin");
+		_phaseSecondsSpins = new SpinBox[8];
+		for (int i = 0; i < _phaseSecondsSpins.Length; i++)
+			_phaseSecondsSpins[i] = GetNode<SpinBox>(
+				$"NewDialog/NewPanel/NewBox/PhaseScroll/PhaseBox/PhaseRow{i}/Phase{i}Spin");
+		_phaseExtraSpin = GetNode<SpinBox>("NewDialog/NewPanel/NewBox/PhaseScroll/PhaseBox/PhaseExtraSpin");
+		_torpedoEnabledCheck = GetNode<CheckBox>("NewDialog/NewPanel/NewBox/PhaseScroll/PhaseBox/TorpedoEnabledCheck");
 		_deleteDialog = GetNode<ConfirmationDialog>("DeleteDialog");
 		_importDialog = GetNode<FileDialog>("ImportDialog");
 
@@ -255,7 +265,10 @@ public partial class EditorUIController : Control
 			(int)_initiativeSpin.Value,
 			"player",
 			(int)_visionSpin.Value,
-			(int)_maxTurnsSpin.Value);
+			(int)_maxTurnsSpin.Value,
+			Array.ConvertAll(_phaseSecondsSpins, s => (int)s.Value),
+			(int)_phaseExtraSpin.Value,
+			_torpedoEnabledCheck.ButtonPressed);
 		_canvas.ClearCanvas();
 		_canvasNameLabel.Text = name;
 		_canvas.ApplyDataToLayers();

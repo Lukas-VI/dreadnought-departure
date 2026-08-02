@@ -32,8 +32,10 @@ public static class VisionRulesEvaluator
 		return dist <= data.BasicVision && HasLineOfSight(observer.HexCoords, target.HexCoords, data);
 	}
 
-	public static bool HasRadarContact(ShipComponent observer, ShipComponent target, LevelDataManager data)
+	public static bool HasRadarContact(ShipComponent observer, ShipComponent target, LevelDataManager data,
+		bool radarActive)
 	{
+		if (!radarActive) return false;
 		string radar = observer.Data?.RadarType;
 		if (string.IsNullOrEmpty(radar) || data == null) return false;
 		int dist = BattleRulesEvaluator.GetHexDistance(observer.HexCoords, target.HexCoords);
@@ -41,9 +43,11 @@ public static class VisionRulesEvaluator
 			&& HasLineOfSight(observer.HexCoords, target.HexCoords, data);
 	}
 
-	public static bool CanEngage(ShipComponent observer, ShipComponent target, LevelDataManager data)
-		=> HasVisual(observer, target, data) || HasRadarContact(observer, target, data);
+	public static bool CanEngage(ShipComponent observer, ShipComponent target, LevelDataManager data,
+		bool radarActive = false)
+		=> HasVisual(observer, target, data) || HasRadarContact(observer, target, data, radarActive);
 
-	public static bool IsRadarOnly(ShipComponent observer, ShipComponent target, LevelDataManager data)
-		=> !HasVisual(observer, target, data) && HasRadarContact(observer, target, data);
+	public static bool IsRadarOnly(ShipComponent observer, ShipComponent target, LevelDataManager data,
+		bool radarActive)
+		=> !HasVisual(observer, target, data) && HasRadarContact(observer, target, data, radarActive);
 }

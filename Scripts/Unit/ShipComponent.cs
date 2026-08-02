@@ -41,6 +41,8 @@ public partial class ShipComponent : Node3D
 	public ShipComponent PendingAttackTarget;
 	public int PendingAttackDistance;
 	public bool PendingRadarUsed;
+	/// <summary>雷达技能是否在本阶段显式激活（由技能按钮写入，仅当回合有效）。</summary>
+	public bool PendingRadarActive;
 	public int TileSourceId; // 兼容字段：来自旧 2D 编辑器的 tile ID
 	/// <summary>阵营（由生成点决定），用于敌我分组。</summary>
 	public GenerationSide BattleSide = GenerationSide.Player;
@@ -101,6 +103,7 @@ public partial class ShipComponent : Node3D
 		PendingAttackTarget = null;
 		PendingAttackDistance = 0;
 		PendingRadarUsed = false;
+		PendingRadarActive = false;
 	}
 
 	// 子类覆写这个方法，不用再写一遍 AddToGroup / 找 Label3D

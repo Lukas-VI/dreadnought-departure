@@ -129,6 +129,24 @@ public partial class PlayerController : Node, IUnitController
 
 		var phase = _director?.CurrentPhase ?? BattlePhase.EndTurn;
 
+		if (actionId == "radar")
+		{
+			if (string.IsNullOrEmpty(_selected.Data?.RadarType)
+				|| _selected.DamageState is not (DamageState.Intact or DamageState.Light))
+			{
+				RejectAction("❌ 雷达不可用（未装备或已中破）");
+				return;
+			}
+			_selected.PendingRadarActive = !_selected.PendingRadarActive;
+			GetNode<EventBus>("../EventBus").EmitSignal("LogMessage",
+				_selected.PendingRadarActive
+					? $"📡 {_selected.ShipName} 已激活雷达，可越过基本视野交战"
+					: $"📡 {_selected.ShipName} 已关闭雷达");
+			// 技能只改状态，不消耗该船本阶段行动；重新弹出菜单供继续选炮击或待命。
+			GetNode<EventBus>("../EventBus").EmitSignal("ActionSelected", "_show_menu");
+			return;
+		}
+
 		if (actionId == "speed_up" || actionId == "speed_down")
 		{
 			if (phase != BattlePhase.SpeedAdjust)
@@ -261,12 +279,13 @@ public partial class PlayerController : Node, IUnitController
 		{ RejectAction("❌ 目标无效或不在射程内！"); return; }
 		if (!CombatRulesEvaluator.CanFireInArc(_selected, target))
 		{ RejectAction("❌ 目标不在当前舰炮射界内！"); return; }
-		if (!VisionRulesEvaluator.CanEngage(_selected, target, _data))
+		if (!VisionRulesEvaluator.CanEngage(_selected, target, _data, _selected.PendingRadarActive))
 		{ RejectAction("❌ 目标不在视野或雷达范围内！"); return; }
 
 		_selected.PendingAttackTarget = target;
 		_selected.PendingAttackDistance = d;
-		_selected.PendingRadarUsed = VisionRulesEvaluator.IsRadarOnly(_selected, target, _data);
+		_selected.PendingRadarUsed = VisionRulesEvaluator.IsRadarOnly(
+			_selected, target, _data, _selected.PendingRadarActive);
 		// 选中敌方后：以船与敌舰中点为焦点，炮击在推进阶段才结算。
 		GetNode<EventBus>("../EventBus").EmitSignal("CameraFocusBetweenRequested",
 			ShipWorld(_selected), ShipWorld(target));

@@ -31,4 +31,5 @@ TorpedoCenterTubes = 0
 TorpedoRightTubes = 0
 HasSpareTorpedoes = false
 RadarType = "US_A"
+SkillIds = PackedStringArray("radar")
 metadata/_custom_type_script = "uid://dreq4a4on5nm3"

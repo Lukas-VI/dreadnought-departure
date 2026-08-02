@@ -289,7 +289,7 @@ grow_horizontal = 2
 grow_vertical = 2
 
 [node name="NewPanel" type="PanelContainer" parent="NewDialog" unique_id=831565395]
-custom_minimum_size = Vector2(340, 430)
+custom_minimum_size = Vector2(420, 760)
 layout_mode = 2
 
 [node name="NewBox" type="VBoxContainer" parent="NewDialog/NewPanel" unique_id=55537823]
@@ -363,6 +363,166 @@ min_value = 1.0
 max_value = 99.0
 value = 18.0
 suffix = " 回合数"
+
+[node name="PhaseScroll" type="ScrollContainer" parent="NewDialog/NewPanel/NewBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 250)
+horizontal_scroll_mode = 0
+
+[node name="PhaseBox" type="VBoxContainer" parent="NewDialog/NewPanel/NewBox/PhaseScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="PhaseHeader" type="Label" parent="NewDialog/NewPanel/NewBox/PhaseScroll/PhaseBox"]
+layout_mode = 2
+text = "阶段限时（每船秒数）"
+
+[node name="PhaseRow0" type="HBoxContainer" parent="NewDialog/NewPanel/NewBox/PhaseScroll/PhaseBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Phase0Label" type="Label" parent="NewDialog/NewPanel/NewBox/PhaseScroll/PhaseBox/PhaseRow0"]
+layout_mode = 2
+custom_minimum_size = Vector2(96, 0)
+text = "速度调整"
+
+[node name="Phase0Spin" type="SpinBox" parent="NewDialog/NewPanel/NewBox/PhaseScroll/PhaseBox/PhaseRow0"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.0
+max_value = 60.0
+value = 5.0
+suffix = " 秒/船"
+
+[node name="PhaseRow1" type="HBoxContainer" parent="NewDialog/NewPanel/NewBox/PhaseScroll/PhaseBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Phase1Label" type="Label" parent="NewDialog/NewPanel/NewBox/PhaseScroll/PhaseBox/PhaseRow1"]
+layout_mode = 2
+custom_minimum_size = Vector2(96, 0)
+text = "第一移动"
+
+[node name="Phase1Spin" type="SpinBox" parent="NewDialog/NewPanel/NewBox/PhaseScroll/PhaseBox/PhaseRow1"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.0
+max_value = 60.0
+value = 5.0
+suffix = " 秒/船"
+
+[node name="PhaseRow2" type="HBoxContainer" parent="NewDialog/NewPanel/NewBox/PhaseScroll/PhaseBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Phase2Label" type="Label" parent="NewDialog/NewPanel/NewBox/PhaseScroll/PhaseBox/PhaseRow2"]
+layout_mode = 2
+custom_minimum_size = Vector2(96, 0)
+text = "第二移动"
+
+[node name="Phase2Spin" type="SpinBox" parent="NewDialog/NewPanel/NewBox/PhaseScroll/PhaseBox/PhaseRow2"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.0
+max_value = 60.0
+value = 5.0
+suffix = " 秒/船"
+
+[node name="PhaseRow3" type="HBoxContainer" parent="NewDialog/NewPanel/NewBox/PhaseScroll/PhaseBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Phase3Label" type="Label" parent="NewDialog/NewPanel/NewBox/PhaseScroll/PhaseBox/PhaseRow3"]
+layout_mode = 2
+custom_minimum_size = Vector2(96, 0)
+text = "第三移动"
+
+[node name="Phase3Spin" type="SpinBox" parent="NewDialog/NewPanel/NewBox/PhaseScroll/PhaseBox/PhaseRow3"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.0
+max_value = 60.0
+value = 5.0
+suffix = " 秒/船"
+
+[node name="PhaseRow4" type="HBoxContainer" parent="NewDialog/NewPanel/NewBox/PhaseScroll/PhaseBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Phase4Label" type="Label" parent="NewDialog/NewPanel/NewBox/PhaseScroll/PhaseBox/PhaseRow4"]
+layout_mode = 2
+custom_minimum_size = Vector2(96, 0)
+text = "视野"
+
+[node name="Phase4Spin" type="SpinBox" parent="NewDialog/NewPanel/NewBox/PhaseScroll/PhaseBox/PhaseRow4"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.0
+max_value = 60.0
+value = 5.0
+suffix = " 秒/船"
+
+[node name="PhaseRow5" type="HBoxContainer" parent="NewDialog/NewPanel/NewBox/PhaseScroll/PhaseBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Phase5Label" type="Label" parent="NewDialog/NewPanel/NewBox/PhaseScroll/PhaseBox/PhaseRow5"]
+layout_mode = 2
+custom_minimum_size = Vector2(96, 0)
+text = "炮击"
+
+[node name="Phase5Spin" type="SpinBox" parent="NewDialog/NewPanel/NewBox/PhaseScroll/PhaseBox/PhaseRow5"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.0
+max_value = 60.0
+value = 10.0
+suffix = " 秒/船"
+
+[node name="PhaseRow6" type="HBoxContainer" parent="NewDialog/NewPanel/NewBox/PhaseScroll/PhaseBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Phase6Label" type="Label" parent="NewDialog/NewPanel/NewBox/PhaseScroll/PhaseBox/PhaseRow6"]
+layout_mode = 2
+custom_minimum_size = Vector2(96, 0)
+text = "鱼雷"
+
+[node name="Phase6Spin" type="SpinBox" parent="NewDialog/NewPanel/NewBox/PhaseScroll/PhaseBox/PhaseRow6"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.0
+max_value = 60.0
+value = 10.0
+suffix = " 秒/船"
+
+[node name="PhaseRow7" type="HBoxContainer" parent="NewDialog/NewPanel/NewBox/PhaseScroll/PhaseBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Phase7Label" type="Label" parent="NewDialog/NewPanel/NewBox/PhaseScroll/PhaseBox/PhaseRow7"]
+layout_mode = 2
+custom_minimum_size = Vector2(96, 0)
+text = "结算"
+
+[node name="Phase7Spin" type="SpinBox" parent="NewDialog/NewPanel/NewBox/PhaseScroll/PhaseBox/PhaseRow7"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.0
+max_value = 60.0
+value = 0.0
+suffix = " 秒/船"
+
+[node name="PhaseExtraSpin" type="SpinBox" parent="NewDialog/NewPanel/NewBox/PhaseScroll/PhaseBox"]
+layout_mode = 2
+min_value = 0.0
+max_value = 60.0
+value = 5.0
+suffix = " 阶段额外秒数"
+
+[node name="TorpedoEnabledCheck" type="CheckBox" parent="NewDialog/NewPanel/NewBox/PhaseScroll/PhaseBox"]
+layout_mode = 2
+text = "启用鱼雷阶段"
 
 [node name="NewButtons" type="HBoxContainer" parent="NewDialog/NewPanel/NewBox" unique_id=1919196658]
 layout_mode = 2

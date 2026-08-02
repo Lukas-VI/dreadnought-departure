@@ -1,5 +1,6 @@
 using Godot;
 using System;
+using System.Collections.Generic;
 
 namespace DreadnoughtDeparture.Core;
 
@@ -43,13 +44,31 @@ public static class CombatRulesEvaluator
 	public static bool CanFire(ShipComponent attacker)
 		=> attacker.DamageState is DamageState.Intact or DamageState.Light or DamageState.Moderate;
 
-	/// <summary>目标是否位于攻击者配置的非零火力射界内；未配置 ShipData 时默认全域可射。</summary>
+	/// <summary>目标是否位于主炮或副炮的非零火力射界内；未配置 ShipData 时默认全域可射。</summary>
 	public static bool CanFireInArc(ShipComponent attacker, ShipComponent defender)
 	{
 		if (!CanFire(attacker)) return false;
 		if (attacker.Data == null) return true;
 		HexDirection targetDir = MoveRulesEvaluator.DirectionTo(attacker.HexCoords, defender.HexCoords);
-		return attacker.Data.Firepower.ForArc(attacker.Direction, targetDir) > 0;
+		return attacker.Data.Firepower.ForArc(attacker.Direction, targetDir) > 0
+			|| attacker.Data.SecondaryFirepower.ForArc(attacker.Direction, targetDir) > 0;
+	}
+
+	private static int ArcPower(ShipComponent attacker, HexDirection targetDir, bool secondary)
+	{
+		if (attacker.Data == null) return 6;
+		Firepower fp = secondary ? attacker.Data.SecondaryFirepower : attacker.Data.Firepower;
+		return fp.ForArc(attacker.Direction, targetDir);
+	}
+
+	/// <summary>副炮基础火力：优先用配表值，未配置时按主炮伤害与口径比例折算。</summary>
+	private static int WeaponBasePower(ShipComponent attacker, bool secondary)
+	{
+		if (!secondary || attacker.Data == null) return attacker.AttackPower;
+		if (attacker.Data.SecondaryAttackPower > 0) return attacker.Data.SecondaryAttackPower;
+		int mainDamage = Math.Max(1, BaseDamage(attacker.Data.GunCaliber));
+		int secondaryDamage = Math.Max(1, BaseDamage(attacker.Data.SecondaryGunCaliber));
+		return Math.Max(1, attacker.AttackPower * secondaryDamage / mainDamage);
 	}
 
 	// ── 口径 → 基础伤害 ──
@@ -64,8 +83,9 @@ public static class CombatRulesEvaluator
 
 	// ── 完整命中判定流程：命中骰、距离衰减、装甲抵扣、伤害浮动 ──
 	public static ShotCheck ResolveShotCheck(ShipComponent attacker, ShipComponent defender, int distanceHex,
-		bool radarUsed = false)
+		bool radarUsed = false, bool secondary = false)
 	{
+		string weapon = secondary ? "副炮" : "主炮";
 		int threshold = HitThreshold(distanceHex);
 		if (radarUsed)
 			threshold += RadarRulesEvaluator.GetHitModifier(attacker.Data?.RadarType);
@@ -89,12 +109,8 @@ public static class CombatRulesEvaluator
 				Detail = $"{attacker.ShipName} 大破/沉没，无法射击"
 			};
 		}
-		int arcPower = 6;
-		if (attacker.Data != null)
-		{
-			HexDirection targetDir = MoveRulesEvaluator.DirectionTo(attacker.HexCoords, defender.HexCoords);
-			arcPower = attacker.Data.Firepower.ForArc(attacker.Direction, targetDir);
-		}
+		HexDirection targetDir = MoveRulesEvaluator.DirectionTo(attacker.HexCoords, defender.HexCoords);
+		int arcPower = ArcPower(attacker, targetDir, secondary);
 		if (arcPower <= 0)
 		{
 			return new ShotCheck
@@ -103,18 +119,18 @@ public static class CombatRulesEvaluator
 				HitThreshold = threshold,
 				HitRoll = roll,
 				Damage = 0,
-				Detail = $"{attacker.ShipName} → {defender.ShipName} 目标不在射界内，无法开火"
+				Detail = $"{attacker.ShipName} {weapon} → {defender.ShipName} 目标不在射界内，无法开火"
 			};
 		}
 
 		if (roll > threshold)
 		{
-			string miss = $"{attacker.ShipName} → {defender.ShipName} 命中检定：1D10={roll} > {threshold}，未命中";
+			string miss = $"{attacker.ShipName} {weapon} → {defender.ShipName} 命中检定：1D10={roll} > {threshold}，未命中";
 			return new ShotCheck { Hit = false, HitThreshold = threshold, HitRoll = roll, Damage = 0, Detail = miss };
 		}
 
-		// 主炮基础伤害来自 AttackPower，距离越远衰减越多，装甲按距离分段抵扣。
-		int baseDmg = Math.Max(1, attacker.AttackPower) * arcPower * stateCoeff / 18;
+		// 基础伤害来自 AttackPower（副炮按口径比例折算），距离越远衰减越多，装甲按距离分段抵扣。
+		int baseDmg = Math.Max(1, WeaponBasePower(attacker, secondary)) * arcPower * stateCoeff / 18;
 		int distanceFalloff = distanceHex switch
 		{
 			<= 3 => 0,
@@ -129,7 +145,7 @@ public static class CombatRulesEvaluator
 		};
 		int variance = _rng.Next(-3, 4);
 		int final = Math.Max(1, baseDmg - distanceFalloff - armor + variance);
-		string detail = $"{attacker.ShipName} → {defender.ShipName} 命中检定：1D10={roll} ≤ {threshold}，命中；" +
+		string detail = $"{attacker.ShipName} {weapon} → {defender.ShipName} 命中检定：1D10={roll} ≤ {threshold}，命中；" +
 			$"伤害 {baseDmg} - {distanceFalloff}(距离) - {armor}(装甲) + {variance} = {final}";
 		return new ShotCheck { Hit = true, HitThreshold = threshold, HitRoll = roll, Damage = final, Detail = detail };
 	}
@@ -141,18 +157,57 @@ public static class CombatRulesEvaluator
 		return (check.Hit, check.Damage);
 	}
 
-	// 炮击——返回命中文本供 UI 显示
+	// 炮击——主炮与副炮（如配置且目标在副炮射界内）各结算一发，返回合并命中文本供 UI 显示
 	public static (bool hit, int damage, string desc) FireEx(ShipComponent attacker, ShipComponent defender, int distanceHex,
 		bool radarUsed = false)
 	{
-		var check = ResolveShotCheck(attacker, defender, distanceHex, radarUsed);
-		defender.PendingShotChecks.Add(check.Detail);
-		if (check.Hit)
+		HexDirection targetDir = MoveRulesEvaluator.DirectionTo(attacker.HexCoords, defender.HexCoords);
+		bool mainArc = attacker.Data == null
+			|| attacker.Data.Firepower.ForArc(attacker.Direction, targetDir) > 0;
+		bool secondaryArc = attacker.Data != null
+			&& attacker.Data.SecondaryFirepower.ForArc(attacker.Direction, targetDir) > 0;
+		if (!mainArc && !secondaryArc)
 		{
-			defender.PendingDamage += check.Damage;
-			return (true, check.Damage, $"{attacker.ShipName} 主炮命中 {defender.ShipName}！造成 {check.Damage} 点悬空损伤");
+			defender.PendingShotChecks.Add(
+				$"{attacker.ShipName} → {defender.ShipName} 主炮/副炮均不在射界内，无法开火");
+			return (false, 0, $"{attacker.ShipName} 目标不在任何炮火射界内！");
 		}
-		return (false, 0, $"{attacker.ShipName} 跨射散布，炮弹落水！");
+
+		int totalDamage = 0;
+		bool mainHit = false, secondaryHit = false;
+		if (mainArc)
+		{
+			var check = ResolveShotCheck(attacker, defender, distanceHex, radarUsed, false);
+			defender.PendingShotChecks.Add(check.Detail);
+			if (check.Hit)
+			{
+				mainHit = true;
+				defender.PendingDamage += check.Damage;
+				totalDamage += check.Damage;
+			}
+		}
+		if (secondaryArc)
+		{
+			var check = ResolveShotCheck(attacker, defender, distanceHex, radarUsed, true);
+			defender.PendingShotChecks.Add(check.Detail);
+			if (check.Hit)
+			{
+				secondaryHit = true;
+				defender.PendingDamage += check.Damage;
+				totalDamage += check.Damage;
+			}
+		}
+
+		string desc;
+		if (mainHit && secondaryHit)
+			desc = $"{attacker.ShipName} 主炮与副炮命中 {defender.ShipName}，共造成 {totalDamage} 点悬空损伤";
+		else if (mainHit)
+			desc = $"{attacker.ShipName} 主炮命中 {defender.ShipName}，造成 {totalDamage} 点悬空损伤";
+		else if (secondaryHit)
+			desc = $"{attacker.ShipName} 副炮命中 {defender.ShipName}，造成 {totalDamage} 点悬空损伤";
+		else
+			desc = $"{attacker.ShipName} 跨射散布，炮弹落水！";
+		return (totalDamage > 0, totalDamage, desc);
 	}
 
 	// 兼容旧调用

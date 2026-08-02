@@ -108,8 +108,14 @@ public partial class PhaseActionMenu : Control
 	{
 		"speed_up" or "speed_down" or "turn_left" or "turn_right" => 1,
 		"attack" => ship.ShipClass == "BB" ? 2 : 1,
+		"radar" => 0,
 		_ => 0
 	};
+
+	/// <summary>雷达技能可用条件：配表有雷达且未到中破（D1 中破起禁用雷达）。</summary>
+	private static bool CanUseRadar(ShipComponent ship)
+		=> !string.IsNullOrEmpty(ship.Data?.RadarType)
+		&& ship.DamageState is DamageState.Intact or DamageState.Light;
 
 	private static bool IsActionEnabled(ShipComponent ship, BattlePhase phase, string id,
 		GameplayDirector director)
@@ -128,6 +134,7 @@ public partial class PhaseActionMenu : Control
 				or BattlePhase.MovePhase1 or BattlePhase.MovePhase2 or BattlePhase.MovePhase3,
 			"attack" => phase == BattlePhase.Gunfire && ship.MainAmmo > 0
 				&& ship.DamageState != DamageState.Heavy && ship.DamageState != DamageState.Sunk,
+			"radar" => phase == BattlePhase.Gunfire && CanUseRadar(ship),
 			_ => true
 		};
 	}
@@ -139,6 +146,7 @@ public partial class PhaseActionMenu : Control
 		"turn_left" => ship.PendingDirection == HexDirectionUtility.TurnLeft(ship.Direction),
 		"turn_right" => ship.PendingDirection == HexDirectionUtility.TurnRight(ship.Direction),
 		"attack" => ship.PendingAttackTarget != null,
+		"radar" => ship.PendingRadarActive,
 		_ => false
 	};
 
@@ -172,6 +180,7 @@ public partial class PhaseActionMenu : Control
 		"turn_left" => "左转",
 		"turn_right" => "右转",
 		"attack" => "炮击",
+		"radar" => "雷达",
 		"skip" => "待命",
 		_ => id
 	};

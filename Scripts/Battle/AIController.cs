@@ -24,9 +24,16 @@ public partial class AIController : Node, IUnitController
 		foreach (var ship in myUnits)
 		{
 			if (!GodotObject.IsInstanceValid(ship) || ship.CurrentHp <= 0) continue;
+			if (phase == BattlePhase.Gunfire)
+			{
+				// AI 在炮击阶段自动启用雷达技能（玩家侧通过技能按钮显式开启）。
+				ship.PendingRadarActive = ship.Data != null
+					&& !string.IsNullOrEmpty(ship.Data.RadarType)
+					&& ship.DamageState is DamageState.Intact or DamageState.Light;
+			}
 
 			var target = aliveEnemies
-				.Where(e => VisionRulesEvaluator.CanEngage(ship, e, data))
+				.Where(e => VisionRulesEvaluator.CanEngage(ship, e, data, ship.PendingRadarActive))
 				.OrderBy(e => BattleRulesEvaluator.GetHexDistance(ship.HexCoords, e.HexCoords))
 				.FirstOrDefault();
 			if (target == null) break;
@@ -41,7 +48,7 @@ public partial class AIController : Node, IUnitController
 				&& ship.MainAmmo > 0 && CombatRulesEvaluator.CanFireInArc(ship, target))
 			{
 				ship.MainAmmo--;
-				bool radarOnly = VisionRulesEvaluator.IsRadarOnly(ship, target, data);
+				bool radarOnly = VisionRulesEvaluator.IsRadarOnly(ship, target, data, ship.PendingRadarActive);
 				var (_, _, desc) = CombatRulesEvaluator.FireEx(ship, target, dist, radarOnly);
 				Log(hud, desc);
 				continue;

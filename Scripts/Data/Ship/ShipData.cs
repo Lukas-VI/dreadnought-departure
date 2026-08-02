@@ -14,6 +14,14 @@ public partial class ShipData : Resource
 	[Export] public string ShipName = "未命名";
 	[Export] public string ShipClass = "S";
 	[Export] public string Rarity = "N";
+	/// <summary>阵营：如 IJN / USN。</summary>
+	[Export] public string Camp = "";
+	/// <summary>是否已解锁，供船坞展示。</summary>
+	[Export] public bool IsUnlocked = true;
+	/// <summary>角色背景故事。</summary>
+	[Export] public string Background = "";
+	/// <summary>船坞/养成中的获取成本。</summary>
+	[Export] public int Cost = 0;
 	[Export] public Texture2D Portrait;
 	[Export] public int PV = 0;
 

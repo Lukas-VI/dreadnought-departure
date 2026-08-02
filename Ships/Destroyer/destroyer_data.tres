@@ -6,6 +6,10 @@
 script = ExtResource("1_destroyer")
 ShipName = "尼古拉斯 / 奥班农"
 ShipClass = "DD"
+Camp = "美国海军 (USN)"
+IsUnlocked = true
+Background = "弗莱彻级驱逐舰，装备 Type A 雷达与 Mk15 鱼雷，机动灵活，适合护卫与雷击。"
+Cost = 6
 PV = 6
 MaxHp = 6
 MoveRange = 4

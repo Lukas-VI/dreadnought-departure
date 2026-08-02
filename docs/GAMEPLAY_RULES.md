@@ -32,7 +32,7 @@
 
 数据实体：
 
-- `ShipData`：PV、船体阈值、状态速度、主/副炮火力、鱼雷管、装甲、雷达、主炮弹药。
+- `ShipData`：PV、船体阈值、状态速度、主/副炮火力、鱼雷管、装甲、雷达、主炮弹药，以及船坞字段（阵营 `Camp`、解锁 `IsUnlocked`、背景故事 `Background`、成本 `Cost`）。
 - `ShipComponent`：运行时的 `DamageState`、`DamageTaken`、`MaxSpeedForCurrentState`、`MainAmmo`。
 - `ShipCatalog` 运行时扫描 `res://Data/Ships/*/` 与 `res://Ships/*/`，以目录名作为 ShipId；`ShipList.tres` 旧 TileId 索引已移除。
 
@@ -132,6 +132,11 @@
 - 速度/转向/炮击指令先写入 pending：预测到达格与方向只作预览，只有手动点击“推进阶段”才提交生效。
 - 操作卡片显示动作与 CP 消耗；变速/转向若可组成或切断单纵阵，额外显示第三行“组成/切断”并用绿色/橙色高亮（首舰编队变速与贪吃蛇转向不视为切断）；当前已选动作上浮高亮，CP 不足或状态不满足的动作灰化下沉。
 - 鱼雷阶段由关卡 `TorpedoPhaseEnabled` 控制，默认关闭；未启用时炮击阶段直接进入结算。
+
+## 7.3 船坞
+
+- 主菜单新增“船坞”入口，遍历 `ShipCatalog` 中全部 `ShipData`。
+- 左右按钮切换角色，展示阵营、解锁状态、成本、背景故事，以及 PV / 船体 / 火力 / 鱼雷 / 装甲 / 雷达 / 技能等数据卡信息。
 
 ## 8. 已实现 / 未实现清单
 

@@ -2,6 +2,8 @@ using Godot;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
+using DreadnoughtDeparture.Network;
 
 namespace DreadnoughtDeparture.Core;
 
@@ -63,6 +65,10 @@ public partial class GameplayDirector : Node
 	private bool _timerForPlayer = true;
 	private float _timerEmitAccumulator;
 	private bool _enemyTurnRunThisPhase;
+	private bool _remotePvp;
+	private string _lastRemotePhase = "";
+	private int _lastRemoteTurn = -1;
+	private readonly Dictionary<string, ShipComponent> _remoteShips = new();
 	private readonly Dictionary<ShipComponent, FormationTrail> _formationTrails = new();
 
 	/// <summary>单纵阵首舰历史轨迹：Cells[i] 对应到达后的航向 Headings[i]。</summary>
@@ -92,7 +98,25 @@ public partial class GameplayDirector : Node
 		var bus = GetNode<EventBus>("EventBus");
 		bus.AdvancePhaseClicked += AdvancePhase;
 		bus.PlayerSideFinished += OnPlayerSideFinished;
+		if (PvpFlowState.PvpBattle)
+		{
+			_remotePvp = true;
+			_player.ProcessMode = ProcessModeEnum.Disabled;
+			if (_ai != null)
+			{
+				_ai.ProcessMode = ProcessModeEnum.Disabled;
+			}
+			NetworkClient.Instance.WsMessageReceived += OnRemotePvpMessage;
+		}
 		CallDeferred(MethodName.LaunchBattleField);
+	}
+
+	public override void _ExitTree()
+	{
+		if (_remotePvp && NetworkClient.Instance != null)
+		{
+			NetworkClient.Instance.WsMessageReceived -= OnRemotePvpMessage;
+		}
 	}
 
 	public override void _Process(double delta)
@@ -115,9 +139,174 @@ public partial class GameplayDirector : Node
 	public void LaunchBattleField()
 	{
 		_mapGenerator.BuildMap(_dataManager.TerrainData);
+		if (_remotePvp)
+		{
+			_overlay.InitializeOverlayTargets(_mapGenerator.SpawnedTileMeshes);
+			StartRemotePvp();
+			return;
+		}
 		_unitSpawner.SpawnUnits(_dataManager.UnitData);
 		_overlay.InitializeOverlayTargets(_mapGenerator.SpawnedTileMeshes);
 		StartBattle();
+	}
+
+	private void StartRemotePvp()
+	{
+		GetNode<EventBus>("EventBus").EmitLog("PvP 远程战场已启动，等待服务端状态...");
+		if (!string.IsNullOrEmpty(PvpFlowState.PendingRoomId))
+		{
+			NetworkClient.Instance.SendWsJoinRoom(PvpFlowState.PendingRoomId);
+		}
+		if (!string.IsNullOrEmpty(PvpFlowState.PendingBattleId))
+		{
+			NetworkClient.Instance.SendWsGetBattleState(PvpFlowState.PendingBattleId);
+		}
+	}
+
+	private void OnRemotePvpMessage(string json)
+	{
+		try
+		{
+			using var document = JsonDocument.Parse(json);
+			JsonElement root = document.RootElement;
+			string type = root.TryGetProperty("type", out JsonElement typeProp)
+				? typeProp.GetString() ?? ""
+				: "";
+			if (type == "battle.state" && root.TryGetProperty("state", out JsonElement state))
+			{
+				ApplyRemoteState(state);
+			}
+			else if (type == "error")
+			{
+				string code = root.TryGetProperty("code", out JsonElement codeProp)
+					? codeProp.GetString() ?? ""
+					: "";
+				GetNode<EventBus>("EventBus").EmitLog($"PvP 服务端错误：{code}");
+			}
+		}
+		catch
+		{
+			// 忽略非 JSON 消息。
+		}
+	}
+
+	private void ApplyRemoteState(JsonElement state)
+	{
+		var bus = GetNode<EventBus>("EventBus");
+		int turn = state.TryGetProperty("turn", out JsonElement turnProp)
+			? turnProp.GetInt32()
+			: 0;
+		string phase = state.TryGetProperty("phase", out JsonElement phaseProp)
+			? phaseProp.GetString() ?? ""
+			: "";
+		if (turn != _lastRemoteTurn || phase != _lastRemotePhase)
+		{
+			_lastRemoteTurn = turn;
+			_lastRemotePhase = phase;
+			_currentPhase = RemotePhaseToLocal(phase);
+			EmitPhaseChanged();
+			bus.EmitLog($"—— PvP 第 {turn} 回合 · {phase} ——");
+		}
+
+		if (!state.TryGetProperty("ships", out JsonElement ships))
+		{
+			return;
+		}
+
+		var seen = new HashSet<string>();
+		foreach (JsonElement ship in ships.EnumerateArray())
+		{
+			string id = ship.TryGetProperty("id", out JsonElement idProp)
+				? idProp.GetString() ?? ""
+				: "";
+			if (string.IsNullOrEmpty(id))
+			{
+				continue;
+			}
+
+			JsonElement hex = ship.TryGetProperty("hex", out JsonElement hexProp)
+				? hexProp
+				: default;
+			if (hex.ValueKind != JsonValueKind.Array || hex.GetArrayLength() < 2)
+			{
+				continue;
+			}
+
+			int side = ship.TryGetProperty("side", out JsonElement sideProp)
+				? sideProp.GetInt32()
+				: 0;
+			int facing = ship.TryGetProperty("facing", out JsonElement facingProp)
+				? facingProp.GetInt32()
+				: 0;
+			int speed = ship.TryGetProperty("speed", out JsonElement speedProp)
+				? speedProp.GetInt32()
+				: 0;
+			int hp = ship.TryGetProperty("hp", out JsonElement hpProp)
+				? hpProp.GetInt32()
+				: 0;
+			int maxHp = ship.TryGetProperty("maxHp", out JsonElement maxHpProp)
+				? maxHpProp.GetInt32()
+				: 0;
+
+			if (!_remoteShips.TryGetValue(id, out ShipComponent component))
+			{
+				PackedScene prefab = ResourceLoader.Load<PackedScene>(
+					"res://Ships/BaseShip/ship_3d.tscn");
+				if (prefab == null)
+				{
+					continue;
+				}
+				component = prefab.Instantiate<ShipComponent>();
+				_unitSpawner.AddChild(component);
+				_remoteShips[id] = component;
+			}
+
+			seen.Add(id);
+			component.BattleSide = side == 0 ? GenerationSide.Player : GenerationSide.Enemy;
+			Vector2I coords = new Vector2I(hex[0].GetInt32(), hex[1].GetInt32());
+			component.MoveToHex(_mapGenerator, coords);
+			component.AnimateTurnTo((HexDirection)(facing % 6));
+			component.CurrentSpeed = speed;
+			if (maxHp > 0)
+			{
+				component.MaxHp = maxHp;
+				component.CurrentHp = Math.Clamp(hp, 0, maxHp);
+			}
+			LevelDataManager.BattlefieldUnits[coords] = component;
+		}
+
+		var stale = new List<string>();
+		foreach (string key in _remoteShips.Keys)
+		{
+			if (!seen.Contains(key))
+			{
+				stale.Add(key);
+			}
+		}
+		foreach (string key in stale)
+		{
+			ShipComponent dead = _remoteShips[key];
+			if (LevelDataManager.BattlefieldUnits.TryGetValue(dead.HexCoords, out ShipComponent current)
+				&& current == dead)
+			{
+				LevelDataManager.BattlefieldUnits.Remove(dead.HexCoords);
+			}
+			dead.QueueFree();
+			_remoteShips.Remove(key);
+		}
+	}
+
+	private static BattlePhase RemotePhaseToLocal(string phase)
+	{
+		return phase switch
+		{
+			"speed" => BattlePhase.SpeedAdjust,
+			"move1" => BattlePhase.MovePhase1,
+			"move2" => BattlePhase.MovePhase2,
+			"move3" => BattlePhase.MovePhase3,
+			"gunnery" => BattlePhase.Gunfire,
+			_ => BattlePhase.SpeedAdjust,
+		};
 	}
 
 	private async void StartBattle()
@@ -223,6 +412,11 @@ public partial class GameplayDirector : Node
 	public void AdvancePhase()
 	{
 		if (_advancing || _settling || _battleEnded) return;
+		if (_remotePvp)
+		{
+			GetNode<EventBus>("EventBus").EmitLog("PvP 模式请使用暂停菜单中的推进结算");
+			return;
+		}
 		if (_enemyActing)
 		{
 			GetNode<EventBus>("EventBus").EmitLog("敌方行动中，请稍候");

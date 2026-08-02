@@ -49,6 +49,7 @@ public partial class NetworkClient : Node
 	public override void _Ready()
 	{
 		Instance = this;
+		ProcessMode = ProcessModeEnum.Always;
 	}
 
 	public override void _Process(double delta)
@@ -429,6 +430,7 @@ public static class PvpFlowState
 {
 	public static string PendingRoomId = "";
 	public static string PendingBattleId = "";
+	public static bool PvpBattle = false;
 }
 
 /// <summary>PvP 房间缓存的地图 JSON，双方进入战斗前共用。</summary>

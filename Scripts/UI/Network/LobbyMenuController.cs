@@ -14,6 +14,7 @@ public partial class LobbyMenuController : Control
 	[Export] public string LoginMenuPath = "res://Scenes/UI/Network/login_menu.tscn";
 	[Export] public string MainMenuPath = "res://Scenes/UI/Menu/MainMenu/main_menu.tscn";
 	[Export] public string BattleMenuPath = "res://Scenes/UI/Network/pvp_battle_menu.tscn";
+	[Export] public string BattleScenePath = "res://Scenes/Battle/battle_scene.tscn";
 	[Export] public string MapSelectMenuPath = "res://Scenes/UI/Menu/MainMenu/map_select_menu.tscn";
 
 	private sealed record RoomInfo(
@@ -280,7 +281,8 @@ public partial class LobbyMenuController : Control
 			PvpFlowState.PendingBattleId = battle.TryGetProperty("id", out JsonElement id)
 				? id.GetString() ?? ""
 				: "";
-			GetTree().ChangeSceneToFile(BattleMenuPath);
+			PvpFlowState.PvpBattle = true;
+			GetTree().ChangeSceneToFile(BattleScenePath);
 		}
 		catch (Exception ex)
 		{
@@ -375,7 +377,8 @@ public partial class LobbyMenuController : Control
 				PvpFlowState.PendingBattleId = battle.TryGetProperty("id", out JsonElement id)
 					? id.GetString() ?? ""
 					: "";
-				GetTree().ChangeSceneToFile(BattleMenuPath);
+				PvpFlowState.PvpBattle = true;
+				GetTree().ChangeSceneToFile(BattleScenePath);
 			}
 			else if (type == "room.removed")
 			{

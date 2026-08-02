@@ -2,6 +2,7 @@ using Godot;
 using System.Collections.Generic;
 using System.Text.Json;
 using System;
+using DreadnoughtDeparture.Network;
 
 namespace DreadnoughtDeparture.Core;
 
@@ -107,6 +108,12 @@ public partial class LevelDataManager : Node
 		// 画布菜单把选中画布名写进 RuntimeMapRequest；进入场景后消费一次
 		string requestedName = RuntimeMapRequest;
 		RuntimeMapRequest = null;
+		if (PvpFlowState.PvpBattle && !string.IsNullOrEmpty(PvpMapState.MapJson)
+			&& LoadMapFromJson(PvpMapState.MapJson))
+		{
+			MapAutoOpened = true;
+			return;
+		}
 		if (!string.IsNullOrEmpty(requestedName) && LoadMap(requestedName))
 		{
 			MapAutoOpened = true;

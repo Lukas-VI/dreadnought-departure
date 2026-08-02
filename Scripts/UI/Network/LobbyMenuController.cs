@@ -25,6 +25,7 @@ public partial class LobbyMenuController : Control
 	private Button _createButton;
 	private Button _joinButton;
 	private Button _startButton;
+	private Button _leaveButton;
 	private string _selectedRoomId = "";
 	private string _myUserId = "";
 	private List<RoomInfo> _rooms = new();
@@ -44,6 +45,7 @@ public partial class LobbyMenuController : Control
 		NetworkClient.Instance.ConnectionStateChanged += OnConnectionChanged;
 		NetworkClient.Instance.WsClosed += OnWsClosed;
 		NetworkClient.Instance.ConnectWebSocket();
+		_wsStatusLabel.Text = "连接中...";
 		_ = LoadMeAsync();
 		RefreshRooms();
 	}
@@ -89,11 +91,7 @@ public partial class LobbyMenuController : Control
 		var topSpacer = new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill };
 		topBar.AddChild(topSpacer);
 
-		topBar.AddChild(MakeButton("返回主菜单", () =>
-		{
-			NetworkClient.Instance.Logout();
-			GetTree().ChangeSceneToFile(MainMenuPath);
-		}));
+		topBar.AddChild(MakeButton("返回主菜单", () => _ = OnBackToMainMenuAsync()));
 
 		var body = new HBoxContainer();
 		body.SetAnchorsPreset(LayoutPreset.FullRect);
@@ -311,8 +309,12 @@ public partial class LobbyMenuController : Control
 		buttons.AddChild(_joinButton);
 
 		_startButton = MakeButton("开始战斗", () => _ = OnStartBattleAsync());
-		_startButton.Disabled = !isMember || room.Status != "ready";
+		_startButton.Disabled = !isMember || room.OwnerId != _myUserId || room.Status != "ready";
 		buttons.AddChild(_startButton);
+
+		_leaveButton = MakeButton("离开房间", () => _ = OnLeaveRoomAsync());
+		_leaveButton.Disabled = !isMember;
+		buttons.AddChild(_leaveButton);
 		_detailBox.AddChild(buttons);
 
 		var spacer = new Control { SizeFlagsVertical = SizeFlags.ExpandFill };
@@ -343,6 +345,15 @@ public partial class LobbyMenuController : Control
 					? id.GetString() ?? ""
 					: "";
 				GetTree().ChangeSceneToFile(BattleMenuPath);
+			}
+			else if (type == "room.removed")
+			{
+				if (root.TryGetProperty("roomId", out JsonElement removedRoom) &&
+					removedRoom.GetString() == _selectedRoomId)
+				{
+					_selectedRoomId = "";
+				}
+				RefreshRooms();
 			}
 		}
 		catch
@@ -376,6 +387,54 @@ public partial class LobbyMenuController : Control
 		{
 			_startButton.Disabled = busy;
 		}
+		if (_leaveButton != null)
+		{
+			_leaveButton.Disabled = busy;
+		}
+	}
+
+	private async Task OnLeaveRoomAsync()
+	{
+		if (string.IsNullOrEmpty(_selectedRoomId))
+		{
+			return;
+		}
+
+		string roomId = _selectedRoomId;
+		SetBusy(true);
+		try
+		{
+			await NetworkClient.Instance.LeaveRoomAsync(roomId);
+			_selectedRoomId = "";
+			NetworkClient.Instance.SendWebSocket(
+				$"{{\"type\":\"lobby.leave\",\"roomId\":\"{roomId}\"}}");
+			RefreshRooms();
+		}
+		catch (Exception ex)
+		{
+			_statusLabel.Text = $"离开失败：{ex.Message}";
+		}
+		finally
+		{
+			SetBusy(false);
+		}
+	}
+
+	private async Task OnBackToMainMenuAsync()
+	{
+		try
+		{
+			if (!string.IsNullOrEmpty(_selectedRoomId))
+			{
+				await NetworkClient.Instance.LeaveRoomAsync(_selectedRoomId);
+			}
+		}
+		catch
+		{
+			// 断线清理也会兜底，忽略离开失败。
+		}
+		NetworkClient.Instance.Logout();
+		GetTree().ChangeSceneToFile(MainMenuPath);
 	}
 
 	private void SubscribeRoom(string roomId)

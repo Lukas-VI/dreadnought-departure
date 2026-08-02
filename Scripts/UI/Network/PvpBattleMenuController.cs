@@ -26,6 +26,7 @@ public partial class PvpBattleMenuController : Control
 		NetworkClient.Instance.ConnectionStateChanged += OnConnectionChanged;
 		NetworkClient.Instance.WsClosed += OnWsClosed;
 		NetworkClient.Instance.ConnectWebSocket();
+		OnConnectionChanged(NetworkClient.Instance.IsWebSocketConnected);
 
 		if (!string.IsNullOrEmpty(PvpFlowState.PendingRoomId))
 		{
@@ -108,6 +109,7 @@ public partial class PvpBattleMenuController : Control
 		infoBox.AddChild(_phaseLabel);
 
 		infoBox.AddChild(MakeButton("骰值测试 3d100", () => SendTestRoll()));
+		infoBox.AddChild(MakeButton("重连", () => NetworkClient.Instance.ReconnectWebSocket()));
 
 		var logPanel = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
 		body.AddChild(logPanel);
@@ -130,6 +132,13 @@ public partial class PvpBattleMenuController : Control
 
 	private void SendTestRoll()
 	{
+		if (!NetworkClient.Instance.IsWebSocketConnected)
+		{
+			AppendLog($"未连接，无法投掷（{NetworkClient.Instance.LastWsError}）");
+			NetworkClient.Instance.ReconnectWebSocket();
+			return;
+		}
+
 		if (string.IsNullOrEmpty(PvpFlowState.PendingBattleId))
 		{
 			AppendLog("没有可用的 battleId");
@@ -181,7 +190,9 @@ public partial class PvpBattleMenuController : Control
 
 	private void OnConnectionChanged(bool connected)
 	{
-		_wsStatusLabel.Text = connected ? "已连接" : "未连接";
+		_wsStatusLabel.Text = connected
+			? "已连接"
+			: $"未连接 ({NetworkClient.Instance.LastWsError})";
 		_wsStatusLabel.Modulate = connected
 			? new Color(0.5f, 1f, 0.6f)
 			: new Color(1f, 0.8f, 0.3f);

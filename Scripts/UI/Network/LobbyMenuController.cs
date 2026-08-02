@@ -46,6 +46,7 @@ public partial class LobbyMenuController : Control
 		NetworkClient.Instance.WsClosed += OnWsClosed;
 		NetworkClient.Instance.ConnectWebSocket();
 		_wsStatusLabel.Text = "连接中...";
+		OnConnectionChanged(NetworkClient.Instance.IsWebSocketConnected);
 		_ = LoadMeAsync();
 		RefreshRooms();
 	}
@@ -364,7 +365,9 @@ public partial class LobbyMenuController : Control
 
 	private void OnConnectionChanged(bool connected)
 	{
-		_wsStatusLabel.Text = connected ? "已连接" : "未连接";
+		_wsStatusLabel.Text = connected
+			? "已连接"
+			: $"未连接 ({NetworkClient.Instance.LastWsError})";
 		_wsStatusLabel.Modulate = connected
 			? new Color(0.5f, 1f, 0.6f)
 			: new Color(1f, 0.8f, 0.3f);

@@ -37,6 +37,7 @@ public partial class NetworkClient : Node
 	private const double ReconnectIntervalSeconds = 2.0;
 
 	public bool IsWebSocketConnected => _wsConnected;
+	public string LastWsError { get; private set; } = "";
 
 	[Signal] public delegate void AuthChangedEventHandler(bool loggedIn, string username);
 	[Signal] public delegate void ConnectionStateChangedEventHandler(bool connected);
@@ -46,58 +47,59 @@ public partial class NetworkClient : Node
 	public override void _Ready()
 	{
 		Instance = this;
-		_ws = new WebSocketPeer();
 	}
 
 	public override void _Process(double delta)
 	{
-		if (_ws == null)
-		{
-			return;
-		}
-
 		try
 		{
-			_ws.Poll();
-			var state = _ws.GetReadyState();
-			if (state == WebSocketPeer.State.Open)
+			if (_ws != null && (_wsShouldConnect || _wsConnected))
 			{
-				if (!_wsConnected)
+				_ws.Poll();
+				var state = _ws.GetReadyState();
+				if (state == WebSocketPeer.State.Open)
 				{
-					_wsConnected = true;
+					if (!_wsConnected)
+					{
+						_wsConnected = true;
+						_wsAuthenticated = false;
+						_reconnectTimer = 0;
+						LastWsError = "";
+						EmitSignal(SignalName.ConnectionStateChanged, true);
+					}
+
+					if (!_wsAuthenticated && IsLoggedIn)
+					{
+						_wsAuthenticated = true;
+						_ws.SendText($"{{\"type\":\"auth\",\"token\":\"{Token}\"}}");
+					}
+
+					while (_ws.GetAvailablePacketCount() > 0)
+					{
+						byte[] packet = _ws.GetPacket();
+						string text = Encoding.UTF8.GetString(packet);
+						EmitSignal(SignalName.WsMessageReceived, text);
+					}
+				}
+				else if (state == WebSocketPeer.State.Closed && (_wsConnected || _wsShouldConnect))
+				{
+					int code = _ws.GetCloseCode();
+					string reason = _ws.GetCloseReason();
+					_wsConnected = false;
+					_wsShouldConnect = false;
 					_wsAuthenticated = false;
-					_reconnectTimer = 0;
-					EmitSignal(SignalName.ConnectionStateChanged, true);
+					LastWsError = $"closed_{code}_{reason}";
+					EmitSignal(SignalName.WsClosed, code, reason);
+					EmitSignal(SignalName.ConnectionStateChanged, false);
 				}
-
-				if (!_wsAuthenticated && IsLoggedIn)
-				{
-					_wsAuthenticated = true;
-					_ws.SendText($"{{\"type\":\"auth\",\"token\":\"{Token}\"}}");
-				}
-
-				while (_ws.GetAvailablePacketCount() > 0)
-				{
-					byte[] packet = _ws.GetPacket();
-					string text = Encoding.UTF8.GetString(packet);
-					EmitSignal(SignalName.WsMessageReceived, text);
-				}
-			}
-			else if (state == WebSocketPeer.State.Closed && (_wsConnected || _wsShouldConnect))
-			{
-				int code = _ws.GetCloseCode();
-				string reason = _ws.GetCloseReason();
-				_wsConnected = false;
-				_wsShouldConnect = false;
-				_wsAuthenticated = false;
-				EmitSignal(SignalName.WsClosed, code, reason);
-				EmitSignal(SignalName.ConnectionStateChanged, false);
 			}
 		}
 		catch
 		{
 			_wsConnected = false;
 			_wsShouldConnect = false;
+			_ws = null;
+			LastWsError = "poll_error";
 			EmitSignal(SignalName.ConnectionStateChanged, false);
 		}
 
@@ -120,9 +122,37 @@ public partial class NetworkClient : Node
 		}
 
 		_ws = new WebSocketPeer();
-		_ws.ConnectToUrl(WsUrl);
+		Error err = _ws.ConnectToUrl(WsUrl);
+		LastWsError = err.ToString();
+		if (err != Error.Ok)
+		{
+			_ws = null;
+			_wsShouldConnect = false;
+			EmitSignal(SignalName.ConnectionStateChanged, false);
+			return;
+		}
 		_wsShouldConnect = true;
 		_wsAuthenticated = false;
+	}
+
+	public void ReconnectWebSocket()
+	{
+		if (_ws != null)
+		{
+			try
+			{
+				_ws.Close();
+			}
+			catch
+			{
+				// 忽略未连接 peer 的关闭异常。
+			}
+		}
+		_ws = null;
+		_wsConnected = false;
+		_wsShouldConnect = false;
+		_wsAuthenticated = false;
+		ConnectWebSocket();
 	}
 
 	public void SendWebSocket(string json)
@@ -152,6 +182,7 @@ public partial class NetworkClient : Node
 		if (_ws != null)
 		{
 			_ws.Close();
+			_ws = null;
 		}
 		EmitSignal(SignalName.AuthChanged, false, "");
 	}

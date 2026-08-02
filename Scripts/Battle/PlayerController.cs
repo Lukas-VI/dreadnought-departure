@@ -187,6 +187,17 @@ public partial class PlayerController : Node, IUnitController
 	}
 
 	/// <summary>执行航速增减：检查变速限幅与 CP 消耗，更新 ship.CurrentSpeed，并按新航速推算到达格运镜。</summary>
+	private List<ShipComponent> GetFormationMembersForSelected()
+	{
+		var markerMembers = MoveRulesEvaluator.RuntimeFormationMembers(_selected, _myUnits);
+		if (markerMembers.Count >= 2 && ReferenceEquals(markerMembers[0], _selected))
+			return markerMembers;
+		var formation = MoveRulesEvaluator.DetectLineAhead(_selected, _myUnits);
+		return formation.IsInFormation && ReferenceEquals(formation.LeadShip, _selected)
+			? formation.Ships
+			: null;
+	}
+
 	private void ExecuteSpeedAdjust(int delta)
 	{
 		int old = _selected.CurrentSpeed;
@@ -196,24 +207,22 @@ public partial class PlayerController : Node, IUnitController
 		{ RejectAction($"❌ 航速调整超限（当前 {old}）"); return; }
 
 		int cpCost = 1;
-		var formation = MoveRulesEvaluator.DetectLineAhead(_selected, _myUnits);
-		bool leadFormation = formation.IsInFormation && ReferenceEquals(formation.LeadShip, _selected);
-		if (leadFormation)
-			cpCost = 1;
+		var formationShips = GetFormationMembersForSelected();
+		bool leadFormation = formationShips != null;
 		if (cpCost > 0 && _director != null && !_director.TryConsumeCP(cpCost))
 		{ RejectAction($"❌ CP 不足（需要 {cpCost}，剩余 {_director.CurrentCP}）"); return; }
 
 		if (leadFormation)
 		{
-			for (int i = 0; i < formation.Ships.Count; i++)
+			for (int i = 0; i < formationShips.Count; i++)
 			{
-				var ship = formation.Ships[i];
+				var ship = formationShips[i];
 				ship.PendingSpeed = wish;
 				ship.FormationLead = _selected;
 				ship.FormationIndex = i;
 			}
 			GetNode<EventBus>("../EventBus").EmitSignal("LogMessage",
-				$"⚙ 编队航速待命 {old} → {wish}（{formation.Ships.Count} 艘，{cpCost} CP）");
+				$"⚙ 编队航速待命 {old} → {wish}（{formationShips.Count} 艘，{cpCost} CP）");
 		}
 		else
 		{
@@ -313,21 +322,21 @@ public partial class PlayerController : Node, IUnitController
 			{
 				var nd = HexDirectionUtility.TurnLeft(_selected.Direction);
 				int cost = MoveRulesEvaluator.TurnCostToFace(_selected.Direction, nd);
-				var formation = MoveRulesEvaluator.DetectLineAhead(_selected, _myUnits);
-				bool leadFormation = formation.IsInFormation && ReferenceEquals(formation.LeadShip, _selected);
+				var formationShips = GetFormationMembersForSelected();
+				bool leadFormation = formationShips != null;
 				if (leadFormation) cost = 1;
 				if (_director != null && !_director.TryConsumeCP(cost))
 				{ _pendingAction = null; RejectAction($"❌ 转向需要 {cost} CP"); return; }
 				if (leadFormation)
 				{
-					for (int i = 0; i < formation.Ships.Count; i++)
+					for (int i = 0; i < formationShips.Count; i++)
 					{
-						formation.Ships[i].FormationLead = _selected;
-						formation.Ships[i].FormationIndex = i;
+						formationShips[i].FormationLead = _selected;
+						formationShips[i].FormationIndex = i;
 					}
 					_selected.PendingDirection = nd;
 					GetNode<EventBus>("../EventBus").EmitSignal("LogMessage",
-						$"↩ 编队左转待命 → 航向 {nd}（首船转向，{formation.Ships.Count} 艘按轨迹跟随，{cost} CP）");
+						$"↩ 编队左转待命 → 航向 {nd}（首船转向，{formationShips.Count} 艘按轨迹跟随，{cost} CP）");
 				}
 				else
 				{
@@ -344,21 +353,21 @@ public partial class PlayerController : Node, IUnitController
 			{
 				var nd = HexDirectionUtility.TurnRight(_selected.Direction);
 				int cost = MoveRulesEvaluator.TurnCostToFace(_selected.Direction, nd);
-				var formation = MoveRulesEvaluator.DetectLineAhead(_selected, _myUnits);
-				bool leadFormation = formation.IsInFormation && ReferenceEquals(formation.LeadShip, _selected);
+				var formationShips = GetFormationMembersForSelected();
+				bool leadFormation = formationShips != null;
 				if (leadFormation) cost = 1;
 				if (_director != null && !_director.TryConsumeCP(cost))
 				{ _pendingAction = null; RejectAction($"❌ 转向需要 {cost} CP"); return; }
 				if (leadFormation)
 				{
-					for (int i = 0; i < formation.Ships.Count; i++)
+					for (int i = 0; i < formationShips.Count; i++)
 					{
-						formation.Ships[i].FormationLead = _selected;
-						formation.Ships[i].FormationIndex = i;
+						formationShips[i].FormationLead = _selected;
+						formationShips[i].FormationIndex = i;
 					}
 					_selected.PendingDirection = nd;
 					GetNode<EventBus>("../EventBus").EmitSignal("LogMessage",
-						$"↪ 编队右转待命 → 航向 {nd}（首船转向，{formation.Ships.Count} 艘按轨迹跟随，{cost} CP）");
+						$"↪ 编队右转待命 → 航向 {nd}（首船转向，{formationShips.Count} 艘按轨迹跟随，{cost} CP）");
 				}
 				else
 				{

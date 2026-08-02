@@ -148,25 +148,81 @@ public static class MoveRulesEvaluator
 		return result;
 	}
 
+	/// <summary>按运行时编队标记返回成员；未建立标记时返回空列表。</summary>
+	public static List<ShipComponent> RuntimeFormationMembers(
+		ShipComponent lead, IEnumerable<ShipComponent> ships)
+		=> ships
+			.Where(s => GodotObject.IsInstanceValid(s) && ReferenceEquals(s.FormationLead, lead))
+			.OrderBy(s => s.FormationIndex)
+			.ToList();
+
+	/// <summary>是否仍被运行时标记视为首舰（贪吃蛇跟随途中几何关系会暂时不同向）。</summary>
+	public static bool IsRuntimeFormationLead(
+		ShipComponent ship, IEnumerable<ShipComponent> ships)
+	{
+		if (ship?.FormationLead != ship) return false;
+		var members = RuntimeFormationMembers(ship, ships);
+		return members.Count >= 2 && ReferenceEquals(members[0], ship);
+	}
+
 	/// <summary>按当前几何关系重建全部单纵阵标记（首舰、链内序号），供列表与移动结算使用。</summary>
 	public static void SyncFormationGroups(List<ShipComponent> ships)
 	{
 		if (ships == null) return;
+		// 保存上一回合的编队标记：贪吃蛇跟随途中会出现暂时不同向/几何检测只能认出部分成员，
+		// 必须先按旧整组保留，再做新的几何检测，避免把跟随中的尾巴拆成独立船。
+		var previousGroups = ships
+			.Where(s => s.FormationLead != null && GodotObject.IsInstanceValid(s))
+			.GroupBy(s => s.FormationLead)
+			.Select(g => new
+			{
+				Lead = g.Key,
+				LeadWasSelf = ReferenceEquals(g.Key, g.Key.FormationLead),
+				Members = g.OrderBy(s => s.FormationIndex).ToList()
+			})
+			.ToList();
 		foreach (var ship in ships)
 		{
 			ship.FormationLead = null;
 			ship.FormationIndex = -1;
 		}
 		var seen = new HashSet<ShipComponent>();
+
+		foreach (var group in previousGroups)
+		{
+			if (!group.LeadWasSelf || !GodotObject.IsInstanceValid(group.Lead)
+				|| group.Lead.CurrentHp <= 0)
+				continue;
+			var members = group.Members
+				.Where(s => ships.Contains(s) && s.CurrentHp > 0)
+				.OrderBy(s => s.FormationIndex)
+				.ToList();
+			if (members.Count < 2) continue;
+			bool adjacent = true;
+			for (int i = 1; i < members.Count; i++)
+				if (BattleRulesEvaluator.GetHexDistance(
+					members[i - 1].HexCoords, members[i].HexCoords) != 1)
+				{
+					adjacent = false;
+					break;
+				}
+			if (!adjacent) continue;
+			for (int i = 0; i < members.Count; i++)
+			{
+				members[i].FormationLead = group.Lead;
+				members[i].FormationIndex = i;
+				seen.Add(members[i]);
+			}
+		}
+
+		// 剩余的船再做新的几何编队检测。
 		foreach (var ship in ships)
 		{
 			if (seen.Contains(ship)) continue;
 			var formation = DetectLineAhead(ship, ships);
-			if (!formation.IsInFormation || !ReferenceEquals(formation.LeadShip, ship))
-			{
-				seen.Add(ship);
+			if (!formation.IsInFormation || !ReferenceEquals(formation.LeadShip, ship)
+				|| formation.Ships.Any(seen.Contains))
 				continue;
-			}
 			for (int i = 0; i < formation.Ships.Count; i++)
 			{
 				formation.Ships[i].FormationLead = formation.LeadShip;

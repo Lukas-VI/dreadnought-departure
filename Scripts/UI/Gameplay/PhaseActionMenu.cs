@@ -150,9 +150,10 @@ public partial class PhaseActionMenu : Control
 				return "";
 		}
 
+		// 运行时标记优先：贪吃蛇跟随途中首舰仍视为编队操作，不显示“切断”。
+		if (MoveRulesEvaluator.IsRuntimeFormationLead(ship, friendly)) return "";
 		var currentFormation = MoveRulesEvaluator.DetectLineAhead(ship, friendly);
 		bool current = currentFormation.IsInFormation;
-		// 首舰变速/转向按编队整体执行（变速同步全队、转向走贪吃蛇轨迹），不会切断编队。
 		if (current && ReferenceEquals(currentFormation.LeadShip, ship)) return "";
 		bool predicted = MoveRulesEvaluator.DetectLineAhead(
 			ship, friendly, directionOverride, speedOverride).IsInFormation;

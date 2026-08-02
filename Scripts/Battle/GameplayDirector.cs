@@ -63,6 +63,15 @@ public partial class GameplayDirector : Node
 	private bool _timerForPlayer = true;
 	private float _timerEmitAccumulator;
 	private bool _enemyTurnRunThisPhase;
+	private readonly Dictionary<ShipComponent, FormationTrail> _formationTrails = new();
+
+	/// <summary>单纵阵首舰历史轨迹：Cells[i] 对应到达后的航向 Headings[i]。</summary>
+	private sealed class FormationTrail
+	{
+		public readonly List<Vector2I> Cells = new();
+		public readonly List<HexDirection> Headings = new();
+		public readonly List<ShipComponent> Members = new();
+	}
 
 	private static readonly string[] PhaseLabels =
 	{
@@ -607,7 +616,7 @@ public partial class GameplayDirector : Node
 		return duration;
 	}
 
-	/// <summary>单纵阵按“贪吃蛇”轨迹推进：后船逐格进入前船让出的位置，到达转向格时才转向。</summary>
+	/// <summary>单纵阵按首舰轨迹推进：后船逐格消费首舰历史轨迹，到达每个转向格时立即转向。</summary>
 	private float AnimateFormationChain(List<ShipComponent> chain, int phase, bool oddTurn, EventBus bus,
 		HashSet<Vector2I> occupied, Dictionary<Vector2I, ShipComponent> occupiedShips)
 	{
@@ -615,45 +624,65 @@ public partial class GameplayDirector : Node
 		int requestedSteps = MoveRulesEvaluator.MovementForPhase(lead.CurrentSpeed, phase, oddTurn);
 		Vector2I off = HexDirectionUtility.Offset(lead.Direction);
 		int steps = ResolveMoveSteps(lead, requestedSteps, off, bus, occupied, occupiedShips);
-		if (!IsShipAlive(lead) || steps <= 0) return 0f;
+		if (!IsShipAlive(lead)) return 0f;
 
-		var leadVisited = new List<Vector2I> { lead.HexCoords };
-		var leadHeadings = new List<HexDirection> { lead.Direction };
+		FormationTrail trail = GetOrBuildFormationTrail(lead, chain);
+		int leadIndex = trail.Cells.Count - 1;
+		// 首舰转向在推进阶段已生效；即使本阶段不移动，也要更新当前格的轨迹航向。
+		trail.Headings[leadIndex] = lead.Direction;
+		if (steps <= 0) return 0f;
+
 		for (int i = 0; i < steps; i++)
 		{
-			leadVisited.Add(leadVisited[i] + off);
-			leadHeadings.Add(lead.Direction);
+			trail.Cells.Add(trail.Cells[^1] + off);
+			trail.Headings.Add(lead.Direction);
 		}
 
+		var leadPath = trail.Cells.GetRange(leadIndex + 1, steps);
+		var leadHeadings = trail.Headings.GetRange(leadIndex + 1, steps);
 		occupied.Remove(lead.HexCoords);
-		occupied.Add(leadVisited[steps]);
-		occupiedShips[leadVisited[steps]] = lead;
+		occupied.Add(trail.Cells[^1]);
+		occupiedShips[trail.Cells[^1]] = lead;
 		float perStep = 0.2f + 0.35f / Math.Max(1, steps);
-		lead.AnimateMovePath(_mapGenerator, leadVisited.Skip(1).ToList(), perStep,
-			leadHeadings.Skip(1).ToList());
+		lead.AnimateMovePath(_mapGenerator, leadPath, perStep, leadHeadings);
 
-		var aheadVisited = leadVisited;
-		var aheadHeadings = leadHeadings;
 		for (int k = 1; k < chain.Count; k++)
 		{
 			var follower = chain[k];
 			if (!IsShipAlive(follower)) continue;
-			int followerSteps = Math.Min(steps, aheadVisited.Count - 1);
+			int followerIndex = trail.Cells.LastIndexOf(follower.HexCoords);
+			if (followerIndex < 0) continue;
+			int followerSteps = Math.Min(steps, trail.Cells.Count - 1 - followerIndex);
 			if (followerSteps <= 0) continue;
-			var path = aheadVisited.GetRange(0, followerSteps);
-			var headings = aheadHeadings.GetRange(0, followerSteps);
+			var path = trail.Cells.GetRange(followerIndex + 1, followerSteps);
+			var headings = trail.Headings.GetRange(followerIndex + 1, followerSteps);
 			occupied.Remove(follower.HexCoords);
 			occupied.Add(path[followerSteps - 1]);
 			occupiedShips[path[followerSteps - 1]] = follower;
 			follower.AnimateMovePath(_mapGenerator, path, perStep, headings);
-			var nextAhead = new List<Vector2I> { follower.HexCoords };
-			nextAhead.AddRange(path);
-			aheadVisited = nextAhead;
-			var nextHeadings = new List<HexDirection> { follower.Direction };
-			nextHeadings.AddRange(headings);
-			aheadHeadings = nextHeadings;
 		}
 		return 0.35f + steps * 0.2f;
+	}
+
+	private FormationTrail GetOrBuildFormationTrail(ShipComponent lead, List<ShipComponent> chain)
+	{
+		if (_formationTrails.TryGetValue(lead, out var trail)
+			&& trail.Cells.Count > 0
+			&& trail.Cells[^1] == lead.HexCoords
+			&& trail.Members.SequenceEqual(chain))
+			return trail;
+
+		trail = new FormationTrail();
+		for (int i = chain.Count - 1; i >= 0; i--)
+		{
+			var ship = chain[i];
+			if (!IsShipAlive(ship)) continue;
+			trail.Cells.Add(ship.HexCoords);
+			trail.Headings.Add(ship.Direction);
+		}
+		trail.Members.AddRange(chain);
+		_formationTrails[lead] = trail;
+		return trail;
 	}
 
 	private int ResolveMoveSteps(ShipComponent ship, int requestedSteps, Vector2I off, EventBus bus,

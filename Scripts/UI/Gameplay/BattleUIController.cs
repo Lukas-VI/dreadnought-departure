@@ -140,6 +140,16 @@ public partial class BattleUIController : Control
 		foreach (var ship in ships)
 		{
 			if (used.Contains(ship)) continue;
+			var markerMembers = MoveRulesEvaluator.RuntimeFormationMembers(ship, ships);
+			if (markerMembers.Count >= 2 && ReferenceEquals(ship.FormationLead, ship))
+			{
+				for (int i = 0; i < markerMembers.Count; i++)
+					assignments[markerMembers[i]] = (groupNumber, i + 1);
+				groupNumber++;
+				foreach (var member in markerMembers)
+					used.Add(member);
+				continue;
+			}
 			var formation = MoveRulesEvaluator.DetectLineAhead(ship, ships);
 			if (formation.IsInFormation && ReferenceEquals(formation.LeadShip, ship))
 			{

@@ -24,7 +24,8 @@ public partial class EventBus : Node
 	[Signal] public delegate void ShipInfoRequestedEventHandler(ShipComponent ship);
 	[Signal] public delegate void ShipStatusChangedEventHandler(ShipComponent ship);
 	[Signal] public delegate void ShipSelectionChangedEventHandler(ShipComponent ship, bool selected);
-	[Signal] public delegate void OverlayDrawRequestedEventHandler(Vector2I center, int move, int attack, int state);
+	[Signal] public delegate void OverlayDrawRequestedEventHandler(
+		Vector2I center, int move, int attack, int direction, int arcMask, int state);
 	[Signal] public delegate void OverlayArcDrawRequestedEventHandler(Vector2I center, int direction, int range);
 	[Signal] public delegate void OverlayClearRequestedEventHandler();
 	[Signal] public delegate void MoveTargetHighlightedEventHandler(Vector2I target);

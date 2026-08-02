@@ -177,7 +177,9 @@ public partial class PlayerController : Node, IUnitController
 		if (actionId == "attack")
 		{
 			GetNode<EventBus>("../EventBus").EmitSignal("OverlayDrawRequested",
-				_selected.HexCoords, 0, _selected.AttackRange, (int)UnitTacticalState.Idle);
+				_selected.HexCoords, 0, _selected.AttackRange,
+				(int)_selected.Direction, AttackArcMask(_selected),
+				(int)UnitTacticalState.Idle);
 			FocusOnAttackRange();
 		}
 		else
@@ -421,6 +423,18 @@ public partial class PlayerController : Node, IUnitController
 	}
 
 	/// <summary>进入炮击待命时拉高镜头，让射程圈完整可见。</summary>
+	private static int AttackArcMask(ShipComponent ship)
+	{
+		if (ship?.Data == null) return 7;
+		var main = ship.Data.Firepower;
+		var secondary = ship.Data.SecondaryFirepower;
+		int mask = 0;
+		if (main.Forward > 0 || secondary.Forward > 0) mask |= 1;
+		if (main.Side > 0 || secondary.Side > 0) mask |= 2;
+		if (main.Backward > 0 || secondary.Backward > 0) mask |= 4;
+		return mask;
+	}
+
 	private void FocusOnAttackRange()
 	{
 		float distance = Mathf.Clamp(8f + _selected.AttackRange * 3f, 12f, 40f);

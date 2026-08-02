@@ -12,6 +12,7 @@ public partial class GridOverlayController : Node
 {
 	[Export] public StandardMaterial3D MoveMaterial;
 	[Export] public StandardMaterial3D AttackMaterial;
+	[Export] public StandardMaterial3D AttackFrontMaterial;
 
 	private Dictionary<Vector2I, MeshInstance3D> _targets = new();
 	private Dictionary<MeshInstance3D, Material> _originalMaterials = new();
@@ -34,16 +35,30 @@ public partial class GridOverlayController : Node
 				_originalMaterials[mesh] = mesh.MaterialOverride;
 	}
 
-	// 攻击范围：显示所有射程内格
-	public void DrawTacticalRange(Vector2I center, int moveRange, int attackRange, int stateInt = 0)
+	// 攻击范围：前/后射界用 AttackFrontMaterial，侧射用 AttackMaterial
+	public void DrawTacticalRange(Vector2I center, int moveRange, int attackRange,
+		int directionInt, int arcMask, int stateInt = 0)
 	{
 		ClearOverlay();
 		if ((UnitTacticalState)stateInt == UnitTacticalState.Actioned) return;
+		HexDirection direction = (HexDirection)directionInt;
 		foreach (var (coords, mesh) in _targets)
 		{
 			int dist = BattleRulesEvaluator.GetHexDistance(center, coords);
 			if (dist <= moveRange && dist > 0) mesh.MaterialOverride = MoveMaterial;
-			else if (dist <= attackRange && dist > moveRange) mesh.MaterialOverride = AttackMaterial;
+			else if (dist <= attackRange && dist > moveRange)
+			{
+				int diff = ((int)MoveRulesEvaluator.DirectionTo(center, coords)
+					- (int)direction + 6) % 6;
+				int arcBit = diff switch
+				{
+					0 or 5 => 1,
+					1 or 4 => 2,
+					_ => 4
+				};
+				if ((arcMask & arcBit) == 0) continue;
+				mesh.MaterialOverride = diff is 1 or 4 ? AttackMaterial : AttackFrontMaterial;
+			}
 		}
 	}
 

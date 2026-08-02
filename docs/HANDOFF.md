@@ -2,7 +2,7 @@
 
 > 更新日期：2026-08-02
 > 分支：`codex/ship-operations`
-> 最后提交：`a3d46ae feat: 单纵阵贪吃蛇转向与列表标记`
+> 最后提交：`fd57304 fix: 单纵阵转向格立即转向并加入转向补间动画`
 
 ## 1. 当前状态
 
@@ -226,9 +226,8 @@
 
 ## 4. Git 状态与提交建议
 
-- 已提交：`92a21a3`（编辑器关卡设置与新建画布扩展）、`bdb944f`（交接文档同步）。
-- 本轮待提交：单纵阵贪吃蛇转向与列表标记、舰船数据标量化防资源重写丢失。
-- 涉及文件：`Scripts/Battle/{GameplayDirector,MoveRulesEvaluator,PlayerController}.cs`、`Scripts/Data/{BattleDataTypes.cs,Ship/ShipData.cs}`、`Scripts/UI/Gameplay/BattleUIController.cs`、`Scripts/Unit/ShipComponent.cs`、四份 `Ships/*/*_data.tres` 与三份文档。
+- 已提交：`fd57304`（单纵阵转向格立即转向与转向补间动画）、`bf754a2` / `a3d46ae`（贪吃蛇转向与文档同步）及更早的编辑器关卡设置系列。
+- 本次提交只包含单纵阵转向与转向动画相关源码和三份文档；工作区中 `Ships/*/*_data.tres`、`export/maps/1.json` 与未跟踪的 `export/maps/4.json` 是用户/编辑器产物，未纳入提交。
 
 ## 5. 已知问题与下一步
 

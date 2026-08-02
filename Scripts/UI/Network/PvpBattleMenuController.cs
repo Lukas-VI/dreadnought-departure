@@ -15,6 +15,7 @@ public partial class PvpBattleMenuController : Control
 	private Label _battleIdLabel;
 	private Label _roomIdLabel;
 	private Label _phaseLabel;
+	private Label _initiativeLabel;
 	private Label _shipsLabel;
 	private Label _wsStatusLabel;
 	private Label _commandStatusLabel;
@@ -112,6 +113,9 @@ public partial class PvpBattleMenuController : Control
 		_phaseLabel = new Label { Text = "阶段：- / 回合 -" };
 		_phaseLabel.AddThemeFontSizeOverride("font_size", 18);
 		infoBox.AddChild(_phaseLabel);
+
+		_initiativeLabel = new Label { Text = "先手：-" };
+		infoBox.AddChild(_initiativeLabel);
 
 		_commandStatusLabel = new Label { Text = "指令：未提交" };
 		infoBox.AddChild(_commandStatusLabel);
@@ -245,6 +249,14 @@ public partial class PvpBattleMenuController : Control
 			: "";
 
 		_phaseLabel.Text = $"阶段：{phase} / 回合 {turn} / {status}";
+		if (state.TryGetProperty("turnOrder", out JsonElement turnOrder) &&
+			turnOrder.GetArrayLength() >= 2)
+		{
+			string firstId = turnOrder[0].GetString() ?? "";
+			_initiativeLabel.Text = firstId == NetworkClient.Instance.UserId
+				? "先手：我方"
+				: "先手：敌方";
+		}
 		if (turn != _lastTurn || phase != _lastPhase)
 		{
 			_lastTurn = turn;
@@ -353,6 +365,13 @@ public partial class PvpBattleMenuController : Control
 		string phase = state.TryGetProperty("phase", out JsonElement phaseProp)
 			? phaseProp.GetString() ?? ""
 			: "";
+		bool myTurn = state.TryGetProperty("activePlayer", out JsonElement activeProp) &&
+			activeProp.GetString() == NetworkClient.Instance.UserId;
+		if (!myTurn)
+		{
+			_commandBox.AddChild(new Label { Text = "等待对方提交指令..." });
+		}
+		else
 		switch (phase)
 		{
 			case "speed":

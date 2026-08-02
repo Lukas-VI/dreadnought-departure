@@ -205,6 +205,13 @@ public partial class NetworkClient : Node
 			JsonOptions));
 	}
 
+	public void SendWsBattleShipsCommand(string battleId, IList<object> ships)
+	{
+		SendWebSocket(JsonSerializer.Serialize(
+			new { type = "battle.command", battleId, ships },
+			JsonOptions));
+	}
+
 	public void SendWsBattleAdvance(string battleId)
 	{
 		SendWebSocket(JsonSerializer.Serialize(new { type = "battle.advance", battleId }, JsonOptions));

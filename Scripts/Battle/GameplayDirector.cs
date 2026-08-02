@@ -68,6 +68,8 @@ public partial class GameplayDirector : Node
 	private bool _remotePvp;
 	private string _lastRemotePhase = "";
 	private int _lastRemoteTurn = -1;
+	private bool _remoteCommandsSent;
+	private bool _remotePhaseActive;
 	private readonly Dictionary<string, ShipComponent> _remoteShips = new();
 	private readonly Dictionary<ShipComponent, FormationTrail> _formationTrails = new();
 
@@ -101,7 +103,6 @@ public partial class GameplayDirector : Node
 		if (PvpFlowState.PvpBattle)
 		{
 			_remotePvp = true;
-			_player.ProcessMode = ProcessModeEnum.Disabled;
 			if (_ai != null)
 			{
 				_ai.ProcessMode = ProcessModeEnum.Disabled;
@@ -203,7 +204,9 @@ public partial class GameplayDirector : Node
 		{
 			_lastRemoteTurn = turn;
 			_lastRemotePhase = phase;
+			_turnNumber = turn;
 			_currentPhase = RemotePhaseToLocal(phase);
+			_remoteCommandsSent = false;
 			EmitPhaseChanged();
 			bus.EmitLog($"—— PvP 第 {turn} 回合 · {phase} ——");
 		}
@@ -258,6 +261,7 @@ public partial class GameplayDirector : Node
 				}
 				component = prefab.Instantiate<ShipComponent>();
 				_unitSpawner.AddChild(component);
+				component.SetMeta("serverShipId", id);
 				_remoteShips[id] = component;
 			}
 
@@ -294,6 +298,98 @@ public partial class GameplayDirector : Node
 			dead.QueueFree();
 			_remoteShips.Remove(key);
 		}
+
+		_playerShips = _remoteShips.Values
+			.Where(ship => ship.BattleSide == GenerationSide.Player)
+			.ToList();
+		_enemyShips = _remoteShips.Values
+			.Where(ship => ship.BattleSide == GenerationSide.Enemy)
+			.ToList();
+
+		bool myTurn = state.TryGetProperty("activePlayer", out JsonElement activeProp) &&
+			activeProp.GetString() == NetworkClient.Instance.UserId;
+		string status = state.TryGetProperty("status", out JsonElement statusProp)
+			? statusProp.GetString() ?? ""
+			: "";
+		if (status == "active" && myTurn && !_remotePhaseActive)
+		{
+			_remotePhaseActive = true;
+			CallDeferred(nameof(BeginPlayerPhase));
+		}
+		else if (!myTurn || status != "active")
+		{
+			_remotePhaseActive = false;
+		}
+	}
+
+	private void SendRemoteCommands()
+	{
+		var ships = BuildRemoteShipCommands();
+		_remoteCommandsSent = true;
+		NetworkClient.Instance.SendWsBattleShipsCommand(
+			PvpFlowState.PendingBattleId,
+			ships);
+		GetNode<EventBus>("EventBus").EmitLog($"PvP 已提交 {ships.Count} 艘船指令");
+	}
+
+	private List<object> BuildRemoteShipCommands()
+	{
+		var list = new List<object>();
+		foreach (ShipComponent ship in _playerShips)
+		{
+			if (!IsShipAlive(ship))
+			{
+				continue;
+			}
+
+			string serverId = ship.GetMeta("serverShipId", "").AsString();
+			if (string.IsNullOrEmpty(serverId))
+			{
+				continue;
+			}
+
+			string action = "wait";
+			object detail = null;
+			if (_currentPhase == BattlePhase.SpeedAdjust)
+			{
+				if (ship.PendingSpeed >= 0 && ship.PendingSpeed != ship.CurrentSpeed)
+				{
+					action = ship.PendingSpeed > ship.CurrentSpeed ? "accelerate" : "decelerate";
+				}
+			}
+			else if (_currentPhase is BattlePhase.MovePhase1 or BattlePhase.MovePhase2
+				or BattlePhase.MovePhase3)
+			{
+				if (ship.PendingDirection.HasValue)
+				{
+					int delta = ((int)ship.PendingDirection.Value - (int)ship.Direction + 6) % 6;
+					if (delta == 1)
+					{
+						action = "turn_right";
+					}
+					else if (delta == 5)
+					{
+						action = "turn_left";
+					}
+				}
+			}
+			else if (_currentPhase == BattlePhase.Gunfire &&
+				ship.PendingAttackTarget != null &&
+				GodotObject.IsInstanceValid(ship.PendingAttackTarget))
+			{
+				string targetId = ship.PendingAttackTarget
+					.GetMeta("serverShipId", "")
+					.AsString();
+				if (!string.IsNullOrEmpty(targetId))
+				{
+					action = "fire";
+					detail = new { targetShipId = targetId };
+				}
+			}
+
+			list.Add(new { id = serverId, action, detail });
+		}
+		return list;
 	}
 
 	private static BattlePhase RemotePhaseToLocal(string phase)
@@ -341,6 +437,12 @@ public partial class GameplayDirector : Node
 	{
 		_playerFinishedThisPhase = true;
 		CancelPhaseTimer();
+		if (_remotePvp)
+		{
+			_remotePhaseActive = false;
+			SendRemoteCommands();
+			return;
+		}
 		if (_battleEnded || _enemyActing) return;
 		RunEnemyTurn();
 	}
@@ -414,7 +516,16 @@ public partial class GameplayDirector : Node
 		if (_advancing || _settling || _battleEnded) return;
 		if (_remotePvp)
 		{
-			GetNode<EventBus>("EventBus").EmitLog("PvP 模式请使用暂停菜单中的推进结算");
+			CancelPhaseTimer();
+			if (!_remoteCommandsSent)
+			{
+				_remotePhaseActive = false;
+				SendRemoteCommands();
+			}
+			else
+			{
+				NetworkClient.Instance.SendWsBattleAdvance(PvpFlowState.PendingBattleId);
+			}
 			return;
 		}
 		if (_enemyActing)
@@ -599,6 +710,15 @@ public partial class GameplayDirector : Node
 	private void OnPhaseTimerExpired()
 	{
 		if (_battleEnded || _settling) return;
+		if (_remotePvp)
+		{
+			if (!_remoteCommandsSent)
+			{
+				_remotePhaseActive = false;
+				SendRemoteCommands();
+			}
+			return;
+		}
 		if (_enemyActing) return;
 		if (!_playerFinishedThisPhase)
 		{

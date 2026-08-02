@@ -126,6 +126,7 @@ public partial class PvpBattleMenuController : Control
 			BbcodeEnabled = false,
 			ScrollFollowing = true,
 			CustomMinimumSize = new Vector2(0, 0),
+			SizeFlagsVertical = SizeFlags.ExpandFill,
 		};
 		logBox.AddChild(_log);
 	}
@@ -159,7 +160,14 @@ public partial class PvpBattleMenuController : Control
 				? typeProp.GetString() ?? ""
 				: "";
 
-			if (type == "battle.rolled" && root.TryGetProperty("roll", out JsonElement roll))
+			if (type == "room.state" && root.TryGetProperty("room", out JsonElement room))
+			{
+				string roomId = room.TryGetProperty("id", out JsonElement roomIdProp)
+					? roomIdProp.GetString() ?? ""
+					: "";
+				AppendLog($"[{DateTime.Now:HH:mm:ss}] 已订阅房间 {roomId}");
+			}
+			else if (type == "battle.rolled" && root.TryGetProperty("roll", out JsonElement roll))
 			{
 				string battleId = root.TryGetProperty("battleId", out JsonElement battleProp)
 					? battleProp.GetString() ?? ""

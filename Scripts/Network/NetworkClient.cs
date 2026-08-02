@@ -33,6 +33,7 @@ public partial class NetworkClient : Node
 	private bool _wsShouldConnect;
 	private bool _wsAuthenticated;
 	private double _reconnectTimer;
+	private readonly Queue<string> _pendingWsMessages = new();
 
 	private const double ReconnectIntervalSeconds = 2.0;
 
@@ -72,6 +73,11 @@ public partial class NetworkClient : Node
 					{
 						_wsAuthenticated = true;
 						_ws.SendText($"{{\"type\":\"auth\",\"token\":\"{Token}\"}}");
+					}
+
+					while (_pendingWsMessages.Count > 0)
+					{
+						_ws.SendText(_pendingWsMessages.Dequeue());
 					}
 
 					while (_ws.GetAvailablePacketCount() > 0)
@@ -159,7 +165,18 @@ public partial class NetworkClient : Node
 	{
 		if (_wsConnected && _ws != null)
 		{
-			_ws.SendText(json);
+			if (_wsAuthenticated)
+			{
+				_ws.SendText(json);
+			}
+			else if (_pendingWsMessages.Count < 64)
+			{
+				_pendingWsMessages.Enqueue(json);
+			}
+		}
+		else if (_pendingWsMessages.Count < 64)
+		{
+			_pendingWsMessages.Enqueue(json);
 		}
 	}
 
@@ -179,6 +196,7 @@ public partial class NetworkClient : Node
 		_wsShouldConnect = false;
 		_wsAuthenticated = false;
 		_reconnectTimer = 0;
+		_pendingWsMessages.Clear();
 		if (_ws != null)
 		{
 			_ws.Close();

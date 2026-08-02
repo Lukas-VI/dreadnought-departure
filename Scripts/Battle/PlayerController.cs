@@ -195,7 +195,7 @@ public partial class PlayerController : Node, IUnitController
 		if (!SpeedTable.CanAdjustSpeed(old, wish, max))
 		{ RejectAction($"❌ 航速调整超限（当前 {old}）"); return; }
 
-		int cpCost = Math.Abs(delta);
+		int cpCost = 1;
 		var formation = MoveRulesEvaluator.DetectLineAhead(_selected, _myUnits);
 		bool leadFormation = formation.IsInFormation && ReferenceEquals(formation.LeadShip, _selected);
 		if (leadFormation)

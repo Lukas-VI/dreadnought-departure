@@ -38,6 +38,10 @@ public partial class EventBus : Node
 	[Signal] public delegate void PhaseChangedEventHandler(string phaseName, int phaseIndex, int turnNumber);
 	[Signal] public delegate void AdvancePhaseClickedEventHandler();
 	[Signal] public delegate void CpUpdatedEventHandler(int current, int max);
+	[Signal] public delegate void CommandStateUpdatedEventHandler(
+		int playerCommand, int playerCP, int playerMaxCP,
+		int enemyCommand, int enemyCP, int enemyMaxCP,
+		int playerScore, int enemyScore);
 	[Signal] public delegate void PhaseTimerUpdatedEventHandler(float remaining, float total);
 
 	public override void _Ready()

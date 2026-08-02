@@ -107,7 +107,7 @@ public partial class PhaseActionMenu : Control
 	private static int ActionCost(ShipComponent ship, string id) => id switch
 	{
 		"speed_up" or "speed_down" or "turn_left" or "turn_right" => 1,
-		"attack" => ship.ShipClass == "BB" ? 2 : 1,
+		"attack" => CommandRulesEvaluator.FireCPCost(ship),
 		"radar" => 0,
 		_ => 0
 	};

@@ -42,6 +42,12 @@ public partial class GameplayDirector : Node
 	// —— CP ——
 	public int CurrentCP { get; private set; } = 8;
 	public int MaxCP { get; private set; } = 12;
+	public int EnemyCurrentCP { get; private set; } = 8;
+	public int EnemyMaxCP { get; private set; } = 12;
+	public int PlayerCommandValue { get; private set; } = 5;
+	public int EnemyCommandValue { get; private set; } = 4;
+	public int PlayerScore { get; private set; }
+	public int EnemyScore { get; private set; }
 
 	// —— 单位缓存 ——
 	private List<ShipComponent> _playerShips = new();
@@ -115,11 +121,16 @@ public partial class GameplayDirector : Node
 		_enemyShips = all.Where(s => s.BattleSide == GenerationSide.Enemy).ToList();
 
 		_turnNumber = 1;
-		MaxCP = Math.Max(4, _dataManager.PlayerCommand * 2);
+		PlayerCommandValue = _dataManager.PlayerCommand;
+		EnemyCommandValue = _dataManager.EnemyCommand;
+		MaxCP = Math.Max(1, PlayerCommandValue * 2);
 		CurrentCP = Math.Min(_dataManager.PlayerInitialCP, MaxCP);
+		EnemyMaxCP = Math.Max(1, EnemyCommandValue * 2);
+		EnemyCurrentCP = Math.Min(_dataManager.EnemyInitialCP, EnemyMaxCP);
+		RefreshCommandValues();
 		_currentPhase = BattlePhase.SpeedAdjust;
 		EmitPhaseChanged();
-		EmitCpUpdated();
+		EmitCommandStateUpdated();
 		GetNode<EventBus>("EventBus").EmitSignal("LogMessage",
 			$"—— 第 {_turnNumber} 回合 —— {PhaseLabels[(int)_currentPhase]}");
 
@@ -281,7 +292,8 @@ public partial class GameplayDirector : Node
 		if (_currentPhase == BattlePhase.SpeedAdjust)
 		{
 			_turnNumber++;
-			CurrentCP = Math.Min(CurrentCP + _dataManager.PlayerCommand, MaxCP);
+			CurrentCP = Math.Min(CurrentCP + PlayerCommandValue, MaxCP);
+			EnemyCurrentCP = Math.Min(EnemyCurrentCP + EnemyCommandValue, EnemyMaxCP);
 			ApplyDeferredSpeedCaps();
 			foreach (var ship in _playerShips.Concat(_enemyShips))
 				if (IsShipAlive(ship))
@@ -300,7 +312,7 @@ public partial class GameplayDirector : Node
 		}
 
 		EmitPhaseChanged();
-		EmitCpUpdated();
+		EmitCommandStateUpdated();
 		GetNode<EventBus>("EventBus").EmitSignal("LogMessage",
 			$"➡ {PhaseLabels[(int)_currentPhase]}");
 
@@ -337,7 +349,7 @@ public partial class GameplayDirector : Node
 			if (ship.PendingAttackTarget != null && GodotObject.IsInstanceValid(ship.PendingAttackTarget))
 			{
 				ShipComponent target = ship.PendingAttackTarget;
-				int attackCost = ship.ShipClass == "BB" ? 2 : 1;
+				int attackCost = CommandRulesEvaluator.FireCPCost(ship);
 				if (TryConsumeCP(attackCost) && ship.MainAmmo > 0
 					&& CombatRulesEvaluator.CanFireInArc(ship, target))
 				{
@@ -409,20 +421,58 @@ public partial class GameplayDirector : Node
 		_ => false
 	};
 
-	/// <summary>尝试消耗 CP。成功则返回 true 并 Emit CpUpdated 信号。</summary>
+	/// <summary>尝试消耗我方 CP。成功则返回 true 并刷新 HUD。</summary>
 	public bool TryConsumeCP(int amount)
 	{
 		if (CurrentCP < amount) return false;
 		CurrentCP -= amount;
-		EmitCpUpdated();
+		EmitCommandStateUpdated();
 		return true;
 	}
 
-	/// <summary>增加 CP（不超过上限），Emit CpUpdated 信号。</summary>
+	/// <summary>增加我方 CP（不超过上限）。</summary>
 	public void AddCP(int amount)
 	{
 		CurrentCP = Math.Min(CurrentCP + amount, MaxCP);
-		EmitCpUpdated();
+		EmitCommandStateUpdated();
+	}
+
+	/// <summary>尝试消耗敌方 CP。成功则返回 true 并刷新 HUD。</summary>
+	public bool TryConsumeEnemyCP(int amount)
+	{
+		if (EnemyCurrentCP < amount) return false;
+		EnemyCurrentCP -= amount;
+		EmitCommandStateUpdated();
+		return true;
+	}
+
+	/// <summary>增加敌方 CP（不超过上限）。</summary>
+	public void AddEnemyCP(int amount)
+	{
+		EnemyCurrentCP = Math.Min(EnemyCurrentCP + amount, EnemyMaxCP);
+		EmitCommandStateUpdated();
+	}
+
+	/// <summary>按舰船损伤重算双方指挥值、CP 上限与 PV 得分。</summary>
+	public void RefreshCommandValues()
+	{
+		PlayerCommandValue = CommandRulesEvaluator.CommandValue(
+			_playerShips, _dataManager?.PlayerCommand ?? 5);
+		EnemyCommandValue = CommandRulesEvaluator.CommandValue(
+			_enemyShips, _dataManager?.EnemyCommand ?? 4);
+		MaxCP = Math.Max(1, PlayerCommandValue * 2);
+		EnemyMaxCP = Math.Max(1, EnemyCommandValue * 2);
+		CurrentCP = Math.Min(CurrentCP, MaxCP);
+		EnemyCurrentCP = Math.Min(EnemyCurrentCP, EnemyMaxCP);
+		RefreshScores();
+		EmitCommandStateUpdated();
+	}
+
+	/// <summary>按对方舰船当前损伤状态计算 PV 得分。</summary>
+	public void RefreshScores()
+	{
+		PlayerScore = VictoryRulesEvaluator.FleetScore(_enemyShips);
+		EnemyScore = VictoryRulesEvaluator.FleetScore(_playerShips);
 	}
 
 	private async void DoEndTurnSettlement()
@@ -445,6 +495,7 @@ public partial class GameplayDirector : Node
 			foreach (var ship in _playerShips.Concat(_enemyShips))
 				if (GodotObject.IsInstanceValid(ship) && ship.PendingDamage > 0)
 					ship.ApplyPendingDamage();
+			RefreshCommandValues();
 
 			foreach (var ship in _playerShips.Concat(_enemyShips))
 				if (GodotObject.IsInstanceValid(ship))
@@ -618,6 +669,7 @@ public partial class GameplayDirector : Node
 		{
 			bus.EmitLog($"🪨 {ship.ShipName} 撞击岛屿，直接沉没！");
 			ship.TakeDamage(ship.CurrentHp);
+			RefreshCommandValues();
 			return 0;
 		}
 		if (occupiedShips.TryGetValue(blockedHex, out var blocker) && blocker != ship)
@@ -630,6 +682,7 @@ public partial class GameplayDirector : Node
 				bus.EmitLog($"💥 {ship.ShipName} 与 {blocker.ShipName} 发生冲撞！（{rollA}→{dmgA}，{rollB}→{dmgB}）");
 				ship.TakeDamage(dmgA);
 				blocker.TakeDamage(dmgB);
+				RefreshCommandValues();
 			}
 			else
 			{
@@ -658,12 +711,28 @@ public partial class GameplayDirector : Node
 	{
 		int playerCount = _playerShips.Count(IsShipAlive);
 		int enemyCount = _enemyShips.Count(IsShipAlive);
-		if (playerCount > 0 && enemyCount > 0) return false;
+		if (playerCount > 0 && enemyCount > 0)
+		{
+			if (_currentPhase == BattlePhase.EndTurn && _turnNumber >= _dataManager.MaxTurns)
+			{
+				_battleEnded = true;
+				string scoreResult = PlayerScore > EnemyScore ? "胜利"
+					: PlayerScore < EnemyScore ? "失败" : "平局";
+				string scoreDetail = $"回合数已到，PV 我方 {PlayerScore} / 敌方 {EnemyScore}";
+				var scoreBus = GetNode<EventBus>("EventBus");
+				scoreBus.EmitLog($"🏁 {scoreResult}：{scoreDetail}");
+				scoreBus.EmitSignal("BattleEnded", scoreResult, scoreDetail);
+				return true;
+			}
+			return false;
+		}
 
 		_battleEnded = true;
 		bool playerWon = playerCount > 0;
 		string result = playerWon ? "胜利" : "失败";
-		string detail = playerWon ? "敌方舰队已全灭" : "我方舰队已全灭";
+		string detail = playerWon
+			? $"敌方舰队已全灭（PV 我方 {PlayerScore} / 敌方 {EnemyScore}）"
+			: $"我方舰队已全灭（PV 我方 {PlayerScore} / 敌方 {EnemyScore}）";
 		var bus = GetNode<EventBus>("EventBus");
 		bus.EmitLog($"🏁 {result}：{detail}");
 		bus.EmitSignal("BattleEnded", result, detail);
@@ -694,6 +763,9 @@ public partial class GameplayDirector : Node
 		GetNode<EventBus>("EventBus").EmitSignal("PhaseChanged",
 			PhaseLabels[(int)_currentPhase], (int)_currentPhase, _turnNumber);
 
-	private void EmitCpUpdated() =>
-		GetNode<EventBus>("EventBus").EmitSignal("CpUpdated", CurrentCP, MaxCP);
+	private void EmitCommandStateUpdated() =>
+		GetNode<EventBus>("EventBus").EmitSignal("CommandStateUpdated",
+			PlayerCommandValue, CurrentCP, MaxCP,
+			EnemyCommandValue, EnemyCurrentCP, EnemyMaxCP,
+			PlayerScore, EnemyScore);
 }

@@ -47,7 +47,7 @@ public partial class BattleUIController : Control
 		bus.ActionSelected += OnActionSelected;
 		bus.OverlayClearRequested += HideActionMenu;
 		bus.PhaseChanged += OnPhaseChanged;
-		bus.CpUpdated += OnCpUpdated;
+		bus.CommandStateUpdated += OnCommandStateUpdated;
 		bus.PhaseTimerUpdated += OnPhaseTimerUpdated;
 		bus.BattleEnded += OnBattleEnded;
 
@@ -141,11 +141,17 @@ public partial class BattleUIController : Control
 		RefreshShipLists();
 	}
 
-	/// <summary>CP 更新时追加到阶段标签尾部。</summary>
-	private void OnCpUpdated(int current, int max)
+	/// <summary>指挥值/CP/PV 更新时刷新左侧状态栏。</summary>
+	private void OnCommandStateUpdated(
+		int playerCommand, int playerCP, int playerMaxCP,
+		int enemyCommand, int enemyCP, int enemyMaxCP,
+		int playerScore, int enemyScore)
 	{
 		if (_commandLabel != null)
-			_commandLabel.Text = $"指挥值 {max / 2} | CP {current}/{max}";
+			_commandLabel.Text =
+				$"指挥值 我方 {playerCommand} / 敌方 {enemyCommand}\n" +
+				$"CP 我方 {playerCP}/{playerMaxCP}  敌方 {enemyCP}/{enemyMaxCP}\n" +
+				$"PV 我方 {playerScore} / 敌方 {enemyScore}";
 	}
 
 	private void OnPhaseTimerUpdated(float remaining, float total)

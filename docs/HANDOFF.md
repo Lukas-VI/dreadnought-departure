@@ -10,7 +10,7 @@
 - 分支上已完成第一版“分阶段逐船操作”：每个玩家阶段按存活舰船顺序排队，自动选中队首并弹出底部操作菜单。
 - 本轮又完成：底部弹性菜单替代轮盘、三个移动阶段各自推进时立即惯性移动（Tween）、相机滚轮缩放联动仰角、旧场景路径修复、炮击点击失效修复、新建画布地图朝向（E/W 与 N/S）。
 - 本轮继续完成：敌方 AI 接入阶段管线、胜负判定与战斗结果面板、岛屿阻挡移动、炮击射界限制、移动碰撞占位、主炮有限弹药、敌方行动演出镜头、单格下一到达预览、规则数据卡与玩法文档、关卡初设数据链路、纸质速力表奇偶、延迟降速、堆叠上限 2、运行时舰船目录、3D 六角朝向修正、Label3D 状态化与左右信息面板、鱼雷阶段开关、待命指令预览。
-- 本轮新增：编辑器新建画布阶段限时 / 鱼雷开关可视化、已有画布关卡设置编辑、副炮与前后侧火力、雷达技能化。
+- 本轮新增：单纵阵贪吃蛇转向与列表标记、编辑器关卡设置编辑、舰船数据改为标量字段防资源重写丢失。
 - 以上内容已随本轮提交入库，下一手可以直接继续。
 
 ## 2. 本轮改动明细
@@ -116,7 +116,15 @@
 ### 单纵阵
 
 - `MoveRulesEvaluator.DetectLineAhead` 完善为同速同向、首尾相邻的完整编队链检测。
-- 头舰变速/转向时自动给全部编队船写入 pending，并只收 1 CP；`SelectNextShip` 跳过已有待命指令的船，玩家仍可手动点击覆盖。
+- 新增 `SyncFormationGroups`：把 `FormationLead` / `FormationIndex` 写入运行时编队标记，供列表与移动结算使用。
+- 头舰变速时自动给全部编队船写入 pending，并只收 1 CP；头舰转向只写自身待命，移动阶段后船逐格进入前船让出的位置，到达转向格时才转向（贪吃蛇）。
+- `ShipComponent.AnimateMovePath` 逐格动画并按位移更新航向；`SelectNextShip` 跳过编队后续舰，玩家仍可手动点击覆盖或离队。
+- 左右舰船列表对单纵阵船只显示“单纵阵”标记。
+
+### 舰船数据防重写
+
+- `ShipData` 的船体阈值与状态速度从 `int[]` 改为标量字段（`HullLight/HullModerate/HullHeavy/HullSunk`、`SpeedIntact/SpeedLight/SpeedModerate/SpeedHeavy`），Godot 重存资源时不再丢失数组字段。
+- 四艘原型舰资源均显式写入对应数值，白露的 1/2/3/4 船体阈值不再回退到默认值。
 
 ### 地形与冲撞
 
@@ -199,6 +207,8 @@
 - 碰撞 headless 冒烟：把两艘船摆成同航向纵队并推进移动阶段，后船不会穿过前船占位格，阶段流转无报错。
 - 航向预览 headless 冒烟：战斗开局自动选中首船时 `OverlayArcDrawRequested` 高亮路径无报错。
 - 单纵阵 headless 冒烟：两船同速同向纵队，头舰加速后两船 `PendingSpeed=4`，CP 由 8→7。
+- 单纵阵贪吃蛇 headless 冒烟：两船同向纵队，头舰左转后第一移动阶段仅头舰转向，第二移动阶段后舰转到同一航向，左右列表含“单纵阵”标记。
+- 舰船数据 headless 冒烟：`ShipData` 标量船体阈值/状态速度加载正确，Godot 重存资源后数值保留。
 - 撞岛 headless 冒烟：在船正前方设置岛屿并推进移动阶段后 `DamageState=Sunk`，船体保留原位。
 - AI 相机/视野 headless 冒烟：触发 `PlayerSideFinished` 后敌舰逐艘俯视运镜，阶段推进无报错。
 - 规则 headless 冒烟：编辑器 `NewMap` 可写入关卡初设；四艘舰船资源/场景可加载；南达科他受 21 点损伤后连推七个阶段到下一回合速度调整阶段，延迟降速流程无报错。
@@ -214,13 +224,14 @@
 
 ## 4. Git 状态与提交建议
 
-- 已提交：`f46f9ef`（单纵阵、冲撞检定与视野雷达规则）、`957fc5e`（交接文档同步）。
-- 本轮待提交：已有画布关卡设置编辑、新建画布补地图类型/主动权归属/鱼雷模式、舰船资源补 uid。
-- 涉及文件：`Scripts/Map/LevelDataManager.cs`、`Scripts/Editor/EditorUIController.cs`、`Scenes/UI/Editor/editor_ui.tscn`、`Scripts/UI/Menu/MapSelectMenuController.cs`、`Ships/{Cruiser,Destroyer,Dreadnought}/*.tres`、三个新 C# 脚本的 `.uid` 与三份文档。
+- 已提交：`92a21a3`（编辑器关卡设置与新建画布扩展）、`bdb944f`（交接文档同步）。
+- 本轮待提交：单纵阵贪吃蛇转向与列表标记、舰船数据标量化防资源重写丢失。
+- 涉及文件：`Scripts/Battle/{GameplayDirector,MoveRulesEvaluator,PlayerController}.cs`、`Scripts/Data/{BattleDataTypes.cs,Ship/ShipData.cs}`、`Scripts/UI/Gameplay/BattleUIController.cs`、`Scripts/Unit/ShipComponent.cs`、四份 `Ships/*/*_data.tres` 与三份文档。
 
 ## 5. 已知问题与下一步
 
 - 真人编辑器内炮击、分阶段移动动画、滚轮缩放需要实际点击验证。
+- 单纵阵贪吃蛇移动已接入，规则书要求的解散判定、堆叠内编队等边界仍需逐步精确。
 - 冲撞目前是简化 A3 表，完整表 A3 与移动后超堆叠检定尚未精确实现。
 - 夜战照明阶段（`ReconLighting`）只有逻辑占位，尚无探照灯/照明弹玩法。
 - 烟幕、照明弹、鱼雷仍是后续实体玩法；雷达技能已接入，探照灯未做。

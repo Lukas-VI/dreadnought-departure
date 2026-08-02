@@ -147,6 +147,9 @@ public partial class GameplayDirector : Node
 				ship.ClearPendingCommands();
 				ship.UpdateUi();
 			}
+		// 移动阶段保留贪吃蛇编队标记；只在速度调整阶段按几何关系重建。
+		if (_currentPhase == BattlePhase.SpeedAdjust)
+			MoveRulesEvaluator.SyncFormationGroups(_playerShips.Where(IsShipAlive).ToList());
 		StartPhaseTimer(true);
 		_player.BeginPhaseAction(this, _playerShips, _enemyShips, _mapGenerator, _overlay);
 	}
@@ -161,6 +164,8 @@ public partial class GameplayDirector : Node
 
 		var aliveEnemies = _enemyShips.Where(IsShipAlive).ToList();
 		var alivePlayers = _playerShips.Where(IsShipAlive).ToList();
+		if (_currentPhase == BattlePhase.SpeedAdjust)
+			MoveRulesEvaluator.SyncFormationGroups(aliveEnemies);
 		if (!IsPlayerActionPhase(_currentPhase) || _ai == null
 			|| aliveEnemies.Count == 0 || alivePlayers.Count == 0)
 		{
@@ -479,59 +484,157 @@ public partial class GameplayDirector : Node
 				occupiedShips[ship.HexCoords] = ship;
 			}
 
-		foreach (var ship in _playerShips.Concat(_enemyShips))
+		bool oddTurn = _turnNumber % 2 == 1;
+		var ordered = new List<ShipComponent>();
+		var chains = new List<List<ShipComponent>>();
+		var processed = new HashSet<ShipComponent>();
+		foreach (var side in new[] { GenerationSide.Player, GenerationSide.Enemy })
 		{
-			if (!GodotObject.IsInstanceValid(ship) || ship.CurrentHp <= 0) continue;
-
-			int requestedSteps = MoveRulesEvaluator.MovementForPhase(
-				ship.CurrentSpeed, phase, _turnNumber % 2 == 1);
-			int steps = MoveRulesEvaluator.AdvanceSteps(ship.HexCoords, ship.Direction,
-				requestedSteps, hex => (_dataManager?.IsIsland(hex) ?? false)
-					|| (occupied.Contains(hex) && hex != ship.HexCoords));
-
-			Vector2I off = HexDirectionUtility.Offset(ship.Direction);
-			if (steps < requestedSteps)
+			var sideShips = _playerShips.Concat(_enemyShips)
+				.Where(s => IsShipAlive(s) && s.BattleSide == side)
+				.ToList();
+			foreach (var ship in sideShips)
 			{
-				Vector2I blockedHex = ship.HexCoords + off * (steps + 1);
-				if (_dataManager?.IsIsland(blockedHex) ?? false)
+				if (processed.Contains(ship)) continue;
+				if (ship.FormationLead != null && ReferenceEquals(ship.FormationLead, ship))
 				{
-					bus.EmitLog($"🪨 {ship.ShipName} 撞击岛屿，直接沉没！");
-					ship.TakeDamage(ship.CurrentHp);
-					continue;
-				}
-				if (occupiedShips.TryGetValue(blockedHex, out var blocker) && blocker != ship)
-				{
-					if (CollisionRulesEvaluator.IsCollision())
+					var chain = sideShips.Where(s => ReferenceEquals(s.FormationLead, ship))
+						.OrderBy(s => s.FormationIndex)
+						.ToList();
+					if (chain.Count < 2)
 					{
-						int hullSum = ship.MaxHp + blocker.MaxHp;
-						var (rollA, dmgA) = CollisionRulesEvaluator.RollDamage(hullSum);
-						var (rollB, dmgB) = CollisionRulesEvaluator.RollDamage(hullSum);
-						bus.EmitLog($"💥 {ship.ShipName} 与 {blocker.ShipName} 发生冲撞！（{rollA}→{dmgA}，{rollB}→{dmgB}）");
-						ship.TakeDamage(dmgA);
-						blocker.TakeDamage(dmgB);
+						ordered.Add(ship);
+						processed.Add(ship);
+						continue;
 					}
-					else
+					chains.Add(chain);
+					foreach (var s in chain)
 					{
-						bus.EmitLog($"⚠️ {ship.ShipName} 前方有舰船但未发生冲撞，停在 {steps} 格前");
+						processed.Add(s);
+						ordered.Add(s);
 					}
 				}
 				else
 				{
-					bus.EmitLog($"⚠️ {ship.ShipName} 前方受阻，仅推进 {steps} 格");
+					ordered.Add(ship);
+					processed.Add(ship);
 				}
 			}
-			if (steps <= 0) continue;
+		}
 
-			Vector2I target = ship.HexCoords + off * steps;
-			occupied.Remove(ship.HexCoords);
-			occupied.Add(target);
-			float duration = 0.35f + steps * 0.2f;
-			longest = Mathf.Max(longest, duration);
-			ship.AnimateMoveTo(_mapGenerator, target, duration);
+		for (int i = 0; i < ordered.Count; i++)
+		{
+			var ship = ordered[i];
+			var chain = chains.FirstOrDefault(c => ReferenceEquals(c[0], ship));
+			if (chain != null)
+			{
+				longest = Mathf.Max(longest,
+					AnimateFormationChain(chain, phase, oddTurn, bus, occupied, occupiedShips));
+				i += chain.Count - 1;
+				continue;
+			}
+			longest = Mathf.Max(longest,
+				AnimateStraightShip(ship, phase, oddTurn, bus, occupied, occupiedShips));
 		}
 
 		if (longest > 0f)
 			await ToSignal(GetTree().CreateTimer(longest + 0.1f), "timeout");
+	}
+
+	private float AnimateStraightShip(ShipComponent ship, int phase, bool oddTurn, EventBus bus,
+		HashSet<Vector2I> occupied, Dictionary<Vector2I, ShipComponent> occupiedShips)
+	{
+		int requestedSteps = MoveRulesEvaluator.MovementForPhase(ship.CurrentSpeed, phase, oddTurn);
+		Vector2I off = HexDirectionUtility.Offset(ship.Direction);
+		int steps = ResolveMoveSteps(ship, requestedSteps, off, bus, occupied, occupiedShips);
+		if (!IsShipAlive(ship) || steps <= 0) return 0f;
+
+		Vector2I target = ship.HexCoords + off * steps;
+		occupied.Remove(ship.HexCoords);
+		occupied.Add(target);
+		occupiedShips[target] = ship;
+		float duration = 0.35f + steps * 0.2f;
+		ship.AnimateMoveTo(_mapGenerator, target, duration);
+		return duration;
+	}
+
+	/// <summary>单纵阵按“贪吃蛇”轨迹推进：后船逐格进入前船让出的位置，到达转向格时才转向。</summary>
+	private float AnimateFormationChain(List<ShipComponent> chain, int phase, bool oddTurn, EventBus bus,
+		HashSet<Vector2I> occupied, Dictionary<Vector2I, ShipComponent> occupiedShips)
+	{
+		ShipComponent lead = chain[0];
+		int requestedSteps = MoveRulesEvaluator.MovementForPhase(lead.CurrentSpeed, phase, oddTurn);
+		Vector2I off = HexDirectionUtility.Offset(lead.Direction);
+		int steps = ResolveMoveSteps(lead, requestedSteps, off, bus, occupied, occupiedShips);
+		if (!IsShipAlive(lead) || steps <= 0) return 0f;
+
+		var leadVisited = new List<Vector2I> { lead.HexCoords };
+		for (int i = 0; i < steps; i++)
+			leadVisited.Add(leadVisited[i] + off);
+
+		occupied.Remove(lead.HexCoords);
+		occupied.Add(leadVisited[steps]);
+		occupiedShips[leadVisited[steps]] = lead;
+		float perStep = 0.2f + 0.35f / Math.Max(1, steps);
+		lead.AnimateMovePath(_mapGenerator, leadVisited.Skip(1).ToList(), perStep);
+
+		var aheadVisited = leadVisited;
+		for (int k = 1; k < chain.Count; k++)
+		{
+			var follower = chain[k];
+			if (!IsShipAlive(follower)) continue;
+			int followerSteps = Math.Min(steps, aheadVisited.Count - 1);
+			if (followerSteps <= 0) continue;
+			var path = new List<Vector2I>();
+			for (int j = 0; j < followerSteps; j++)
+				path.Add(aheadVisited[j]);
+			occupied.Remove(follower.HexCoords);
+			occupied.Add(path[followerSteps - 1]);
+			occupiedShips[path[followerSteps - 1]] = follower;
+			follower.AnimateMovePath(_mapGenerator, path, perStep);
+			var nextAhead = new List<Vector2I> { follower.HexCoords };
+			nextAhead.AddRange(path);
+			aheadVisited = nextAhead;
+		}
+		return 0.35f + steps * 0.2f;
+	}
+
+	private int ResolveMoveSteps(ShipComponent ship, int requestedSteps, Vector2I off, EventBus bus,
+		HashSet<Vector2I> occupied, Dictionary<Vector2I, ShipComponent> occupiedShips)
+	{
+		int steps = MoveRulesEvaluator.AdvanceSteps(ship.HexCoords, ship.Direction, requestedSteps,
+			hex => (_dataManager?.IsIsland(hex) ?? false)
+				|| (occupied.Contains(hex) && hex != ship.HexCoords));
+		if (steps >= requestedSteps) return steps;
+
+		Vector2I blockedHex = ship.HexCoords + off * (steps + 1);
+		if (_dataManager?.IsIsland(blockedHex) ?? false)
+		{
+			bus.EmitLog($"🪨 {ship.ShipName} 撞击岛屿，直接沉没！");
+			ship.TakeDamage(ship.CurrentHp);
+			return 0;
+		}
+		if (occupiedShips.TryGetValue(blockedHex, out var blocker) && blocker != ship)
+		{
+			if (CollisionRulesEvaluator.IsCollision())
+			{
+				int hullSum = ship.MaxHp + blocker.MaxHp;
+				var (rollA, dmgA) = CollisionRulesEvaluator.RollDamage(hullSum);
+				var (rollB, dmgB) = CollisionRulesEvaluator.RollDamage(hullSum);
+				bus.EmitLog($"💥 {ship.ShipName} 与 {blocker.ShipName} 发生冲撞！（{rollA}→{dmgA}，{rollB}→{dmgB}）");
+				ship.TakeDamage(dmgA);
+				blocker.TakeDamage(dmgB);
+			}
+			else
+			{
+				bus.EmitLog($"⚠️ {ship.ShipName} 前方有舰船但未发生冲撞，停在 {steps} 格前");
+			}
+		}
+		else
+		{
+			bus.EmitLog($"⚠️ {ship.ShipName} 前方受阻，仅推进 {steps} 格");
+		}
+		return steps;
 	}
 
 	public BattlePhase CurrentPhase => _currentPhase;

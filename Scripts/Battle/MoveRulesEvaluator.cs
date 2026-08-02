@@ -143,4 +143,32 @@ public static class MoveRulesEvaluator
 		result.Followers = chain.Skip(1).ToList();
 		return result;
 	}
+
+	/// <summary>按当前几何关系重建全部单纵阵标记（首舰、链内序号），供列表与移动结算使用。</summary>
+	public static void SyncFormationGroups(List<ShipComponent> ships)
+	{
+		if (ships == null) return;
+		foreach (var ship in ships)
+		{
+			ship.FormationLead = null;
+			ship.FormationIndex = -1;
+		}
+		var seen = new HashSet<ShipComponent>();
+		foreach (var ship in ships)
+		{
+			if (seen.Contains(ship)) continue;
+			var formation = DetectLineAhead(ship, ships);
+			if (!formation.IsInFormation || !ReferenceEquals(formation.LeadShip, ship))
+			{
+				seen.Add(ship);
+				continue;
+			}
+			for (int i = 0; i < formation.Ships.Count; i++)
+			{
+				formation.Ships[i].FormationLead = formation.LeadShip;
+				formation.Ships[i].FormationIndex = i;
+				seen.Add(formation.Ships[i]);
+			}
+		}
+	}
 }

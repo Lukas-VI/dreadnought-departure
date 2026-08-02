@@ -1,5 +1,6 @@
 using Godot;
 using System;
+using System.Collections.Generic;
 
 namespace DreadnoughtDeparture.Core;
 
@@ -78,21 +79,35 @@ public partial class BattleUIController : Control
 		if (_playerShipList == null || _enemyShipList == null) return;
 		QueueFreeChildren(_playerShipList);
 		QueueFreeChildren(_enemyShipList);
+		var playerShips = new List<ShipComponent>();
+		var enemyShips = new List<ShipComponent>();
 		foreach (Node node in GetTree().GetNodesInGroup("Ships"))
 		{
 			if (node is not ShipComponent ship || !GodotObject.IsInstanceValid(ship)) continue;
+			if (ship.BattleSide == GenerationSide.Enemy)
+				enemyShips.Add(ship);
+			else
+				playerShips.Add(ship);
+		}
+		AddShipRows(_playerShipList, playerShips);
+		AddShipRows(_enemyShipList, enemyShips);
+	}
+
+	private void AddShipRows(VBoxContainer box, List<ShipComponent> ships)
+	{
+		foreach (var ship in ships)
+		{
+			bool inFormation = ship.FormationLead != null
+				|| MoveRulesEvaluator.DetectLineAhead(ship, ships).IsInFormation;
 			var row = new Button
 			{
-				Text = FormatShipRow(ship),
+				Text = (inFormation ? "单纵阵 · " : "") + FormatShipRow(ship),
 				Alignment = HorizontalAlignment.Left,
 				CustomMinimumSize = new Vector2(0, 32)
 			};
 			var hex = ship.HexCoords;
 			row.Pressed += () => GetNode<EventBus>("../../EventBus").EmitSignal("HexClicked", hex);
-			if (ship.BattleSide == GenerationSide.Enemy)
-				_enemyShipList.AddChild(row);
-			else
-				_playerShipList.AddChild(row);
+			box.AddChild(row);
 		}
 	}
 

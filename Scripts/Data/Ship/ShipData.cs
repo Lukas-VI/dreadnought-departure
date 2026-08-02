@@ -23,10 +23,21 @@ public partial class ShipData : Resource
 	[Export] public int AttackPower = 35;
 	[Export] public int MaxSpeed = 5;
 	[Export] public int MainAmmo = 20;
-	/// <summary>累计损伤点：小破、中破、大破、沉没的四个阈值。</summary>
-	[Export] public int[] HullThresholds = { 11, 21, 32, 42 };
+	/// <summary>累计损伤点阈值：小破、中破、大破、沉没。</summary>
+	[Export] public int HullLight = 11;
+	[Export] public int HullModerate = 21;
+	[Export] public int HullHeavy = 32;
+	[Export] public int HullSunk = 42;
 	/// <summary>完好、小破、中破、大破四种状态下的最大航速。</summary>
-	[Export] public int[] MaxSpeedByState = { 5, 5, 3, 2 };
+	[Export] public int SpeedIntact = 5;
+	[Export] public int SpeedLight = 5;
+	[Export] public int SpeedModerate = 3;
+	[Export] public int SpeedHeavy = 2;
+
+	/// <summary>兼容读取：按 [小破, 中破, 大破, 沉没] 顺序返回累计损伤点阈值。</summary>
+	public int[] HullThresholds => new[] { HullLight, HullModerate, HullHeavy, HullSunk };
+	/// <summary>兼容读取：按 [完好, 小破, 中破, 大破] 顺序返回状态最大航速。</summary>
+	public int[] MaxSpeedByState => new[] { SpeedIntact, SpeedLight, SpeedModerate, SpeedHeavy };
 
 	[Export] public int ForwardFire = 6;
 	[Export] public int SideFire = 9;
@@ -69,24 +80,22 @@ public partial class ShipData : Resource
 	/// <summary>按累计损伤点返回损伤状态。</summary>
 	public DamageState GetDamageState(int damageTaken)
 	{
-		if (HullThresholds == null || HullThresholds.Length < 4) return DamageState.Intact;
-		if (damageTaken >= HullThresholds[3]) return DamageState.Sunk;
-		if (damageTaken >= HullThresholds[2]) return DamageState.Heavy;
-		if (damageTaken >= HullThresholds[1]) return DamageState.Moderate;
-		if (damageTaken >= HullThresholds[0]) return DamageState.Light;
+		if (damageTaken >= HullSunk) return DamageState.Sunk;
+		if (damageTaken >= HullHeavy) return DamageState.Heavy;
+		if (damageTaken >= HullModerate) return DamageState.Moderate;
+		if (damageTaken >= HullLight) return DamageState.Light;
 		return DamageState.Intact;
 	}
 
 	/// <summary>返回指定损伤状态下的最大航速；未配置时退回基础 MaxSpeed。</summary>
 	public int MaxSpeedForState(DamageState state)
 	{
-		if (MaxSpeedByState == null || MaxSpeedByState.Length < 4) return MaxSpeed;
 		return state switch
 		{
-			DamageState.Intact => MaxSpeedByState[0],
-			DamageState.Light => MaxSpeedByState[1],
-			DamageState.Moderate => MaxSpeedByState[2],
-			DamageState.Heavy => MaxSpeedByState[3],
+			DamageState.Intact => SpeedIntact,
+			DamageState.Light => SpeedLight,
+			DamageState.Moderate => SpeedModerate,
+			DamageState.Heavy => SpeedHeavy,
 			_ => 0
 		};
 	}

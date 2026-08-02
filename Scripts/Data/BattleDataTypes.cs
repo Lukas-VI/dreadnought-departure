@@ -41,6 +41,14 @@ public static class HexDirectionUtility
 	// 转向操作
 	public static HexDirection TurnLeft(HexDirection d)  => (HexDirection)(((int)d + 5) % 6);
 	public static HexDirection TurnRight(HexDirection d) => (HexDirection)(((int)d + 1) % 6);
+
+	/// <summary>按单步轴向偏移反查航向；非法偏移回退 N。</summary>
+	public static HexDirection DirectionFromOffset(Vector2I offset)
+	{
+		foreach (HexDirection dir in System.Enum.GetValues<HexDirection>())
+			if (Offset(dir) == offset) return dir;
+		return HexDirection.N;
+	}
 }
 
 /// <summary>地图六角格朝向：EW = 平行边水平（默认地图），NS = 尖角上下。</summary>

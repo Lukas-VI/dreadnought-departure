@@ -84,7 +84,10 @@ public partial class PlayerController : Node, IUnitController
 			var ship = _pendingShips.Dequeue();
 			if (!GodotObject.IsInstanceValid(ship) || ship.CurrentHp <= 0)
 				continue;
-			// 头舰编队操作已给后续舰写入待命，直接跳过，玩家仍可手动点击覆盖。
+			// 单纵阵后续舰自动跟随，不占用操作队列；玩家仍可手动点击覆盖或离队。
+			if (ship.FormationLead != null && !ReferenceEquals(ship.FormationLead, ship))
+				continue;
+			// 已写入待命指令的船跳过，避免重复操作。
 			if (ship.PendingSpeed >= 0 || ship.PendingDirection.HasValue)
 				continue;
 
@@ -202,14 +205,21 @@ public partial class PlayerController : Node, IUnitController
 
 		if (leadFormation)
 		{
-			foreach (var ship in formation.Ships)
+			for (int i = 0; i < formation.Ships.Count; i++)
+			{
+				var ship = formation.Ships[i];
 				ship.PendingSpeed = wish;
+				ship.FormationLead = _selected;
+				ship.FormationIndex = i;
+			}
 			GetNode<EventBus>("../EventBus").EmitSignal("LogMessage",
 				$"⚙ 编队航速待命 {old} → {wish}（{formation.Ships.Count} 艘，{cpCost} CP）");
 		}
 		else
 		{
 			_selected.PendingSpeed = wish;
+			_selected.FormationLead = null;
+			_selected.FormationIndex = -1;
 			GetNode<EventBus>("../EventBus").EmitSignal("LogMessage",
 				$"⚙ 航速待命 {old} → {wish}（消耗 {cpCost} CP，推进后生效）");
 		}
@@ -310,14 +320,20 @@ public partial class PlayerController : Node, IUnitController
 				{ _pendingAction = null; RejectAction($"❌ 转向需要 {cost} CP"); return; }
 				if (leadFormation)
 				{
-					foreach (var ship in formation.Ships)
-						ship.PendingDirection = nd;
+					for (int i = 0; i < formation.Ships.Count; i++)
+					{
+						formation.Ships[i].FormationLead = _selected;
+						formation.Ships[i].FormationIndex = i;
+					}
+					_selected.PendingDirection = nd;
 					GetNode<EventBus>("../EventBus").EmitSignal("LogMessage",
-						$"↩ 编队左转待命 → 航向 {nd}（{formation.Ships.Count} 艘，{cost} CP）");
+						$"↩ 编队左转待命 → 航向 {nd}（首船转向，{formation.Ships.Count} 艘按轨迹跟随，{cost} CP）");
 				}
 				else
 				{
 					_selected.PendingDirection = nd;
+					_selected.FormationLead = null;
+					_selected.FormationIndex = -1;
 					GetNode<EventBus>("../EventBus").EmitSignal("LogMessage",
 						$"↩ 左转待命 → 航向 {nd}（消耗 {cost} CP，推进后生效）");
 				}
@@ -335,14 +351,20 @@ public partial class PlayerController : Node, IUnitController
 				{ _pendingAction = null; RejectAction($"❌ 转向需要 {cost} CP"); return; }
 				if (leadFormation)
 				{
-					foreach (var ship in formation.Ships)
-						ship.PendingDirection = nd;
+					for (int i = 0; i < formation.Ships.Count; i++)
+					{
+						formation.Ships[i].FormationLead = _selected;
+						formation.Ships[i].FormationIndex = i;
+					}
+					_selected.PendingDirection = nd;
 					GetNode<EventBus>("../EventBus").EmitSignal("LogMessage",
-						$"↪ 编队右转待命 → 航向 {nd}（{formation.Ships.Count} 艘，{cost} CP）");
+						$"↪ 编队右转待命 → 航向 {nd}（首船转向，{formation.Ships.Count} 艘按轨迹跟随，{cost} CP）");
 				}
 				else
 				{
 					_selected.PendingDirection = nd;
+					_selected.FormationLead = null;
+					_selected.FormationIndex = -1;
 					GetNode<EventBus>("../EventBus").EmitSignal("LogMessage",
 						$"↪ 右转待命 → 航向 {nd}（消耗 {cost} CP，推进后生效）");
 				}

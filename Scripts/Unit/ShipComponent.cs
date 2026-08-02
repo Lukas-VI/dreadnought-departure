@@ -43,6 +43,10 @@ public partial class ShipComponent : Node3D
 	public bool PendingRadarUsed;
 	/// <summary>雷达技能是否在本阶段显式激活（由技能按钮写入，仅当回合有效）。</summary>
 	public bool PendingRadarActive;
+	/// <summary>所属单纵阵首舰；null 表示不在阵中（运行时标记，移动结算按此分组）。</summary>
+	public ShipComponent FormationLead;
+	/// <summary>在单纵阵中的链内序号：0 为首舰，后续舰依次递增。</summary>
+	public int FormationIndex = -1;
 	public int TileSourceId; // 兼容字段：来自旧 2D 编辑器的 tile ID
 	/// <summary>阵营（由生成点决定），用于敌我分组。</summary>
 	public GenerationSide BattleSide = GenerationSide.Player;
@@ -142,6 +146,32 @@ public partial class ShipComponent : Node3D
 		tween.SetEase(Tween.EaseType.InOut);
 		tween.TweenProperty(this, "position", to, duration);
 		tween.TweenCallback(Callable.From(() => HexCoords = target));
+		return tween;
+	}
+
+	/// <summary>沿编队轨迹逐格移动：每到达一格立即更新 HexCoords，并按位移方向转向。</summary>
+	public virtual Tween AnimateMovePath(MapGenerator map, IReadOnlyList<Vector2I> path, float perStepDuration)
+	{
+		Tween tween = CreateTween();
+		tween.SetTrans(Tween.TransitionType.Quad);
+		tween.SetEase(Tween.EaseType.InOut);
+		foreach (Vector2I target in path)
+		{
+			Vector3 world = map.HexToWorld(target.X, target.Y);
+			Vector3 to = new Vector3(world.X, Position.Y, world.Z);
+			HexDirection dir = HexDirectionUtility.DirectionFromOffset(target - HexCoords);
+			tween.TweenProperty(this, "position", to, perStepDuration);
+			Vector2I captured = target;
+			tween.TweenCallback(Callable.From(() =>
+			{
+				HexCoords = captured;
+				if (Direction != dir)
+				{
+					Direction = dir;
+					TurnedThisPhase = true;
+				}
+			}));
+		}
 		return tween;
 	}
 

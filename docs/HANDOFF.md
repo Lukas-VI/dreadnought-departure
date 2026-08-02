@@ -268,7 +268,7 @@
 - 堆叠冒烟：友军舰船在移动阶段进入同格后 `HexCoords` 相同，Y 保持 0.3，水平距离自动错开 1.25；`formation_smoke` / `battle_smoke` 均通过。
 - 堆叠领头冒烟：两艘同格带头 + 一艘跟随，三船均进入单纵阵；移动后两艘领头仍同格堆叠并保持编队。
 - 堆叠领头无位移转向冒烟：第二移动阶段不移动时首舰左转，同格两船方向同步变为 5 且 `TurnedThisPhase=true`，后方跟随舰保持原航向。
-- 船坞冒烟：`dock_scene.tscn` 加载成功，首卡显示阵营/背景故事/成本，点击“下一个”成功切到第二艘舰。
+- 船坞冒烟：`dock_ui.tscn` 节点化布局加载成功，首卡显示阵营/背景故事/成本，左右切换与顶栏“图鉴”占位按钮正常。
 - 编辑器新建画布 headless 冒烟：`LevelDataManager` 写入/读回 `PhaseSecondsPerShip`、`PhaseExtraSeconds`、`TorpedoPhaseEnabled`；编辑器 `editor_ui.tscn` 与主菜单 `map_select_menu.tscn` 实例化无报错。
 - 编辑器关卡设置 headless 冒烟：`ApplyScenarioSettings` 写入/读回夜战、主动权归属与鱼雷模式；编辑器“关卡设置”弹窗隐藏名称/朝向字段并正常打开。
 - 副炮 headless 冒烟：南达科他在炮击阶段对距离 3 敌舰开火，主炮与副炮各产生独立命中检定记录。

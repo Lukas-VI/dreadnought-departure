@@ -9,7 +9,7 @@ namespace DreadnoughtDeparture.Core;
 public partial class MainMenuController : Control
 {
 	[Export] public string MapSelectMenuPath = "res://Scenes/UI/Menu/MainMenu/map_select_menu.tscn";
-	[Export] public string DockScenePath = "res://Scenes/UI/Menu/Dock/dock_scene.tscn";
+	[Export] public string DockScenePath = "res://Scenes/UI/Menu/Dock/dock_ui.tscn";
 
 	/// <summary> 编辑器入口：先进入画布选择菜单，编辑器模式打开地图编辑器。 </summary>
 	public void _OnEditorPressed()

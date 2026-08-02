@@ -1,11 +1,11 @@
 using Godot;
-using System;
 using System.Linq;
 
 namespace DreadnoughtDeparture.Core;
 
 /// <summary>
-/// 船坞控制器：列出 ShipCatalog 中所有 ShipData，左右按钮切换角色并展示数据卡。
+/// 船坞控制器：使用场景节点组织布局。
+/// 左侧信息面板、右侧立绘区、顶部栏与底部占位栏，立绘两侧按钮切换角色。
 /// </summary>
 public partial class DockController : Control
 {
@@ -15,65 +15,25 @@ public partial class DockController : Control
 	private int _index;
 	private Label _titleLabel;
 	private Label _infoLabel;
+	private Label _statusLabel;
 	private TextureRect _portrait;
+	private Label _placeholderLabel;
 
 	public override void _Ready()
 	{
-		_entries = ShipCatalog.Entries.ToArray();
-		BuildUi();
-		Refresh();
+		CallDeferred(nameof(Initialize));
 	}
 
-	private void BuildUi()
+	private void Initialize()
 	{
-		var center = new CenterContainer();
-		center.SetAnchorsPreset(LayoutPreset.FullRect);
-		AddChild(center);
+		_titleLabel = GetNode<Label>("Content/HBox/LeftPanel/Margin/VBox/TitleLabel");
+		_infoLabel = GetNode<Label>("Content/HBox/LeftPanel/Margin/VBox/InfoScroll/InfoLabel");
+		_statusLabel = GetNode<Label>("BottomBar/Margin/HBox/StatusLabel");
+		_portrait = GetNode<TextureRect>("Content/HBox/PortraitArea/HBox/PortraitCenter/PortraitBox/PortraitTexture");
+		_placeholderLabel = GetNode<Label>("Content/HBox/PortraitArea/HBox/PortraitCenter/PortraitBox/PlaceholderLabel");
 
-		var panel = new PanelContainer { CustomMinimumSize = new Vector2(860, 660) };
-		center.AddChild(panel);
-
-		var box = new VBoxContainer();
-		box.AddThemeConstantOverride("separation", 12);
-		panel.AddChild(box);
-
-		_titleLabel = new Label { HorizontalAlignment = HorizontalAlignment.Center };
-		_titleLabel.AddThemeFontSizeOverride("font_size", 30);
-		box.AddChild(_titleLabel);
-
-		var nav = new HBoxContainer();
-		nav.Alignment = BoxContainer.AlignmentMode.Center;
-		nav.AddThemeConstantOverride("separation", 16);
-		nav.AddChild(MakeButton("◀ 上一个", ShowPrev));
-		nav.AddChild(MakeButton("下一个 ▶", ShowNext));
-		box.AddChild(nav);
-
-		var content = new HBoxContainer();
-		content.AddThemeConstantOverride("separation", 20);
-		_portrait = new TextureRect
-		{
-			CustomMinimumSize = new Vector2(220, 280),
-			ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-			StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered
-		};
-		content.AddChild(_portrait);
-
-		var scroll = new ScrollContainer
-		{
-			CustomMinimumSize = new Vector2(540, 420),
-			HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled
-		};
-		_infoLabel = new Label
-		{
-			AutowrapMode = TextServer.AutowrapMode.WordSmart,
-			CustomMinimumSize = new Vector2(520, 0)
-		};
-		_infoLabel.AddThemeFontSizeOverride("font_size", 17);
-		scroll.AddChild(_infoLabel);
-		content.AddChild(scroll);
-		box.AddChild(content);
-
-		box.AddChild(MakeButton("返回主菜单", () => GetTree().ChangeSceneToFile(MainMenuScenePath)));
+		_entries = ShipCatalog.Entries.ToArray();
+		Refresh();
 	}
 
 	private void Refresh()
@@ -91,6 +51,7 @@ public partial class DockController : Control
 		_titleLabel.Text = $"船坞 {_index + 1}/{_entries.Length} · {entry.DisplayName}";
 		_portrait.Texture = data?.Portrait;
 		_portrait.Visible = data?.Portrait != null;
+		_placeholderLabel.Visible = data?.Portrait == null;
 		if (data == null)
 		{
 			_infoLabel.Text = "缺少 ShipData 资源";
@@ -114,15 +75,16 @@ public partial class DockController : Control
 	private void ShowPrev() { _index--; Refresh(); }
 	private void ShowNext() { _index++; Refresh(); }
 
-	private Button MakeButton(string text, Action action)
+	public void _OnBackPressed() => GetTree().ChangeSceneToFile(MainMenuScenePath);
+	public void _OnPrevPressed() => ShowPrev();
+	public void _OnNextPressed() => ShowNext();
+	public void _OnCodexPressed() => SetStatus("图鉴（占位）");
+	public void _OnCampPressed() => SetStatus("阵营筛选（占位）");
+	public void _OnAppreciationPressed() => SetStatus("鉴赏模式（占位）");
+
+	private void SetStatus(string text)
 	{
-		var button = new Button
-		{
-			Text = text,
-			CustomMinimumSize = new Vector2(150, 46)
-		};
-		button.AddThemeFontSizeOverride("font_size", 18);
-		button.Pressed += action;
-		return button;
+		if (_statusLabel != null)
+			_statusLabel.Text = text;
 	}
 }

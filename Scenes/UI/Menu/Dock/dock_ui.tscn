@@ -1,0 +1,176 @@
+[gd_scene format=3 uid="uid://bvp0i6as3fukw"]
+
+[ext_resource type="Script" uid="uid://dock000000000" path="res://Scripts/UI/Menu/DockController.cs" id="1_dock"]
+
+[node name="DockController" type="Control" unique_id=1511064083]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_dock")
+
+[node name="TopBar" type="PanelContainer" parent="." unique_id=252496967]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 64.0
+grow_horizontal = 2
+
+[node name="Margin" type="MarginContainer" parent="TopBar" unique_id=559762067]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 10
+
+[node name="HBox" type="HBoxContainer" parent="TopBar/Margin" unique_id=1438790462]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="BackButton" type="Button" parent="TopBar/Margin/HBox" unique_id=236091201]
+custom_minimum_size = Vector2(96, 40)
+layout_mode = 2
+text = "退出"
+
+[node name="Spacer" type="Control" parent="TopBar/Margin/HBox" unique_id=1134332462]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="CodexButton" type="Button" parent="TopBar/Margin/HBox" unique_id=660416291]
+custom_minimum_size = Vector2(96, 40)
+layout_mode = 2
+text = "图鉴"
+
+[node name="CampButton" type="Button" parent="TopBar/Margin/HBox" unique_id=186632234]
+custom_minimum_size = Vector2(96, 40)
+layout_mode = 2
+text = "阵营"
+
+[node name="AppreciationButton" type="Button" parent="TopBar/Margin/HBox" unique_id=1181035260]
+custom_minimum_size = Vector2(128, 40)
+layout_mode = 2
+text = "鉴赏模式"
+
+[node name="Content" type="MarginContainer" parent="." unique_id=210530880]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 72.0
+offset_bottom = -72.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="HBox" type="HBoxContainer" parent="Content" unique_id=1050862181]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="LeftPanel" type="PanelContainer" parent="Content/HBox" unique_id=2127038055]
+custom_minimum_size = Vector2(420, 0)
+layout_mode = 2
+
+[node name="Margin" type="MarginContainer" parent="Content/HBox/LeftPanel" unique_id=1996284046]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 14
+
+[node name="VBox" type="VBoxContainer" parent="Content/HBox/LeftPanel/Margin" unique_id=842945287]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="TitleLabel" type="Label" parent="Content/HBox/LeftPanel/Margin/VBox" unique_id=405545193]
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+text = "信息"
+horizontal_alignment = 1
+
+[node name="InfoScroll" type="ScrollContainer" parent="Content/HBox/LeftPanel/Margin/VBox" unique_id=958967076]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="InfoLabel" type="Label" parent="Content/HBox/LeftPanel/Margin/VBox/InfoScroll" unique_id=712002902]
+custom_minimum_size = Vector2(400, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+autowrap_mode = 2
+
+[node name="PortraitArea" type="PanelContainer" parent="Content/HBox" unique_id=1607170813]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="HBox" type="HBoxContainer" parent="Content/HBox/PortraitArea" unique_id=973907893]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="PrevButton" type="Button" parent="Content/HBox/PortraitArea/HBox" unique_id=36458109]
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+size_flags_vertical = 4
+text = "◀ "
+
+[node name="PortraitCenter" type="CenterContainer" parent="Content/HBox/PortraitArea/HBox" unique_id=1978408363]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="PortraitBox" type="VBoxContainer" parent="Content/HBox/PortraitArea/HBox/PortraitCenter" unique_id=127769478]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="PortraitTexture" type="TextureRect" parent="Content/HBox/PortraitArea/HBox/PortraitCenter/PortraitBox" unique_id=1726722527]
+custom_minimum_size = Vector2(520, 620)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="PlaceholderLabel" type="Label" parent="Content/HBox/PortraitArea/HBox/PortraitCenter/PortraitBox" unique_id=325586717]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "暂无立绘"
+horizontal_alignment = 1
+
+[node name="NextButton" type="Button" parent="Content/HBox/PortraitArea/HBox" unique_id=368720250]
+custom_minimum_size = Vector2(72, 0)
+layout_mode = 2
+size_flags_vertical = 4
+text = " ▶"
+
+[node name="BottomBar" type="PanelContainer" parent="." unique_id=975021539]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -64.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="Margin" type="MarginContainer" parent="BottomBar" unique_id=878879346]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 10
+
+[node name="HBox" type="HBoxContainer" parent="BottomBar/Margin" unique_id=186164326]
+layout_mode = 2
+
+[node name="StatusLabel" type="Label" parent="BottomBar/Margin/HBox" unique_id=1269930178]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "底部栏占位"
+
+[connection signal="pressed" from="TopBar/Margin/HBox/BackButton" to="." method="_OnBackPressed"]
+[connection signal="pressed" from="TopBar/Margin/HBox/CodexButton" to="." method="_OnCodexPressed"]
+[connection signal="pressed" from="TopBar/Margin/HBox/CampButton" to="." method="_OnCampPressed"]
+[connection signal="pressed" from="TopBar/Margin/HBox/AppreciationButton" to="." method="_OnAppreciationPressed"]
+[connection signal="pressed" from="Content/HBox/PortraitArea/HBox/PrevButton" to="." method="_OnPrevPressed"]
+[connection signal="pressed" from="Content/HBox/PortraitArea/HBox/NextButton" to="." method="_OnNextPressed"]

@@ -17,6 +17,7 @@ public partial class NetworkClient : Node
 	public string HttpBaseUrl { get; set; } = DefaultHttpBaseUrl;
 	public string Token { get; private set; } = "";
 	public string Username { get; private set; } = "";
+	public string UserId { get; private set; } = "";
 	public bool IsLoggedIn => !string.IsNullOrEmpty(Token);
 
 	public string WsUrl => HttpBaseUrl
@@ -180,6 +181,41 @@ public partial class NetworkClient : Node
 		}
 	}
 
+	public void SendWsJoinRoom(string roomId)
+	{
+		SendWebSocket(JsonSerializer.Serialize(new { type = "lobby.join", roomId }, JsonOptions));
+	}
+
+	public void SendWsLeaveRoom(string roomId)
+	{
+		SendWebSocket(JsonSerializer.Serialize(new { type = "lobby.leave", roomId }, JsonOptions));
+	}
+
+	public void SendWsGetBattleState(string battleId)
+	{
+		SendWebSocket(JsonSerializer.Serialize(new { type = "battle.state.get", battleId }, JsonOptions));
+	}
+
+	public void SendWsBattleCommand(string battleId, string action, string targetShipId = null)
+	{
+		object detail = targetShipId == null ? null : new { targetShipId };
+		SendWebSocket(JsonSerializer.Serialize(
+			new { type = "battle.command", battleId, action, detail },
+			JsonOptions));
+	}
+
+	public void SendWsBattleAdvance(string battleId)
+	{
+		SendWebSocket(JsonSerializer.Serialize(new { type = "battle.advance", battleId }, JsonOptions));
+	}
+
+	public void SendWsBattleRoll(string battleId, int count, int sides, string reason)
+	{
+		SendWebSocket(JsonSerializer.Serialize(
+			new { type = "battle.roll", battleId, count, sides, reason },
+			JsonOptions));
+	}
+
 	public void DisconnectWebSocket()
 	{
 		if (_ws != null && _wsConnected)
@@ -192,6 +228,7 @@ public partial class NetworkClient : Node
 	{
 		Token = "";
 		Username = "";
+		UserId = "";
 		_wsConnected = false;
 		_wsShouldConnect = false;
 		_wsAuthenticated = false;
@@ -329,6 +366,11 @@ public partial class NetworkClient : Node
 			user.TryGetProperty("username", out JsonElement username))
 		{
 			Username = username.GetString() ?? "";
+		}
+		if (result.TryGetProperty("user", out JsonElement userObject) &&
+			userObject.TryGetProperty("id", out JsonElement userId))
+		{
+			UserId = userId.GetString() ?? "";
 		}
 
 		EmitSignal(SignalName.AuthChanged, IsLoggedIn, Username);

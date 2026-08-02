@@ -6,7 +6,7 @@ using DreadnoughtDeparture.Network;
 
 namespace DreadnoughtDeparture.UI.Network;
 
-/// <summary>PvP 战斗同步占位：展示房间/战斗状态，验证 WebSocket 权威骰值广播。</summary>
+/// <summary>PvP 战斗指令面板：展示权威状态，按阶段提交指令并查看广播日志。</summary>
 public partial class PvpBattleMenuController : Control
 {
 	[Export] public string LobbyMenuPath = "res://Scenes/UI/Network/lobby_menu.tscn";
@@ -14,10 +14,14 @@ public partial class PvpBattleMenuController : Control
 
 	private Label _battleIdLabel;
 	private Label _roomIdLabel;
-	private Label _playersLabel;
 	private Label _phaseLabel;
+	private Label _shipsLabel;
 	private Label _wsStatusLabel;
+	private Label _commandStatusLabel;
+	private VBoxContainer _commandBox;
 	private RichTextLabel _log;
+	private string _lastPhase = "";
+	private int _lastTurn = -1;
 
 	public override void _Ready()
 	{
@@ -30,13 +34,16 @@ public partial class PvpBattleMenuController : Control
 
 		if (!string.IsNullOrEmpty(PvpFlowState.PendingRoomId))
 		{
-			NetworkClient.Instance.SendWebSocket(
-				$"{{\"type\":\"lobby.join\",\"roomId\":\"{PvpFlowState.PendingRoomId}\"}}");
+			NetworkClient.Instance.SendWsJoinRoom(PvpFlowState.PendingRoomId);
+		}
+		if (!string.IsNullOrEmpty(PvpFlowState.PendingBattleId))
+		{
+			NetworkClient.Instance.SendWsGetBattleState(PvpFlowState.PendingBattleId);
 		}
 
 		_battleIdLabel.Text = $"战斗：{PvpFlowState.PendingBattleId}";
 		_roomIdLabel.Text = $"房间：{PvpFlowState.PendingRoomId}";
-		AppendLog($"已进入战斗同步界面，等待房间广播");
+		AppendLog("已进入战斗同步界面，等待权威状态");
 	}
 
 	public override void _ExitTree()
@@ -89,10 +96,10 @@ public partial class PvpBattleMenuController : Control
 		body.AddThemeConstantOverride("separation", 18);
 		AddChild(body);
 
-		var infoPanel = new PanelContainer { CustomMinimumSize = new Vector2(420, 0) };
+		var infoPanel = new PanelContainer { CustomMinimumSize = new Vector2(520, 0) };
 		body.AddChild(infoPanel);
 		var infoBox = new VBoxContainer();
-		infoBox.AddThemeConstantOverride("separation", 12);
+		infoBox.AddThemeConstantOverride("separation", 10);
 		infoPanel.AddChild(infoBox);
 
 		_battleIdLabel = new Label { Text = "战斗：-" };
@@ -102,14 +109,30 @@ public partial class PvpBattleMenuController : Control
 		_roomIdLabel = new Label { Text = "房间：-" };
 		infoBox.AddChild(_roomIdLabel);
 
-		_playersLabel = new Label { Text = "玩家：-" };
-		infoBox.AddChild(_playersLabel);
-
-		_phaseLabel = new Label { Text = "阶段：setup / 回合 0" };
+		_phaseLabel = new Label { Text = "阶段：- / 回合 -" };
+		_phaseLabel.AddThemeFontSizeOverride("font_size", 18);
 		infoBox.AddChild(_phaseLabel);
 
-		infoBox.AddChild(MakeButton("骰值测试 3d100", () => SendTestRoll()));
-		infoBox.AddChild(MakeButton("重连", () => NetworkClient.Instance.ReconnectWebSocket()));
+		_commandStatusLabel = new Label { Text = "指令：未提交" };
+		infoBox.AddChild(_commandStatusLabel);
+
+		_shipsLabel = new Label
+		{
+			Text = "舰船：-",
+			AutowrapMode = TextServer.AutowrapMode.WordSmart,
+			SizeFlagsVertical = SizeFlags.ExpandFill,
+		};
+		infoBox.AddChild(_shipsLabel);
+
+		_commandBox = new VBoxContainer();
+		_commandBox.AddThemeConstantOverride("separation", 8);
+		infoBox.AddChild(_commandBox);
+
+		var row = new HBoxContainer();
+		row.AddThemeConstantOverride("separation", 8);
+		row.AddChild(MakeButton("重连", () => NetworkClient.Instance.ReconnectWebSocket()));
+		row.AddChild(MakeButton("调试骰值 3d100", SendDebugRoll));
+		infoBox.AddChild(row);
 
 		var logPanel = new PanelContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
 		body.AddChild(logPanel);
@@ -125,13 +148,12 @@ public partial class PvpBattleMenuController : Control
 		{
 			BbcodeEnabled = false,
 			ScrollFollowing = true,
-			CustomMinimumSize = new Vector2(0, 0),
 			SizeFlagsVertical = SizeFlags.ExpandFill,
 		};
 		logBox.AddChild(_log);
 	}
 
-	private void SendTestRoll()
+	private void SendDebugRoll()
 	{
 		if (!NetworkClient.Instance.IsWebSocketConnected)
 		{
@@ -139,15 +161,17 @@ public partial class PvpBattleMenuController : Control
 			NetworkClient.Instance.ReconnectWebSocket();
 			return;
 		}
-
 		if (string.IsNullOrEmpty(PvpFlowState.PendingBattleId))
 		{
 			AppendLog("没有可用的 battleId");
 			return;
 		}
 
-		NetworkClient.Instance.SendWebSocket(
-			$"{{\"type\":\"battle.roll\",\"battleId\":\"{PvpFlowState.PendingBattleId}\",\"count\":3,\"sides\":100,\"reason\":\"client-test\"}}");
+		NetworkClient.Instance.SendWsBattleRoll(
+			PvpFlowState.PendingBattleId,
+			3,
+			100,
+			"client-test");
 	}
 
 	private void OnWsMessage(string json)
@@ -166,6 +190,10 @@ public partial class PvpBattleMenuController : Control
 					? roomIdProp.GetString() ?? ""
 					: "";
 				AppendLog($"[{DateTime.Now:HH:mm:ss}] 已订阅房间 {roomId}");
+			}
+			else if (type == "battle.state" && root.TryGetProperty("state", out JsonElement state))
+			{
+				ApplyState(state);
 			}
 			else if (type == "battle.rolled" && root.TryGetProperty("roll", out JsonElement roll))
 			{
@@ -193,6 +221,7 @@ public partial class PvpBattleMenuController : Control
 				{
 					PvpFlowState.PendingBattleId = id.GetString() ?? "";
 					_battleIdLabel.Text = $"战斗：{PvpFlowState.PendingBattleId}";
+					NetworkClient.Instance.SendWsGetBattleState(PvpFlowState.PendingBattleId);
 				}
 				AppendLog("战斗开始广播已收到");
 			}
@@ -201,6 +230,208 @@ public partial class PvpBattleMenuController : Control
 		{
 			AppendLog($"解析失败：{ex.Message}");
 		}
+	}
+
+	private void ApplyState(JsonElement state)
+	{
+		int turn = state.TryGetProperty("turn", out JsonElement turnProp)
+			? turnProp.GetInt32()
+			: 0;
+		string phase = state.TryGetProperty("phase", out JsonElement phaseProp)
+			? phaseProp.GetString() ?? ""
+			: "";
+		string status = state.TryGetProperty("status", out JsonElement statusProp)
+			? statusProp.GetString() ?? ""
+			: "";
+
+		_phaseLabel.Text = $"阶段：{phase} / 回合 {turn} / {status}";
+		if (turn != _lastTurn || phase != _lastPhase)
+		{
+			_lastTurn = turn;
+			_lastPhase = phase;
+			AppendLog($"[{DateTime.Now:HH:mm:ss}] 回合 {turn} · 阶段 {phase}");
+		}
+
+		UpdateShips(state);
+		UpdateCommandStatus(state);
+		BuildCommandButtons(state, status);
+	}
+
+	private void UpdateShips(JsonElement state)
+	{
+		if (!state.TryGetProperty("ships", out JsonElement ships))
+		{
+			_shipsLabel.Text = "舰船：-";
+			return;
+		}
+
+		int mySide = MySide(state);
+		var builder = new StringBuilder();
+		builder.AppendLine("舰船：");
+		foreach (JsonElement ship in ships.EnumerateArray())
+		{
+			string sideText = ship.TryGetProperty("side", out JsonElement sideProp)
+				? sideProp.GetInt32() == mySide ? "我方" : "敌方"
+				: "?";
+			string name = ship.TryGetProperty("name", out JsonElement nameProp)
+				? nameProp.GetString() ?? "?"
+				: "?";
+			JsonElement hex = ship.TryGetProperty("hex", out JsonElement hexProp)
+				? hexProp
+				: default;
+			int speed = ship.TryGetProperty("speed", out JsonElement speedProp)
+				? speedProp.GetInt32()
+				: 0;
+			int facing = ship.TryGetProperty("facing", out JsonElement facingProp)
+				? facingProp.GetInt32()
+				: 0;
+			int hp = ship.TryGetProperty("hp", out JsonElement hpProp)
+				? hpProp.GetInt32()
+				: 0;
+			int maxHp = ship.TryGetProperty("maxHp", out JsonElement maxHpProp)
+				? maxHpProp.GetInt32()
+				: 0;
+			string shipStatus = ship.TryGetProperty("status", out JsonElement statusProp)
+				? statusProp.GetString() ?? ""
+				: "";
+			string hexText = hex.ValueKind == JsonValueKind.Array && hex.GetArrayLength() >= 2
+				? $"[{hex[0].GetInt32()},{hex[1].GetInt32()}]"
+				: "[-]";
+			builder.AppendLine($"[{sideText}] {name} {hexText} 速{speed} 向{facing} HP{hp}/{maxHp} {shipStatus}");
+		}
+		_shipsLabel.Text = builder.ToString().TrimEnd();
+	}
+
+	private void UpdateCommandStatus(JsonElement state)
+	{
+		if (!state.TryGetProperty("players", out JsonElement players) ||
+			!state.TryGetProperty("commands", out JsonElement commands))
+		{
+			_commandStatusLabel.Text = "指令：未知";
+			return;
+		}
+
+		int mySide = MySide(state);
+		int playerIndex = 0;
+		string mine = "未提交";
+		string theirs = "未提交";
+		foreach (JsonElement player in players.EnumerateArray())
+		{
+			string playerId = player.GetString() ?? "";
+			string action = commands.TryGetProperty(playerId, out JsonElement actionProp)
+				? actionProp.GetString() ?? ""
+				: "";
+			if (playerIndex == mySide)
+			{
+				mine = string.IsNullOrEmpty(action) ? "未提交" : action;
+			}
+			else
+			{
+				theirs = string.IsNullOrEmpty(action) ? "未提交" : action;
+			}
+			playerIndex++;
+		}
+		_commandStatusLabel.Text = $"指令：我方 {mine} / 敌方 {theirs}";
+	}
+
+	private void BuildCommandButtons(JsonElement state, string status)
+	{
+		foreach (Node child in _commandBox.GetChildren())
+		{
+			child.Free();
+		}
+
+		if (status != "active")
+		{
+			string winner = state.TryGetProperty("winner", out JsonElement winnerProp)
+				? winnerProp.GetString() ?? ""
+				: "";
+			_commandBox.AddChild(new Label { Text = $"战斗已结束，胜者：{winner}" });
+			return;
+		}
+
+		string phase = state.TryGetProperty("phase", out JsonElement phaseProp)
+			? phaseProp.GetString() ?? ""
+			: "";
+		switch (phase)
+		{
+			case "speed":
+				AddCommandButton("加速", () => SendCommand("accelerate"));
+				AddCommandButton("减速", () => SendCommand("decelerate"));
+				AddCommandButton("待命", () => SendCommand("wait"));
+				break;
+			case "move1":
+			case "move2":
+			case "move3":
+				AddCommandButton("左转", () => SendCommand("turn_left"));
+				AddCommandButton("右转", () => SendCommand("turn_right"));
+				AddCommandButton("待命", () => SendCommand("wait"));
+				break;
+			case "gunnery":
+				if (state.TryGetProperty("ships", out JsonElement ships))
+				{
+					int mySide = MySide(state);
+					foreach (JsonElement ship in ships.EnumerateArray())
+					{
+						int side = ship.TryGetProperty("side", out JsonElement sideProp)
+							? sideProp.GetInt32()
+							: -1;
+						if (side == mySide)
+						{
+							continue;
+						}
+						string id = ship.TryGetProperty("id", out JsonElement idProp)
+							? idProp.GetString() ?? ""
+							: "";
+						string name = ship.TryGetProperty("name", out JsonElement nameProp)
+							? nameProp.GetString() ?? "?"
+							: "?";
+						string targetId = id;
+						AddCommandButton($"炮击 {name}", () => SendCommand("fire", targetId));
+					}
+				}
+				AddCommandButton("待命", () => SendCommand("wait"));
+				break;
+		}
+
+		AddCommandButton("推进结算", () => NetworkClient.Instance.SendWsBattleAdvance(
+			PvpFlowState.PendingBattleId));
+	}
+
+	private void AddCommandButton(string text, Action action)
+	{
+		_commandBox.AddChild(MakeButton(text, action));
+	}
+
+	private void SendCommand(string action, string targetShipId = null)
+	{
+		if (string.IsNullOrEmpty(PvpFlowState.PendingBattleId))
+		{
+			AppendLog("没有可用的 battleId");
+			return;
+		}
+		NetworkClient.Instance.SendWsBattleCommand(
+			PvpFlowState.PendingBattleId,
+			action,
+			targetShipId);
+		AppendLog($"[{DateTime.Now:HH:mm:ss}] 已提交指令：{action}");
+	}
+
+	private int MySide(JsonElement state)
+	{
+		if (state.TryGetProperty("players", out JsonElement players))
+		{
+			int index = 0;
+			foreach (JsonElement player in players.EnumerateArray())
+			{
+				if (player.GetString() == NetworkClient.Instance.UserId)
+				{
+					return index;
+				}
+				index++;
+			}
+		}
+		return 0;
 	}
 
 	private void OnConnectionChanged(bool connected)
@@ -231,7 +462,7 @@ public partial class PvpBattleMenuController : Control
 		var button = new Button
 		{
 			Text = text,
-			CustomMinimumSize = new Vector2(0, 48),
+			CustomMinimumSize = new Vector2(0, 44),
 		};
 		button.Pressed += action;
 		return button;

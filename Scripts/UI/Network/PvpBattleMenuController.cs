@@ -172,6 +172,13 @@ public partial class PvpBattleMenuController : Control
 					: "?";
 				AppendLog($"[{DateTime.Now:HH:mm:ss}] battle {battleId} 3d{sides} -> {values}");
 			}
+			else if (type == "error")
+			{
+				string code = root.TryGetProperty("code", out JsonElement codeProp)
+					? codeProp.GetString() ?? ""
+					: "";
+				AppendLog($"[{DateTime.Now:HH:mm:ss}] 服务端错误：{code}");
+			}
 			else if (type == "battle.started" && root.TryGetProperty("battle", out JsonElement battle))
 			{
 				if (battle.TryGetProperty("id", out JsonElement id))

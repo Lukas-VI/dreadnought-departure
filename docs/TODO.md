@@ -106,7 +106,7 @@
 - [ ] **商店/抽卡**：未实现
 
 ### 角色系统
-- [x] **船坞 / 角色查看**：主菜单船坞入口 + `ShipData` 新增 `Camp / IsUnlocked / Background / Cost`，左右按钮切换查看数据卡
+- [x] **船坞 / 角色查看**：主菜单船坞入口 + `ShipData` 新增 `Camp / IsUnlocked / Background / Cost`，左右按钮切换查看数据卡；鉴赏模式全屏立绘与退出按钮
 - [ ] **CharacterData 资源**：未实现
 - [ ] **好感度/羁绊**：未实现
 - [ ] **配音/台词**：未实现

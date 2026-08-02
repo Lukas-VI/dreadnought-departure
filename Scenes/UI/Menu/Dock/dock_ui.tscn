@@ -98,7 +98,7 @@ size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
 [node name="InfoLabel" type="Label" parent="Content/HBox/LeftPanel/Margin/VBox/InfoScroll" unique_id=712002902]
-custom_minimum_size = Vector2(400, 0)
+custom_minimum_size = Vector2(500, 0)
 layout_mode = 2
 theme_override_font_sizes/font_size = 17
 autowrap_mode = 2
@@ -168,9 +168,52 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 18
 text = "底部栏占位"
 
+[node name="AppreciationOverlay" type="ColorRect" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.92)
+
+[node name="Center" type="CenterContainer" parent="AppreciationOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="PortraitBox" type="VBoxContainer" parent="AppreciationOverlay/Center"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="PortraitTexture" type="TextureRect" parent="AppreciationOverlay/Center/PortraitBox"]
+custom_minimum_size = Vector2(760, 880)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="PlaceholderLabel" type="Label" parent="AppreciationOverlay/Center/PortraitBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "暂无立绘"
+horizontal_alignment = 1
+
+[node name="ReturnButton" type="Button" parent="AppreciationOverlay"]
+layout_mode = 1
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 176.0
+offset_bottom = 64.0
+text = "退出鉴赏"
+
 [connection signal="pressed" from="TopBar/Margin/HBox/BackButton" to="." method="_OnBackPressed"]
 [connection signal="pressed" from="TopBar/Margin/HBox/CodexButton" to="." method="_OnCodexPressed"]
 [connection signal="pressed" from="TopBar/Margin/HBox/CampButton" to="." method="_OnCampPressed"]
 [connection signal="pressed" from="TopBar/Margin/HBox/AppreciationButton" to="." method="_OnAppreciationPressed"]
+[connection signal="pressed" from="AppreciationOverlay/ReturnButton" to="." method="_OnAppreciationReturnPressed"]
 [connection signal="pressed" from="Content/HBox/PortraitArea/HBox/PrevButton" to="." method="_OnPrevPressed"]
 [connection signal="pressed" from="Content/HBox/PortraitArea/HBox/NextButton" to="." method="_OnNextPressed"]

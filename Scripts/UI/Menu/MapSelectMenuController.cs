@@ -230,13 +230,13 @@ public partial class MapSelectMenuController : Control
 	{
 		if (_list.GetSelectedItems().Length == 0) return;
 		string fileName = _list.GetItemText(_list.GetSelectedItems()[0]);
-		LevelDataManager.RuntimeMapRequest = fileName;
 		if (_mode == "pvp")
 		{
 			PvpMapState.PendingUploadFileName = fileName;
 			GetTree().ChangeSceneToFile(PvpLobbyMenuPath);
 			return;
 		}
+		LevelDataManager.RuntimeMapRequest = fileName;
 		if (_mode == "campaign")
 		{
 			LevelDataManager.ActiveCampaignMap = fileName;

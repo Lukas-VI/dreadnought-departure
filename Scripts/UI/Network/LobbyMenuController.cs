@@ -196,12 +196,12 @@ public partial class LobbyMenuController : Control
 		}
 		catch (Exception ex)
 		{
-			_statusLabel.Text = $"刷新失败：{ex.Message}";
+			SetLabelText(_statusLabel, $"刷新失败：{ex.Message}");
 		}
 		finally
 		{
 			_busy = false;
-			_refreshButton.Disabled = false;
+			SetDisabled(_refreshButton, false);
 		}
 	}
 
@@ -424,27 +424,28 @@ public partial class LobbyMenuController : Control
 
 	private void SetBusy(bool busy)
 	{
-		_createButton.Disabled = busy;
-		_refreshButton.Disabled = busy;
-		if (_joinButton != null)
+		SetDisabled(_createButton, busy);
+		SetDisabled(_refreshButton, busy);
+		SetDisabled(_joinButton, busy);
+		SetDisabled(_startButton, busy);
+		SetDisabled(_leaveButton, busy);
+		SetDisabled(_uploadMapButton, busy);
+		SetDisabled(_downloadMapButton, busy);
+	}
+
+	private static void SetDisabled(Button button, bool disabled)
+	{
+		if (button != null && GodotObject.IsInstanceValid(button))
 		{
-			_joinButton.Disabled = busy;
+			button.Disabled = disabled;
 		}
-		if (_startButton != null)
+	}
+
+	private static void SetLabelText(Label label, string text)
+	{
+		if (label != null && GodotObject.IsInstanceValid(label))
 		{
-			_startButton.Disabled = busy;
-		}
-		if (_leaveButton != null)
-		{
-			_leaveButton.Disabled = busy;
-		}
-		if (_uploadMapButton != null)
-		{
-			_uploadMapButton.Disabled = busy;
-		}
-		if (_downloadMapButton != null)
-		{
-			_downloadMapButton.Disabled = busy;
+			label.Text = text;
 		}
 	}
 

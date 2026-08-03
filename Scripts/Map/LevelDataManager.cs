@@ -364,9 +364,11 @@ public partial class LevelDataManager : Node
 		if (string.IsNullOrEmpty(json)) return false;
 		string path = "user://maps/pvp_download.json";
 		DirAccess.MakeDirRecursiveAbsolute("user://maps");
-		using var file = FileAccess.Open(path, FileAccess.ModeFlags.Write);
-		if (file == null) return false;
-		file.StoreString(json);
+		using (var file = FileAccess.Open(path, FileAccess.ModeFlags.Write))
+		{
+			if (file == null) return false;
+			file.StoreString(json);
+		}
 		_currentJsonPath = path;
 		return LoadFromJson(path);
 	}

@@ -1,13 +1,12 @@
 using Godot;
 using System;
-using System.Collections.Generic;
 using System.Text.Json;
 using DreadnoughtDeparture.Network;
 
 namespace DreadnoughtDeparture.Core;
 
 /// <summary>
-/// ESC 暂停菜单。PvP 模式额外显示远程调试面板：状态、指令按钮、同步日志。
+/// ESC 暂停菜单。PvP 模式额外显示远程状态与同步日志。
 /// </summary>
 public partial class PauseMenuController : Control
 {
@@ -19,7 +18,6 @@ public partial class PauseMenuController : Control
 	private bool _pvp;
 	private Label _pvpTurnLabel;
 	private Label _pvpStateLabel;
-	private VBoxContainer _pvpCommandBox;
 	private RichTextLabel _pvpLog;
 	private string _lastPvpPhase = "";
 	private int _lastPvpTurn = -1;
@@ -92,10 +90,6 @@ public partial class PauseMenuController : Control
 			AutowrapMode = TextServer.AutowrapMode.WordSmart,
 		};
 		box.AddChild(_pvpStateLabel);
-
-		_pvpCommandBox = new VBoxContainer();
-		_pvpCommandBox.AddThemeConstantOverride("separation", 6);
-		box.AddChild(_pvpCommandBox);
 
 		_pvpLog = new RichTextLabel
 		{
@@ -177,120 +171,6 @@ public partial class PauseMenuController : Control
 			initiative = turnOrder[0].GetString() == myUserId ? "先手：我方" : "先手：敌方";
 		}
 		_pvpStateLabel.Text = $"{initiative} / {(myTurn ? "轮到我提交" : "等待对方提交")}";
-		BuildPvpCommands(state, myTurn);
-	}
-
-	private void BuildPvpCommands(JsonElement state, bool myTurn)
-	{
-		foreach (Node child in _pvpCommandBox.GetChildren())
-		{
-			child.Free();
-		}
-
-		string status = state.TryGetProperty("status", out JsonElement statusProp)
-			? statusProp.GetString() ?? ""
-			: "";
-		if (status != "active")
-		{
-			_pvpCommandBox.AddChild(new Label { Text = "战斗已结束" });
-			return;
-		}
-
-		string phase = state.TryGetProperty("phase", out JsonElement phaseProp)
-			? phaseProp.GetString() ?? ""
-			: "";
-		if (myTurn)
-		{
-			switch (phase)
-			{
-				case "speed":
-					AddPvpCommand("加速", () => SendPvpCommand("accelerate"));
-					AddPvpCommand("减速", () => SendPvpCommand("decelerate"));
-					AddPvpCommand("待命", () => SendPvpCommand("wait"));
-					break;
-				case "move1":
-				case "move2":
-				case "move3":
-					AddPvpCommand("左转", () => SendPvpCommand("turn_left"));
-					AddPvpCommand("右转", () => SendPvpCommand("turn_right"));
-					AddPvpCommand("待命", () => SendPvpCommand("wait"));
-					break;
-				case "gunnery":
-					if (state.TryGetProperty("ships", out JsonElement ships))
-					{
-						int mySide = MyPvpSide(state);
-						foreach (JsonElement ship in ships.EnumerateArray())
-						{
-							int side = ship.TryGetProperty("side", out JsonElement sideProp)
-								? sideProp.GetInt32()
-								: -1;
-							if (side == mySide)
-							{
-								continue;
-							}
-							string targetId = ship.TryGetProperty("id", out JsonElement idProp)
-								? idProp.GetString() ?? ""
-								: "";
-							string name = ship.TryGetProperty("name", out JsonElement nameProp)
-								? nameProp.GetString() ?? "?"
-								: "?";
-							AddPvpCommand($"炮击 {name}", () => SendPvpCommand("fire", targetId));
-						}
-					}
-					AddPvpCommand("待命", () => SendPvpCommand("wait"));
-					break;
-			}
-		}
-		else
-		{
-			_pvpCommandBox.AddChild(new Label { Text = "等待对方提交指令..." });
-		}
-
-		var advanceButton = MakeButton("提交待命并推进", () =>
-		{
-			if (myTurn)
-			{
-				SendPvpCommand("wait");
-			}
-		});
-		advanceButton.Disabled = !myTurn;
-		_pvpCommandBox.AddChild(advanceButton);
-	}
-
-	private int MyPvpSide(JsonElement state)
-	{
-		if (state.TryGetProperty("players", out JsonElement players))
-		{
-			int index = 0;
-			foreach (JsonElement player in players.EnumerateArray())
-			{
-				if (player.GetString() == NetworkClient.Instance.UserId)
-				{
-					return index;
-				}
-				index++;
-			}
-		}
-		return 0;
-	}
-
-	private void AddPvpCommand(string text, Action action)
-	{
-		_pvpCommandBox.AddChild(MakeButton(text, action));
-	}
-
-	private void SendPvpCommand(string action, string targetShipId = null)
-	{
-		if (string.IsNullOrEmpty(PvpFlowState.PendingBattleId))
-		{
-			AppendPvpLog("没有可用的 battleId");
-			return;
-		}
-		NetworkClient.Instance.SendWsBattleCommand(
-			PvpFlowState.PendingBattleId,
-			action,
-			targetShipId);
-		AppendPvpLog($"已提交指令：{action}");
 	}
 
 	private void AppendPvpLog(string text)

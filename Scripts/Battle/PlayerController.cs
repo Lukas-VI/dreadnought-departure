@@ -269,7 +269,12 @@ public partial class PlayerController : Node, IUnitController
 		// 未在等待目标时点击当前船，重新弹出操作菜单。
 		if (_selected.HexCoords == hex)
 		{
-			GetNode<EventBus>("../EventBus").EmitSignal("ActionSelected", "_show_menu");
+			int stackCount = _myUnits.Count(s =>
+				s.HexCoords == hex && GodotObject.IsInstanceValid(s) && s.CurrentHp > 0);
+			if (stackCount > 1)
+				TrySelectAt(hex);
+			else
+				GetNode<EventBus>("../EventBus").EmitSignal("ActionSelected", "_show_menu");
 			return;
 		}
 

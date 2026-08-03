@@ -18,7 +18,7 @@ public partial class GridOverlayController : Node
 	[Export] public PackedScene AttackFrontBackScene;
 	[Export] public PackedScene AttackSideScene;
 	/// <summary>方向性 overlay 模型的基础朝向，和船模共用同一套角度。</summary>
-	[Export] public float DirectionYawOffsetDegrees = 0f;
+	[Export] public float DirectionYawOffsetDegrees = 180f;
 	[Export] public float NSModelYawOffsetDegrees = 30f;
 	/// <summary>overlay 模型相对六角格中心的竖轴偏移。</summary>
 	[Export] public float OverlayHeightOffset = 0.25f;

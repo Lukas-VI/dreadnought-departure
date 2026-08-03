@@ -142,7 +142,8 @@ public partial class GameplayDirector : Node
 					_timerEmitAccumulator = 0f;
 					EmitPhaseTimerUpdated();
 				}
-				if (_remoteMyTurn && !_remoteCommandsSent && nowMs >= _remoteTimerEndAt)
+				if (_remoteMyTurn && !_remoteCommandsSent &&
+					nowMs >= _remoteTimerEndAt - 500)
 				{
 					SendRemoteCommands();
 				}
@@ -278,6 +279,14 @@ public partial class GameplayDirector : Node
 					? codeProp.GetString() ?? ""
 					: "";
 				GetNode<EventBus>("EventBus").EmitLog($"PvP 服务端错误：{code}");
+				if (code == "not_your_turn" &&
+					!string.IsNullOrEmpty(PvpFlowState.PendingBattleId))
+				{
+					_remoteCommandsSent = false;
+					_remoteMyTurn = false;
+					_remoteTimerEndAt = 0;
+					NetworkClient.Instance.SendWsGetBattleState(PvpFlowState.PendingBattleId);
+				}
 			}
 		}
 		catch

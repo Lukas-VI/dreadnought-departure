@@ -376,6 +376,9 @@ public partial class GameplayDirector : Node
 			int maxHp = ship.TryGetProperty("maxHp", out JsonElement maxHpProp)
 				? maxHpProp.GetInt32()
 				: 0;
+			int mainAmmo = ship.TryGetProperty("mainAmmo", out JsonElement mainAmmoProp)
+				? mainAmmoProp.GetInt32()
+				: -1;
 			int stackIndex = ship.TryGetProperty("stackIndex", out JsonElement stackIndexProp)
 				? stackIndexProp.GetInt32()
 				: 0;
@@ -425,6 +428,10 @@ public partial class GameplayDirector : Node
 			{
 				component.MaxHp = maxHp;
 				component.CurrentHp = Math.Clamp(hp, 0, maxHp);
+			}
+			if (mainAmmo >= 0)
+			{
+				component.MainAmmo = mainAmmo;
 			}
 			LevelDataManager.BattlefieldUnits[coords] = component;
 			pending.Add((id, component, coords, isNew, stackIndex, stackTotal));

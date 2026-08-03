@@ -23,7 +23,11 @@ public sealed record ShipCommandIntent(
 				: "";
 			if (!string.IsNullOrEmpty(targetId))
 			{
-				detail = new { targetShipId = targetId };
+				detail = new
+				{
+					targetShipId = targetId,
+					radarUsed = Ship.PendingRadarUsed,
+				};
 			}
 		}
 		return new { id = ServerShipId, action = Action, detail };

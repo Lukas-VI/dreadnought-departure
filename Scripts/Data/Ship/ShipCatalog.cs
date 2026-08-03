@@ -81,6 +81,22 @@ public static class ShipCatalog
 					entry.Data.SpeedModerate,
 					entry.Data.SpeedHeavy,
 				},
+				attackRange = entry.Data.AttackRange,
+				attackPower = entry.Data.AttackPower,
+				mainAmmo = entry.Data.MainAmmo,
+				forwardFire = entry.Data.ForwardFire,
+				sideFire = entry.Data.SideFire,
+				backwardFire = entry.Data.BackwardFire,
+				gunCaliber = entry.Data.GunCaliber,
+				secondaryForwardFire = entry.Data.SecondaryForwardFire,
+				secondarySideFire = entry.Data.SecondarySideFire,
+				secondaryBackwardFire = entry.Data.SecondaryBackwardFire,
+				secondaryGunCaliber = entry.Data.SecondaryGunCaliber,
+				secondaryAttackPower = entry.Data.SecondaryAttackPower,
+				armorClose = entry.Data.ArmorClose,
+				armorMedium = entry.Data.ArmorMedium,
+				armorFar = entry.Data.ArmorFar,
+				radarType = entry.Data.RadarType,
 			});
 		}
 		return JsonSerializer.Serialize(list);

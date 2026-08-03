@@ -24,12 +24,14 @@ public partial class PlayerController : Node, IUnitController
 	private ShipComponent _selected;
 	private string _pendingAction;
 	private Queue<ShipComponent> _pendingShips = new();
+	private Vector2I? _stackPickHex;
 
 	public override void _Ready()
 	{
 		_data = GetNode<LevelDataManager>("../LevelDataManager");
 		GetNode<EventBus>("../EventBus").HexClicked += OnHexClicked;
 		GetNode<EventBus>("../EventBus").ActionSelected += OnActionSelected;
+		GetNode<EventBus>("../EventBus").ShipClicked += OnShipClicked;
 	}
 
 	/// <summary>阶段开始入口：重建逐船队列并激活第一艘可操作船。</summary>
@@ -44,6 +46,7 @@ public partial class PlayerController : Node, IUnitController
 		_enemyUnits = enemyUnits;
 		_pendingAction = null;
 		_selected = null;
+		_stackPickHex = null;
 
 		foreach (var ship in _myUnits)
 			if (GodotObject.IsInstanceValid(ship))
@@ -245,6 +248,8 @@ public partial class PlayerController : Node, IUnitController
 
 		if (_selected == null)
 		{
+			if (_stackPickHex.HasValue && hex != _stackPickHex.Value)
+				_stackPickHex = null;
 			TrySelectAt(hex);
 			return;
 		}
@@ -278,13 +283,48 @@ public partial class PlayerController : Node, IUnitController
 	/// <summary>只允许选中当前队首船，保证按阶段顺序逐船操作。</summary>
 	private void TrySelectAt(Vector2I hex)
 	{
-		var ship = _myUnits.Find(s =>
-			s.HexCoords == hex && GodotObject.IsInstanceValid(s) && s.CurrentHp > 0);
-		if (ship == null) return;
+		var ships = _myUnits.Where(s =>
+			s.HexCoords == hex && GodotObject.IsInstanceValid(s) && s.CurrentHp > 0).ToList();
+		if (ships.Count == 0) return;
 		_pendingAction = null;
-		if (_selected != null && !ReferenceEquals(_selected, ship))
+		if (ships.Count > 1)
+		{
+			_stackPickHex = hex;
+			GetNode<EventBus>("../EventBus").EmitSignal("LogMessage",
+				$"堆叠 {ships.Count} 艘，请点击船体选择目标舰");
+			return;
+		}
+		var selected = ships[0];
+		_stackPickHex = null;
+		if (_selected != null && !ReferenceEquals(_selected, selected))
 			_selected.ClearPendingCommands();
-		SelectShip(ship);
+		SelectShip(selected);
+	}
+
+	private void OnShipClicked(ShipComponent ship)
+	{
+		if (ship == null || !GodotObject.IsInstanceValid(ship) || ship.CurrentHp <= 0) return;
+		if (_stackPickHex.HasValue)
+		{
+			if (ship.HexCoords == _stackPickHex.Value)
+			{
+				_stackPickHex = null;
+				_pendingAction = null;
+				if (_selected != null && !ReferenceEquals(_selected, ship))
+					_selected.ClearPendingCommands();
+				SelectShip(ship);
+			}
+			return;
+		}
+		if (_selected == null)
+		{
+			_pendingAction = null;
+			if (_selected != null && !ReferenceEquals(_selected, ship))
+				_selected.ClearPendingCommands();
+			SelectShip(ship);
+			return;
+		}
+		OnHexClicked(ship.HexCoords);
 	}
 
 	/// <summary>执行炮击：校验敌舰与射程，确认目标后以船-敌舰中点运镜并结算射击。</summary>

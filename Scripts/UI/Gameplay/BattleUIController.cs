@@ -43,6 +43,7 @@ public partial class BattleUIController : Control
 		var bus = GetNode<EventBus>("../../EventBus");
 		bus.LogMessage += (msg) => _hud?.DisplayConsoleLog(msg);
 		bus.ShipInfoRequested += OnShipInfoRequested;
+		bus.ShipClicked += OnShipClickedRefresh;
 		bus.HexClicked += OnHexClicked;
 		bus.ActionSelected += OnActionSelected;
 		bus.OverlayClearRequested += HideActionMenu;
@@ -59,6 +60,11 @@ public partial class BattleUIController : Control
 	private void OnShipInfoRequested(ShipComponent ship)
 	{
 		_pendingShip = ship;
+		RefreshShipLists();
+	}
+
+	private void OnShipClickedRefresh(ShipComponent ship)
+	{
 		RefreshShipLists();
 	}
 
@@ -205,9 +211,9 @@ public partial class BattleUIController : Control
 	{
 		if (_commandLabel != null)
 			_commandLabel.Text =
-				$"指挥值 我方 {playerCommand} / 敌方 {enemyCommand}\n" +
-				$"CP 我方 {playerCP}/{playerMaxCP}  敌方 {enemyCP}/{enemyMaxCP}\n" +
-				$"PV 我方 {playerScore} / 敌方 {enemyScore}";
+				$"指挥值\n {playerCommand} : {enemyCommand}\n" +
+				$"CP\n {playerCP}/{playerMaxCP} : {enemyCP}/{enemyMaxCP}\n" +
+				$"PV\n {playerScore} : {enemyScore}";
 	}
 
 	private void OnPhaseTimerUpdated(float remaining, float total)

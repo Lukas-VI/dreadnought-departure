@@ -18,7 +18,7 @@ public partial class GridOverlayController : Node
 	[Export] public PackedScene AttackFrontBackScene;
 	[Export] public PackedScene AttackSideScene;
 	/// <summary>方向性 overlay 模型的基础朝向，和船模共用同一套角度。</summary>
-	[Export] public float DirectionYawOffsetDegrees = 180f;
+	[Export] public float DirectionYawOffsetDegrees = 0f;
 	[Export] public float NSModelYawOffsetDegrees = 30f;
 
 	private Dictionary<Vector2I, MeshInstance3D> _targets = new();
@@ -27,6 +27,7 @@ public partial class GridOverlayController : Node
 	private LevelDataManager _dataManager;
 	private HexOrientation _orientation = HexOrientation.EWHorizontal;
 	private Node3D _overlayRoot;
+	private readonly List<Node3D> _directionInstances = new();
 
 	public override void _Ready()
 	{
@@ -42,6 +43,8 @@ public partial class GridOverlayController : Node
 		bus.OverlayArcDrawRequested += DrawForwardArc;
 		bus.OverlayClearRequested += ClearOverlay;
 		bus.MoveTargetHighlighted += HighlightMoveTarget;
+		bus.DirectionOverlayRequested += ShowDirection;
+		bus.DirectionOverlayClearRequested += ClearDirectionOverlay;
 	}
 
 	public void InitializeOverlayTargets(Dictionary<Vector2I, MeshInstance3D> meshes)
@@ -63,8 +66,6 @@ public partial class GridOverlayController : Node
 
 		if (OverlayModelMode())
 		{
-			if (moveRange > 0)
-				SpawnOverlay(DirectionOverlayScene, center, direction);
 			foreach (var (coords, _) in _targets)
 			{
 				int dist = BattleRulesEvaluator.GetHexDistance(center, coords);
@@ -134,7 +135,6 @@ public partial class GridOverlayController : Node
 		HexDirection direction = (HexDirection)directionInt;
 		if (OverlayModelMode())
 		{
-			SpawnOverlay(DirectionOverlayScene, center, direction);
 			foreach (var (coords, _) in _targets)
 			{
 				int dist = BattleRulesEvaluator.GetHexDistance(center, coords);
@@ -168,6 +168,34 @@ public partial class GridOverlayController : Node
 			if (!GodotObject.IsInstanceValid(mesh)) continue;
 			mesh.MaterialOverride = _originalMaterials.TryGetValue(mesh, out var orig) ? orig : null;
 		}
+	}
+
+	/// <summary>在单位所在格显示控制方向标记（单纵阵头 / 独行舰）。</summary>
+	public void ShowDirection(Vector2I hex, int directionInt)
+	{
+		RefreshDirections(new[] { (hex, (HexDirection)directionInt) });
+	}
+
+	/// <summary>刷新所有“控制方向”单位的方向标记：单纵阵头与独行舰。</summary>
+	public void RefreshDirections(IReadOnlyList<(Vector2I Hex, HexDirection Direction)> entries)
+	{
+		ClearDirectionOverlay();
+		if (DirectionOverlayScene == null || _overlayRoot == null) return;
+		foreach (var entry in entries)
+		{
+			_directionInstances.Add(SpawnOverlay(DirectionOverlayScene, entry.Hex, entry.Direction));
+		}
+	}
+
+	public void ClearDirectionOverlay()
+	{
+		foreach (Node3D instance in _directionInstances)
+		{
+			if (!GodotObject.IsInstanceValid(instance)) continue;
+			_overlayRoot?.RemoveChild(instance);
+			instance.QueueFree();
+		}
+		_directionInstances.Clear();
 	}
 
 	private bool OverlayModelMode()

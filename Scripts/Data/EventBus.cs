@@ -29,6 +29,8 @@ public partial class EventBus : Node
 	[Signal] public delegate void OverlayArcDrawRequestedEventHandler(Vector2I center, int direction, int range);
 	[Signal] public delegate void OverlayClearRequestedEventHandler();
 	[Signal] public delegate void MoveTargetHighlightedEventHandler(Vector2I target);
+	[Signal] public delegate void DirectionOverlayRequestedEventHandler(Vector2I hex, int direction);
+	[Signal] public delegate void DirectionOverlayClearRequestedEventHandler();
 
 	// -- 相机焦点（全局运镜接口，剧情/演绎可直接使用）--
 	[Signal] public delegate void CameraFocusRequestedEventHandler(Vector3 worldPos, float distance, float pitchDegrees);

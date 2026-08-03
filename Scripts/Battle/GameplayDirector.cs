@@ -71,6 +71,8 @@ public partial class GameplayDirector : Node
 	private bool _remoteCommandsSent;
 	private bool _remotePhaseActive;
 	private bool _remoteMyTurn;
+	private long _remoteTimerEndAt;
+	private int _remoteTimerTotal;
 	private Button _advanceButton;
 	private readonly Dictionary<string, ShipComponent> _remoteShips = new();
 	private readonly Dictionary<string, Tween> _remoteTweens = new();
@@ -127,6 +129,12 @@ public partial class GameplayDirector : Node
 	{
 		if (_remotePvp)
 		{
+			if (_remoteTimerEndAt > 0 && _remoteMyTurn && !_remoteCommandsSent &&
+				DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() +
+					NetworkClient.Instance.ServerTimeOffsetMs >= _remoteTimerEndAt)
+			{
+				SendRemoteCommands();
+			}
 			return;
 		}
 		if (!_phaseTimerRunning) return;
@@ -162,6 +170,14 @@ public partial class GameplayDirector : Node
 	{
 		var bus = GetNode<EventBus>("EventBus");
 		bus.EmitLog("PvP 远程战场已启动，等待服务端状态...");
+		try
+		{
+			await NetworkClient.Instance.FetchServerTimeAsync();
+		}
+		catch
+		{
+			// 授时失败时继续，倒计时将退化为本地估算。
+		}
 		if (string.IsNullOrEmpty(PvpMapState.MapJson) &&
 			!string.IsNullOrEmpty(PvpFlowState.PendingRoomId))
 		{
@@ -274,6 +290,7 @@ public partial class GameplayDirector : Node
 			_turnNumber = turn;
 			_currentPhase = RemotePhaseToLocal(phase);
 			_remoteCommandsSent = false;
+			_remoteTimerEndAt = 0;
 			CancelPhaseTimer();
 			EmitPhaseChanged();
 			bus.EmitLog($"—— PvP 第 {turn} 回合 · {phase} ——");
@@ -285,7 +302,7 @@ public partial class GameplayDirector : Node
 		}
 
 		var seen = new HashSet<string>();
-		var pending = new List<(string Id, ShipComponent Ship, Vector2I Hex, bool IsNew)>();
+		var pending = new List<(string Id, ShipComponent Ship, Vector2I Hex, bool IsNew, int StackIndex, int StackTotal)>();
 		int mySide = 0;
 		if (state.TryGetProperty("players", out JsonElement players))
 		{
@@ -370,7 +387,7 @@ public partial class GameplayDirector : Node
 				component.CurrentHp = Math.Clamp(hp, 0, maxHp);
 			}
 			LevelDataManager.BattlefieldUnits[coords] = component;
-			pending.Add((id, component, coords, isNew));
+			pending.Add((id, component, coords, isNew, 0, 1));
 		}
 
 		var stale = new List<string>();
@@ -538,11 +555,15 @@ public partial class GameplayDirector : Node
 			_remotePhaseActive = false;
 			_remoteMyTurn = myTurn;
 		}
-		if (state.TryGetProperty("timerRemaining", out JsonElement timerRemainingProp) &&
+		if (state.TryGetProperty("timerEndAt", out JsonElement timerEndAtProp) &&
 			state.TryGetProperty("timerTotal", out JsonElement timerTotalProp))
 		{
-			_phaseTimerRemaining = (float)timerRemainingProp.GetDouble();
-			_phaseTimerTotal = (float)timerTotalProp.GetDouble();
+			_remoteTimerEndAt = timerEndAtProp.GetInt64();
+			_remoteTimerTotal = timerTotalProp.GetInt32();
+			long nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+				+ NetworkClient.Instance.ServerTimeOffsetMs;
+			_phaseTimerRemaining = Math.Max(0f, (_remoteTimerEndAt - nowMs) / 1000f);
+			_phaseTimerTotal = _remoteTimerTotal;
 			EmitPhaseTimerUpdated();
 		}
 		RefreshAdvanceButton();

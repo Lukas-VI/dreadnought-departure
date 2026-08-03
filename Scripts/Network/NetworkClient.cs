@@ -40,6 +40,7 @@ public partial class NetworkClient : Node
 
 	public bool IsWebSocketConnected => _wsConnected;
 	public string LastWsError { get; private set; } = "";
+	public long ServerTimeOffsetMs { get; private set; }
 
 	[Signal] public delegate void AuthChangedEventHandler(bool loggedIn, string username);
 	[Signal] public delegate void ConnectionStateChangedEventHandler(bool connected);
@@ -277,6 +278,16 @@ public partial class NetworkClient : Node
 	public async Task<JsonElement> GetMeAsync()
 	{
 		return await RequestAsync("/api/me", "GET");
+	}
+
+	public async Task FetchServerTimeAsync()
+	{
+		JsonElement result = await RequestAsync("/api/time", "GET", null, false);
+		if (result.TryGetProperty("serverTime", out JsonElement serverTime))
+		{
+			ServerTimeOffsetMs =
+				serverTime.GetInt64() - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+		}
 	}
 
 	public async Task<JsonElement> ListRoomsAsync()

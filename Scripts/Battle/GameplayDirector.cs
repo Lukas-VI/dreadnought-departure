@@ -502,73 +502,20 @@ public partial class GameplayDirector : Node
 
 	private void SendRemoteCommands()
 	{
-		var ships = BuildRemoteShipCommands();
+		var intents = CommandIntentBuilder.Build(
+			_playerShips.Where(IsShipAlive).ToList(),
+			_currentPhase);
+		var ships = new List<object>();
+		foreach (ShipCommandIntent intent in intents)
+		{
+			ships.Add(new { id = intent.ServerShipId, action = intent.Action, detail = intent.Detail });
+		}
 		_remoteCommandsSent = true;
 		NetworkClient.Instance.SendWsBattleShipsCommand(
 			PvpFlowState.PendingBattleId,
 			ships);
 		StartPhaseTimer(false);
 		GetNode<EventBus>("EventBus").EmitLog($"PvP 已提交 {ships.Count} 艘船指令");
-	}
-
-	private List<object> BuildRemoteShipCommands()
-	{
-		var list = new List<object>();
-		foreach (ShipComponent ship in _playerShips)
-		{
-			if (!IsShipAlive(ship))
-			{
-				continue;
-			}
-
-			string serverId = ship.GetMeta("serverShipId", "").AsString();
-			if (string.IsNullOrEmpty(serverId))
-			{
-				continue;
-			}
-
-			string action = "wait";
-			object detail = null;
-			if (_currentPhase == BattlePhase.SpeedAdjust)
-			{
-				if (ship.PendingSpeed >= 0 && ship.PendingSpeed != ship.CurrentSpeed)
-				{
-					action = ship.PendingSpeed > ship.CurrentSpeed ? "accelerate" : "decelerate";
-				}
-			}
-			else if (_currentPhase is BattlePhase.MovePhase1 or BattlePhase.MovePhase2
-				or BattlePhase.MovePhase3)
-			{
-				if (ship.PendingDirection.HasValue)
-				{
-					int delta = ((int)ship.PendingDirection.Value - (int)ship.Direction + 6) % 6;
-					if (delta == 1)
-					{
-						action = "turn_right";
-					}
-					else if (delta == 5)
-					{
-						action = "turn_left";
-					}
-				}
-			}
-			else if (_currentPhase == BattlePhase.Gunfire &&
-				ship.PendingAttackTarget != null &&
-				GodotObject.IsInstanceValid(ship.PendingAttackTarget))
-			{
-				string targetId = ship.PendingAttackTarget
-					.GetMeta("serverShipId", "")
-					.AsString();
-				if (!string.IsNullOrEmpty(targetId))
-				{
-					action = "fire";
-					detail = new { targetShipId = targetId };
-				}
-			}
-
-			list.Add(new { id = serverId, action, detail });
-		}
-		return list;
 	}
 
 	private static BattlePhase RemotePhaseToLocal(string phase)

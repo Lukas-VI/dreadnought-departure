@@ -99,7 +99,7 @@ public partial class BattleShipOverlayController : Node3D
 				flag.QueueFree();
 				continue;
 			}
-			flag.GlobalPosition = ship.GlobalPosition + new Vector3(0f, FlagHeight, 0f);
+			flag.Position = new Vector3(0f, FlagHeight, 0f);
 		}
 	}
 
@@ -145,7 +145,7 @@ public partial class BattleShipOverlayController : Node3D
 			Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
 			Scale = new Vector3(2.5f, 2.5f, 1f)
 		};
-		AddChild(flag);
+		ship.AddChild(flag);
 		_flags[ship] = flag;
 		return flag;
 	}

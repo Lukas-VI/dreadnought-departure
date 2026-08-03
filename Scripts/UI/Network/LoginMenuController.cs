@@ -12,6 +12,7 @@ public partial class LoginMenuController : Control
 	[Export] public string MainMenuPath = "res://Scenes/UI/Menu/MainMenu/main_menu.tscn";
 
 	private LineEdit _serverEdit;
+	private LineEdit _emailEdit;
 	private LineEdit _usernameEdit;
 	private LineEdit _passwordEdit;
 	private Label _statusLabel;
@@ -22,6 +23,7 @@ public partial class LoginMenuController : Control
 	{
 		BuildUi();
 		_serverEdit.Text = NetworkClient.Instance.HttpBaseUrl;
+		_ = TryAutoLoginAsync();
 	}
 
 	private void BuildUi()
@@ -55,6 +57,9 @@ public partial class LoginMenuController : Control
 
 		_serverEdit = MakeLineEdit("服务器地址", NetworkClient.DefaultHttpBaseUrl);
 		box.AddChild(_serverEdit);
+
+		_emailEdit = MakeLineEdit("邮箱", "");
+		box.AddChild(_emailEdit);
 
 		_usernameEdit = MakeLineEdit("用户名", "admiral");
 		box.AddChild(_usernameEdit);
@@ -102,11 +107,17 @@ public partial class LoginMenuController : Control
 			client.HttpBaseUrl = _serverEdit.Text.Trim().TrimEnd('/');
 			if (register)
 			{
-				await client.RegisterAsync(_usernameEdit.Text.Trim(), _passwordEdit.Text);
+				await client.RegisterAsync(
+					_emailEdit.Text.Trim(),
+					_usernameEdit.Text.Trim(),
+					_passwordEdit.Text);
 			}
 			else
 			{
-				await client.LoginAsync(_usernameEdit.Text.Trim(), _passwordEdit.Text);
+				await client.LoginAsync(
+					_emailEdit.Text.Trim(),
+					_usernameEdit.Text.Trim(),
+					_passwordEdit.Text);
 			}
 
 			_statusLabel.Text = register ? "注册成功，进入大厅..." : "登录成功，进入大厅...";
@@ -127,8 +138,29 @@ public partial class LoginMenuController : Control
 		_loginButton.Disabled = busy;
 		_registerButton.Disabled = busy;
 		_serverEdit.Editable = !busy;
+		_emailEdit.Editable = !busy;
 		_usernameEdit.Editable = !busy;
 		_passwordEdit.Editable = !busy;
+	}
+
+	private async Task TryAutoLoginAsync()
+	{
+		NetworkClient client = NetworkClient.Instance;
+		if (!client.IsLoggedIn)
+		{
+			return;
+		}
+		try
+		{
+			await client.GetMeAsync();
+			_statusLabel.Text = "已恢复登录，进入大厅...";
+			GetTree().ChangeSceneToFile(LobbyMenuPath);
+		}
+		catch
+		{
+			client.Logout();
+			_statusLabel.Text = "本地登录已失效，请重新登录";
+		}
 	}
 
 	private static LineEdit MakeLineEdit(string placeholder, string value)

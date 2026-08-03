@@ -13,10 +13,12 @@ public partial class NetworkClient : Node
 	public static NetworkClient Instance { get; private set; }
 
 	public const string DefaultHttpBaseUrl = "http://192.168.31.135:3000";
+	private const string AuthFilePath = "user://auth.json";
 
 	public string HttpBaseUrl { get; set; } = DefaultHttpBaseUrl;
 	public string Token { get; private set; } = "";
 	public string Username { get; private set; } = "";
+	public string Email { get; private set; } = "";
 	public string UserId { get; private set; } = "";
 	public bool IsLoggedIn => !string.IsNullOrEmpty(Token);
 
@@ -52,6 +54,7 @@ public partial class NetworkClient : Node
 	{
 		Instance = this;
 		ProcessMode = ProcessModeEnum.Always;
+		LoadPersistedSession();
 	}
 
 	public override void _Process(double delta)
@@ -258,6 +261,7 @@ public partial class NetworkClient : Node
 	{
 		Token = "";
 		Username = "";
+		Email = "";
 		UserId = "";
 		_wsConnected = false;
 		_wsShouldConnect = false;
@@ -267,6 +271,7 @@ public partial class NetworkClient : Node
 		_pendingWsMessages.Clear();
 		PvpMapState.MapJson = "";
 		PvpMapState.MapName = "";
+		ClearPersistedSession();
 		if (_ws != null)
 		{
 			_ws.Close();
@@ -275,23 +280,23 @@ public partial class NetworkClient : Node
 		EmitSignal(SignalName.AuthChanged, false, "");
 	}
 
-	public async Task<JsonElement> RegisterAsync(string username, string password)
+	public async Task<JsonElement> RegisterAsync(string email, string username, string password)
 	{
 		JsonElement result = await RequestAsync(
 			"/api/auth/register",
 			"POST",
-			new { username, password },
+			new { email, username, password },
 			false);
 		ApplySession(result);
 		return result;
 	}
 
-	public async Task<JsonElement> LoginAsync(string username, string password)
+	public async Task<JsonElement> LoginAsync(string email, string username, string password)
 	{
 		JsonElement result = await RequestAsync(
 			"/api/auth/login",
 			"POST",
-			new { username, password },
+			new { email, username, password },
 			false);
 		ApplySession(result);
 		return result;
@@ -428,13 +433,85 @@ public partial class NetworkClient : Node
 		{
 			Username = username.GetString() ?? "";
 		}
+		if (result.TryGetProperty("user", out JsonElement userWithEmail) &&
+			userWithEmail.TryGetProperty("email", out JsonElement email))
+		{
+			Email = email.GetString() ?? "";
+		}
 		if (result.TryGetProperty("user", out JsonElement userObject) &&
 			userObject.TryGetProperty("id", out JsonElement userId))
 		{
 			UserId = userId.GetString() ?? "";
 		}
 
+		SavePersistedSession();
 		EmitSignal(SignalName.AuthChanged, IsLoggedIn, Username);
+	}
+
+	private void SavePersistedSession()
+	{
+		if (!IsLoggedIn)
+		{
+			return;
+		}
+		using var file = FileAccess.Open(AuthFilePath, FileAccess.ModeFlags.Write);
+		if (file == null)
+		{
+			return;
+		}
+		file.StoreString(JsonSerializer.Serialize(new
+		{
+			token = Token,
+			username = Username,
+			email = Email,
+			userId = UserId,
+			httpBaseUrl = HttpBaseUrl,
+		}));
+	}
+
+	private void LoadPersistedSession()
+	{
+		if (!FileAccess.FileExists(AuthFilePath))
+		{
+			return;
+		}
+		using var file = FileAccess.Open(AuthFilePath, FileAccess.ModeFlags.Read);
+		if (file == null)
+		{
+			return;
+		}
+		string text = file.GetAsText();
+		if (string.IsNullOrEmpty(text))
+		{
+			return;
+		}
+		try
+		{
+			using var document = JsonDocument.Parse(text);
+			JsonElement root = document.RootElement;
+			Token = root.TryGetProperty("token", out JsonElement token) ? token.GetString() ?? "" : "";
+			Username = root.TryGetProperty("username", out JsonElement username)
+				? username.GetString() ?? ""
+				: "";
+			Email = root.TryGetProperty("email", out JsonElement email) ? email.GetString() ?? "" : "";
+			UserId = root.TryGetProperty("userId", out JsonElement userId) ? userId.GetString() ?? "" : "";
+			HttpBaseUrl = root.TryGetProperty("httpBaseUrl", out JsonElement baseUrl)
+				&& !string.IsNullOrEmpty(baseUrl.GetString())
+				? baseUrl.GetString() ?? DefaultHttpBaseUrl
+				: DefaultHttpBaseUrl;
+		}
+		catch
+		{
+			ClearPersistedSession();
+		}
+	}
+
+	private void ClearPersistedSession()
+	{
+		if (FileAccess.FileExists(AuthFilePath))
+		{
+			DirAccess.RemoveAbsolute(ProjectSettings.GlobalizePath(AuthFilePath));
+		}
 	}
 
 	private static string ExtractErrorCode(string text)

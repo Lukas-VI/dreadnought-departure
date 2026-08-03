@@ -508,7 +508,7 @@ public partial class GameplayDirector : Node
 		var ships = new List<object>();
 		foreach (ShipCommandIntent intent in intents)
 		{
-			ships.Add(new { id = intent.ServerShipId, action = intent.Action, detail = intent.Detail });
+			ships.Add(intent.ToWire());
 		}
 		_remoteCommandsSent = true;
 		NetworkClient.Instance.SendWsBattleShipsCommand(
@@ -766,25 +766,36 @@ public partial class GameplayDirector : Node
 			if (!IsShipAlive(ship))
 			{
 				ship.ClearPendingCommands();
-				continue;
 			}
+		}
 
-			if (ship.PendingSpeed >= 0)
+		foreach (ShipCommandIntent intent in CommandIntentBuilder.Build(
+			_playerShips.Where(IsShipAlive).ToList(),
+			_currentPhase))
+		{
+			ShipComponent ship = intent.Ship;
+			if (intent.Action == "accelerate" || intent.Action == "decelerate")
 			{
-				int old = ship.CurrentSpeed;
-				ship.CurrentSpeed = ship.PendingSpeed;
-				bus.EmitLog($"{ship.ShipName} 航速待命生效 {old} → {ship.CurrentSpeed}");
+				if (intent.TargetSpeed.HasValue && intent.TargetSpeed.Value != ship.CurrentSpeed)
+				{
+					int old = ship.CurrentSpeed;
+					ship.CurrentSpeed = intent.TargetSpeed.Value;
+					bus.EmitLog($"{ship.ShipName} 航速待命生效 {old} → {ship.CurrentSpeed}");
+				}
 			}
-
-			if (ship.PendingDirection.HasValue)
+			else if (intent.Action == "turn_left" || intent.Action == "turn_right")
 			{
-				ship.AnimateTurnTo(ship.PendingDirection.Value);
-				bus.EmitLog($"{ship.ShipName} 转向待命生效 → {ship.Direction}");
+				if (intent.TargetDirection.HasValue)
+				{
+					ship.AnimateTurnTo(intent.TargetDirection.Value);
+					bus.EmitLog($"{ship.ShipName} 转向待命生效 → {ship.Direction}");
+				}
 			}
-
-			if (ship.PendingAttackTarget != null && GodotObject.IsInstanceValid(ship.PendingAttackTarget))
+			else if (intent.Action == "fire" &&
+				intent.Target != null &&
+				GodotObject.IsInstanceValid(intent.Target))
 			{
-				ShipComponent target = ship.PendingAttackTarget;
+				ShipComponent target = intent.Target;
 				int attackCost = CommandRulesEvaluator.FireCPCost(ship);
 				if (TryConsumeCP(attackCost) && ship.MainAmmo > 0
 					&& CombatRulesEvaluator.CanFireInArc(ship, target))
@@ -799,8 +810,14 @@ public partial class GameplayDirector : Node
 					bus.EmitLog($"{ship.ShipName} 炮击未执行（CP 或条件不足）");
 				}
 			}
+		}
 
-			ship.ClearPendingCommands();
+		foreach (var ship in _playerShips)
+		{
+			if (IsShipAlive(ship))
+			{
+				ship.ClearPendingCommands();
+			}
 		}
 	}
 

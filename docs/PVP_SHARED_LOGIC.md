@@ -10,8 +10,8 @@
    - `PendingSpeed`：速度调整
    - `PendingDirection`：移动阶段转向
    - `PendingAttackTarget`：炮击目标
-2. 单机结算：`GameplayDirector.CommitPendingCommands` 直接读取这些字段并本地判定。
-3. PvP 提交：`CommandIntentBuilder.Build` 把同一批待命字段转换为 `ShipCommandIntent`，再打包成服务端 `battle.command`。
+2. 单机结算：`GameplayDirector.CommitPendingCommands` 通过 `CommandIntentBuilder.Build` 消费同一批字段并本地判定。
+3. PvP 提交：同一个 `CommandIntentBuilder.Build` 生成 `ShipCommandIntent`，再通过 `ToWire()` 打包成服务端 `battle.command`。
 
 因此“选船 → 卡片 → 待命字段”这一段只有一套实现；差异只发生在结算入口。
 
@@ -41,5 +41,5 @@
 - 服务端补视野/鱼雷阶段，或按地图开关跳过。
 - CP / 指挥值 / PV 进入服务端状态并广播，HUD 统一读取。
 - 服务端权威校验单纵阵与堆叠，避免只靠客户端表现。
-- 单机结算改为消费 `ShipCommandIntent`，让本地与 PvP 共用同一份“意图 → 结算”函数。
+- 服务端结算改为消费 `ShipCommandIntent` 的 wire 结构，让本地与 PvP 共用同一份“意图 → 结算”语义。
 - 计时改为服务端权威阶段时限，客户端只展示。

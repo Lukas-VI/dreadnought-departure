@@ -4,7 +4,31 @@ using System.Collections.Generic;
 namespace DreadnoughtDeparture.Core;
 
 /// <summary>单机与 PvP 共用的“船 → 指令意图”转换结果。</summary>
-public sealed record ShipCommandIntent(string ServerShipId, string Action, object Detail);
+public sealed record ShipCommandIntent(
+	ShipComponent Ship,
+	string ServerShipId,
+	string Action,
+	int? TargetSpeed,
+	HexDirection? TargetDirection,
+	ShipComponent Target)
+{
+	/// <summary>转成服务端 battle.command 的 wire 对象；单机结算直接读字段。</summary>
+	public object ToWire()
+	{
+		object detail = null;
+		if (Action == "fire")
+		{
+			string targetId = Target != null
+				? Target.GetMeta("serverShipId", "").AsString()
+				: "";
+			if (!string.IsNullOrEmpty(targetId))
+			{
+				detail = new { targetShipId = targetId };
+			}
+		}
+		return new { id = ServerShipId, action = Action, detail };
+	}
+}
 
 /// <summary>
 /// 从 ShipComponent 的待命字段（PendingSpeed / PendingDirection / PendingAttackTarget）
@@ -25,13 +49,8 @@ public static class CommandIntentBuilder
 			}
 
 			string serverId = ship.GetMeta("serverShipId", "").AsString();
-			if (string.IsNullOrEmpty(serverId))
-			{
-				continue;
-			}
 
 			string action = "wait";
-			object detail = null;
 			if (phase == BattlePhase.SpeedAdjust)
 			{
 				if (ship.PendingSpeed >= 0 && ship.PendingSpeed != ship.CurrentSpeed)
@@ -59,17 +78,21 @@ public static class CommandIntentBuilder
 				ship.PendingAttackTarget != null &&
 				GodotObject.IsInstanceValid(ship.PendingAttackTarget))
 			{
-				string targetId = ship.PendingAttackTarget
+				if (!string.IsNullOrEmpty(ship.PendingAttackTarget
 					.GetMeta("serverShipId", "")
-					.AsString();
-				if (!string.IsNullOrEmpty(targetId))
+					.AsString()))
 				{
 					action = "fire";
-					detail = new { targetShipId = targetId };
 				}
 			}
 
-			list.Add(new ShipCommandIntent(serverId, action, detail));
+			list.Add(new ShipCommandIntent(
+				ship,
+				serverId,
+				action,
+				ship.PendingSpeed >= 0 ? ship.PendingSpeed : null,
+				ship.PendingDirection,
+				ship.PendingAttackTarget));
 		}
 		return list;
 	}

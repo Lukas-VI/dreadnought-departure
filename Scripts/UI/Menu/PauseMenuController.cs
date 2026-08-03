@@ -152,6 +152,8 @@ public partial class PauseMenuController : Control
 		string status = state.TryGetProperty("status", out JsonElement statusProp)
 			? statusProp.GetString() ?? ""
 			: "";
+		bool paused = state.TryGetProperty("paused", out JsonElement pausedProp) &&
+			pausedProp.ValueKind == JsonValueKind.True;
 		_pvpTurnLabel.Text = $"回合：{turn} / 阶段：{phase} / {status}";
 
 		if (turn != _lastPvpTurn || phase != _lastPvpPhase)
@@ -170,7 +172,9 @@ public partial class PauseMenuController : Control
 		{
 			initiative = turnOrder[0].GetString() == myUserId ? "先手：我方" : "先手：敌方";
 		}
-		_pvpStateLabel.Text = $"{initiative} / {(myTurn ? "轮到我提交" : "等待对方提交")}";
+		_pvpStateLabel.Text = paused
+			? "对局暂停：对手断线"
+			: $"{initiative} / {(myTurn ? "轮到我提交" : "等待对方提交")}";
 	}
 
 	private void AppendPvpLog(string text)

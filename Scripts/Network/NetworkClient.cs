@@ -33,6 +33,7 @@ public partial class NetworkClient : Node
 	private bool _wsConnected;
 	private bool _wsShouldConnect;
 	private bool _wsAuthenticated;
+	private bool _wsRejoinSent;
 	private double _reconnectTimer;
 	private readonly Queue<string> _pendingWsMessages = new();
 
@@ -67,6 +68,7 @@ public partial class NetworkClient : Node
 					{
 						_wsConnected = true;
 						_wsAuthenticated = false;
+						_wsRejoinSent = false;
 						_reconnectTimer = 0;
 						LastWsError = "";
 						EmitSignal(SignalName.ConnectionStateChanged, true);
@@ -76,6 +78,23 @@ public partial class NetworkClient : Node
 					{
 						_wsAuthenticated = true;
 						_ws.SendText($"{{\"type\":\"auth\",\"token\":\"{Token}\"}}");
+					}
+
+					if (_wsAuthenticated && PvpFlowState.PvpBattle && !_wsRejoinSent)
+					{
+						_wsRejoinSent = true;
+						if (!string.IsNullOrEmpty(PvpFlowState.PendingRoomId))
+						{
+							_ws.SendText(JsonSerializer.Serialize(
+								new { type = "lobby.join", roomId = PvpFlowState.PendingRoomId },
+								JsonOptions));
+						}
+						if (!string.IsNullOrEmpty(PvpFlowState.PendingBattleId))
+						{
+							_ws.SendText(JsonSerializer.Serialize(
+								new { type = "battle.state.get", battleId = PvpFlowState.PendingBattleId },
+								JsonOptions));
+						}
 					}
 
 					while (_pendingWsMessages.Count > 0)
@@ -97,6 +116,7 @@ public partial class NetworkClient : Node
 					_wsConnected = false;
 					_wsShouldConnect = false;
 					_wsAuthenticated = false;
+					_wsRejoinSent = false;
 					LastWsError = $"closed_{code}_{reason}";
 					EmitSignal(SignalName.WsClosed, code, reason);
 					EmitSignal(SignalName.ConnectionStateChanged, false);
@@ -107,6 +127,7 @@ public partial class NetworkClient : Node
 		{
 			_wsConnected = false;
 			_wsShouldConnect = false;
+			_wsRejoinSent = false;
 			_ws = null;
 			LastWsError = "poll_error";
 			EmitSignal(SignalName.ConnectionStateChanged, false);
@@ -241,6 +262,7 @@ public partial class NetworkClient : Node
 		_wsConnected = false;
 		_wsShouldConnect = false;
 		_wsAuthenticated = false;
+		_wsRejoinSent = false;
 		_reconnectTimer = 0;
 		_pendingWsMessages.Clear();
 		PvpMapState.MapJson = "";

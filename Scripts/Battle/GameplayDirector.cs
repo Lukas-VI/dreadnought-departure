@@ -71,6 +71,7 @@ public partial class GameplayDirector : Node
 	private bool _remoteCommandsSent;
 	private bool _remotePhaseActive;
 	private bool _remoteMyTurn;
+	private bool _remotePaused;
 	private long _remoteTimerEndAt;
 	private int _remoteTimerTotal;
 	private Button _advanceButton;
@@ -114,6 +115,8 @@ public partial class GameplayDirector : Node
 				_ai.ProcessMode = ProcessModeEnum.Disabled;
 			}
 			NetworkClient.Instance.WsMessageReceived += OnRemotePvpMessage;
+			NetworkClient.Instance.ConnectionStateChanged += OnPvpConnectionChanged;
+			OnPvpConnectionChanged(NetworkClient.Instance.IsWebSocketConnected);
 		}
 		CallDeferred(MethodName.LaunchBattleField);
 	}
@@ -123,6 +126,21 @@ public partial class GameplayDirector : Node
 		if (_remotePvp && NetworkClient.Instance != null)
 		{
 			NetworkClient.Instance.WsMessageReceived -= OnRemotePvpMessage;
+			NetworkClient.Instance.ConnectionStateChanged -= OnPvpConnectionChanged;
+		}
+	}
+
+	private void OnPvpConnectionChanged(bool connected)
+	{
+		var bus = GetNodeOrNull<EventBus>("EventBus");
+		if (bus == null) return;
+		if (connected)
+		{
+			bus.EmitLog("PvP 连接已建立，等待服务端状态...");
+		}
+		else
+		{
+			bus.EmitLog("PvP 连接断开，正在自动重连...");
 		}
 	}
 
@@ -597,6 +615,20 @@ public partial class GameplayDirector : Node
 		string status = state.TryGetProperty("status", out JsonElement statusProp)
 			? statusProp.GetString() ?? ""
 			: "";
+		bool paused = state.TryGetProperty("paused", out JsonElement pausedProp) &&
+			pausedProp.ValueKind == JsonValueKind.True;
+		if (paused != _remotePaused)
+		{
+			_remotePaused = paused;
+			_remoteTimerEndAt = 0;
+			_remoteTimerTotal = 0;
+			_remoteMyTurn = false;
+			_remotePhaseActive = false;
+			bus.EmitLog(paused ? "PvP 对局暂停：对手断线" : "PvP 对局恢复：对手已重连");
+			EmitPhaseTimerUpdated();
+			RefreshAdvanceButton();
+		}
+		myTurn = myTurn && !paused;
 		if (status == "active" && myTurn && !_remotePhaseActive)
 		{
 			_remotePhaseActive = true;

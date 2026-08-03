@@ -73,6 +73,7 @@ public partial class GameplayDirector : Node
 	private bool _remoteMyTurn;
 	private Button _advanceButton;
 	private readonly Dictionary<string, ShipComponent> _remoteShips = new();
+	private readonly Dictionary<string, Tween> _remoteTweens = new();
 	private readonly Dictionary<ShipComponent, FormationTrail> _formationTrails = new();
 
 	/// <summary>单纵阵首舰历史轨迹：Cells[i] 对应到达后的航向 Headings[i]。</summary>
@@ -280,6 +281,7 @@ public partial class GameplayDirector : Node
 		}
 
 		var seen = new HashSet<string>();
+		var pending = new List<(string Id, ShipComponent Ship, Vector2I Hex, bool IsNew)>();
 		int mySide = 0;
 		if (state.TryGetProperty("players", out JsonElement players))
 		{
@@ -296,6 +298,7 @@ public partial class GameplayDirector : Node
 		}
 		foreach (JsonElement ship in ships.EnumerateArray())
 		{
+			bool isNew = false;
 			string id = ship.TryGetProperty("id", out JsonElement idProp)
 				? idProp.GetString() ?? ""
 				: "";
@@ -347,6 +350,7 @@ public partial class GameplayDirector : Node
 				_unitSpawner.AddChild(component);
 				component.SetMeta("serverShipId", id);
 				_remoteShips[id] = component;
+				isNew = true;
 			}
 
 			seen.Add(id);
@@ -354,7 +358,6 @@ public partial class GameplayDirector : Node
 				? GenerationSide.Player
 				: GenerationSide.Enemy;
 			Vector2I coords = new Vector2I(hex[0].GetInt32(), hex[1].GetInt32());
-			component.MoveToHex(_mapGenerator, coords);
 			component.AnimateTurnTo((HexDirection)(facing % 6));
 			component.CurrentSpeed = speed;
 			if (maxHp > 0)
@@ -363,6 +366,7 @@ public partial class GameplayDirector : Node
 				component.CurrentHp = Math.Clamp(hp, 0, maxHp);
 			}
 			LevelDataManager.BattlefieldUnits[coords] = component;
+			pending.Add((id, component, coords, isNew));
 		}
 
 		var stale = new List<string>();
@@ -385,12 +389,80 @@ public partial class GameplayDirector : Node
 			_remoteShips.Remove(key);
 		}
 
+		var stacks = new Dictionary<(Vector2I Hex, int Side), List<ShipComponent>>();
+		foreach (var entry in pending)
+		{
+			if (!stacks.TryGetValue((entry.Hex, (int)entry.Ship.BattleSide), out var group))
+			{
+				group = new List<ShipComponent>();
+				stacks[(entry.Hex, (int)entry.Ship.BattleSide)] = group;
+			}
+			group.Add(entry.Ship);
+		}
+
+		foreach (var kv in stacks)
+		{
+			Vector2I hex = kv.Key.Hex;
+			List<ShipComponent> group = kv.Value;
+			Vector3 center = _mapGenerator.HexToWorld(hex.X, hex.Y);
+			Vector2I forwardOff = HexDirectionUtility.Offset(group[0].Direction);
+			Vector3 forward = _mapGenerator.HexToWorld(forwardOff.X, forwardOff.Y)
+				- _mapGenerator.HexToWorld(0, 0);
+			forward.Y = 0f;
+			Vector3 lateral = new Vector3(forward.Z, 0f, -forward.X);
+			if (lateral.LengthSquared() > 0f)
+			{
+				lateral = lateral.Normalized();
+			}
+
+			for (int i = 0; i < group.Count; i++)
+			{
+				ShipComponent ship = group[i];
+				float zOffset = group.Count <= 1
+					? 0f
+					: (i - (group.Count - 1) / 2f) * ShipComponent.StackZStep;
+				Vector3 to = new Vector3(center.X, ShipComponent.StackBaseY, center.Z)
+					+ lateral * zOffset;
+				ship.HexCoords = hex;
+				string serverId = ship.GetMeta("serverShipId", "").AsString();
+				ShipComponent moved = ship;
+				bool isNew = pending.Find(entry => entry.Ship == moved).IsNew;
+				if (isNew)
+				{
+					moved.Position = to;
+				}
+				else
+				{
+					if (_remoteTweens.TryGetValue(serverId, out Tween oldTween))
+					{
+						oldTween.Kill();
+						_remoteTweens.Remove(serverId);
+					}
+					Tween tween = moved.CreateTween();
+					tween.SetTrans(Tween.TransitionType.Quad);
+					tween.SetEase(Tween.EaseType.InOut);
+					tween.TweenProperty(moved, "position", to, 0.35f);
+					_remoteTweens[serverId] = tween;
+					tween.Finished += () =>
+					{
+						if (_remoteTweens.TryGetValue(serverId, out Tween current)
+							&& current == tween)
+						{
+							_remoteTweens.Remove(serverId);
+						}
+					};
+				}
+			}
+		}
+
 		_playerShips = _remoteShips.Values
 			.Where(ship => ship.BattleSide == GenerationSide.Player)
 			.ToList();
 		_enemyShips = _remoteShips.Values
 			.Where(ship => ship.BattleSide == GenerationSide.Enemy)
 			.ToList();
+		MoveRulesEvaluator.SyncFormationGroups(_playerShips.Where(IsShipAlive).ToList());
+		MoveRulesEvaluator.SyncFormationGroups(_enemyShips.Where(IsShipAlive).ToList());
 
 		bool myTurn = state.TryGetProperty("activePlayer", out JsonElement activeProp) &&
 			activeProp.GetString() == NetworkClient.Instance.UserId;

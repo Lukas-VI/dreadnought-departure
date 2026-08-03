@@ -2,6 +2,7 @@ using Godot;
 using System.Collections.Generic;
 using System.Text.Json;
 using System;
+using DreadnoughtDeparture.Network;
 
 namespace DreadnoughtDeparture.Core;
 
@@ -107,6 +108,12 @@ public partial class LevelDataManager : Node
 		// 画布菜单把选中画布名写进 RuntimeMapRequest；进入场景后消费一次
 		string requestedName = RuntimeMapRequest;
 		RuntimeMapRequest = null;
+		if (PvpFlowState.PvpBattle && !string.IsNullOrEmpty(PvpMapState.MapJson)
+			&& LoadMapFromJson(PvpMapState.MapJson))
+		{
+			MapAutoOpened = true;
+			return;
+		}
 		if (!string.IsNullOrEmpty(requestedName) && LoadMap(requestedName))
 		{
 			MapAutoOpened = true;
@@ -349,6 +356,21 @@ public partial class LevelDataManager : Node
 		if (!LoadFromJson(path)) return false;
 		_currentJsonPath = path;
 		return true;
+	}
+
+	/// <summary>从 PvP 下载/上传的 JSON 字符串加载地图，供 3D 战场生成。</summary>
+	public bool LoadMapFromJson(string json)
+	{
+		if (string.IsNullOrEmpty(json)) return false;
+		string path = "user://maps/pvp_download.json";
+		DirAccess.MakeDirRecursiveAbsolute("user://maps");
+		using (var file = FileAccess.Open(path, FileAccess.ModeFlags.Write))
+		{
+			if (file == null) return false;
+			file.StoreString(json);
+		}
+		_currentJsonPath = path;
+		return LoadFromJson(path);
 	}
 
 	/// <summary>删除导出文件夹内的画布文件。</summary>

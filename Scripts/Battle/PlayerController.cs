@@ -24,6 +24,7 @@ public partial class PlayerController : Node, IUnitController
 	private ShipComponent _selected;
 	private string _pendingAction;
 	private Queue<ShipComponent> _pendingShips = new();
+	private readonly Dictionary<Vector2I, ShipComponent> _lastStackSelection = new();
 
 	public override void _Ready()
 	{
@@ -112,7 +113,7 @@ public partial class PlayerController : Node, IUnitController
 		PreviewNextArrival(ship);
 		bus.EmitSignal("ShipInfoRequested", ship);
 		bus.EmitSignal("ActionSelected", "_show_menu");
-		bus.EmitSignal("CameraTopDownRequested", ShipWorld(ship));
+		bus.EmitSignal("CameraTopDownRequested", ship.GlobalPosition);
 		bus.EmitSignal("LogMessage", $"⚓ 轮到 {ship.ShipName}（剩余 {_pendingShips.Count} 艘）");
 	}
 
@@ -268,7 +269,12 @@ public partial class PlayerController : Node, IUnitController
 		// 未在等待目标时点击当前船，重新弹出操作菜单。
 		if (_selected.HexCoords == hex)
 		{
-			GetNode<EventBus>("../EventBus").EmitSignal("ActionSelected", "_show_menu");
+			int stackCount = _myUnits.Count(s =>
+				s.HexCoords == hex && GodotObject.IsInstanceValid(s) && s.CurrentHp > 0);
+			if (stackCount > 1)
+				TrySelectAt(hex);
+			else
+				GetNode<EventBus>("../EventBus").EmitSignal("ActionSelected", "_show_menu");
 			return;
 		}
 
@@ -278,13 +284,36 @@ public partial class PlayerController : Node, IUnitController
 	/// <summary>只允许选中当前队首船，保证按阶段顺序逐船操作。</summary>
 	private void TrySelectAt(Vector2I hex)
 	{
-		var ship = _myUnits.Find(s =>
-			s.HexCoords == hex && GodotObject.IsInstanceValid(s) && s.CurrentHp > 0);
-		if (ship == null) return;
+		var ships = _myUnits.Where(s =>
+			s.HexCoords == hex && GodotObject.IsInstanceValid(s) && s.CurrentHp > 0).ToList();
+		if (ships.Count == 0) return;
 		_pendingAction = null;
-		if (_selected != null && !ReferenceEquals(_selected, ship))
+		ShipComponent selected;
+		if (ships.Count > 1)
+		{
+			int index = -1;
+			if (_selected != null && _selected.HexCoords == hex && ships.Contains(_selected))
+				index = ships.IndexOf(_selected);
+			else if (_lastStackSelection.TryGetValue(hex, out ShipComponent last)
+				&& ships.Contains(last))
+			{
+				selected = last;
+				if (_selected != null && !ReferenceEquals(_selected, selected))
+					_selected.ClearPendingCommands();
+				SelectShip(selected);
+				return;
+			}
+			selected = ships[(index + 1) % ships.Count];
+			_lastStackSelection[hex] = selected;
+		}
+		else
+		{
+			selected = ships[0];
+			_lastStackSelection[hex] = selected;
+		}
+		if (_selected != null && !ReferenceEquals(_selected, selected))
 			_selected.ClearPendingCommands();
-		SelectShip(ship);
+		SelectShip(selected);
 	}
 
 	/// <summary>执行炮击：校验敌舰与射程，确认目标后以船-敌舰中点运镜并结算射击。</summary>
@@ -402,8 +431,9 @@ public partial class PlayerController : Node, IUnitController
 		int movePhase = _director.CurrentMovePhase > 0 ? _director.CurrentMovePhase : 1;
 		bool oddTurn = _director.TurnNumber % 2 == 1;
 		int steps = SpeedTable.MoveForPhase(speed, movePhase, oddTurn);
-		if (steps <= 0) return;
-		Vector2I target = ship.HexCoords + HexDirectionUtility.Offset(dir) * steps;
+		var path = MoveRulesEvaluator.BuildMovePath(ship.HexCoords, dir, steps);
+		if (path.Count == 0) return;
+		Vector2I target = path[^1].Hex;
 		bus.EmitSignal("MoveTargetHighlighted", target);
 		bus.EmitSignal("CameraFocusBetweenRequested", ShipWorld(ship), _map.HexToWorld(target.X, target.Y));
 	}

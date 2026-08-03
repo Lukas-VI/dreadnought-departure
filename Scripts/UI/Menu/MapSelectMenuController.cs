@@ -1,6 +1,7 @@
 using Godot;
 using System;
 using System.Collections.Generic;
+using DreadnoughtDeparture.Network;
 
 namespace DreadnoughtDeparture.Core;
 
@@ -17,6 +18,7 @@ public partial class MapSelectMenuController : Control
 	[Export] public string EditorScenePath = "res://Scenes/UI/Editor/editor_scene.tscn";
 	[Export] public string BattleScenePath = "res://Scenes/Battle/battle_scene.tscn";
 	[Export] public string MainMenuScenePath = "res://Scenes/UI/Menu/MainMenu/main_menu.tscn";
+	[Export] public string PvpLobbyMenuPath = "res://Scenes/UI/Network/lobby_menu.tscn";
 
 	private string _mode = "editor";
 	private ItemList _list;
@@ -71,7 +73,11 @@ public partial class MapSelectMenuController : Control
 
 		_titleLabel = new Label
 		{
-			Text = _mode == "campaign" ? "战役加载 - 选择画布" : "画布列表 - 选择画布",
+			Text = _mode == "campaign"
+				? "战役加载 - 选择画布"
+				: _mode == "pvp"
+					? "PvP 房主 - 选择地图"
+					: "画布列表 - 选择画布",
 			HorizontalAlignment = HorizontalAlignment.Center
 		};
 		_titleLabel.AddThemeFontSizeOverride("font_size", 26);
@@ -101,6 +107,12 @@ public partial class MapSelectMenuController : Control
 
 		_editorButton.Visible = _mode != "campaign";
 		_campaignButton.Visible = _mode == "campaign";
+		if (_mode == "pvp")
+		{
+			_editorButton.Visible = false;
+			_campaignButton.Visible = true;
+			_campaignButton.Text = "选择此地图";
+		}
 	}
 
 	/// <summary>构建新建、删除、导入三个弹窗。</summary>
@@ -218,6 +230,12 @@ public partial class MapSelectMenuController : Control
 	{
 		if (_list.GetSelectedItems().Length == 0) return;
 		string fileName = _list.GetItemText(_list.GetSelectedItems()[0]);
+		if (_mode == "pvp")
+		{
+			PvpMapState.PendingUploadFileName = fileName;
+			GetTree().ChangeSceneToFile(PvpLobbyMenuPath);
+			return;
+		}
 		LevelDataManager.RuntimeMapRequest = fileName;
 		if (_mode == "campaign")
 		{

@@ -57,6 +57,9 @@ public partial class BattleShipOverlayController : Node3D
 		}
 		Sprite3D flag = GetOrCreateFlag(ship);
 		flag.Visible = selected;
+		flag.Scale = selected
+			? new Vector3(3.2f, 3.2f, 1f)
+			: new Vector3(2.5f, 2.5f, 1f);
 	}
 
 	private void RefreshAll()

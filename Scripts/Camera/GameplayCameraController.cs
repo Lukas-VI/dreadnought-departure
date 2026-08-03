@@ -126,8 +126,11 @@ public partial class GameplayCameraController : Node3D
 			{
 				_isDragging = mouseButton.Pressed;
 				_lastMousePosition = mouseButton.Position;
-				// 玩家手动平移后不再被自动焦点拉回。
-				if (mouseButton.Pressed) _hasFocusTarget = false;
+				// 中键/右键手动运镜后不再被自动焦点拉回；左键保留选船聚焦。
+				if (mouseButton.Pressed &&
+					(mouseButton.ButtonIndex == MouseButton.Middle ||
+						mouseButton.ButtonIndex == MouseButton.Right))
+					_hasFocusTarget = false;
 			}
 
 			if (mouseButton.ButtonIndex == MouseButton.Middle)

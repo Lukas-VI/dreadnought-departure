@@ -62,6 +62,7 @@ public partial class BattleUIController : Control
 		RefreshShipLists();
 	}
 
+
 	private void OnHexClicked(Vector2I hex)
 	{
 		foreach (Node node in GetTree().GetNodesInGroup("Ships"))
@@ -205,9 +206,9 @@ public partial class BattleUIController : Control
 	{
 		if (_commandLabel != null)
 			_commandLabel.Text =
-				$"指挥值 我方 {playerCommand} / 敌方 {enemyCommand}\n" +
-				$"CP 我方 {playerCP}/{playerMaxCP}  敌方 {enemyCP}/{enemyMaxCP}\n" +
-				$"PV 我方 {playerScore} / 敌方 {enemyScore}";
+				$"指挥值\n {playerCommand} : {enemyCommand}\n" +
+				$"CP\n {playerCP}/{playerMaxCP} : {enemyCP}/{enemyMaxCP}\n" +
+				$"PV\n {playerScore} : {enemyScore}";
 	}
 
 	private void OnPhaseTimerUpdated(float remaining, float total)

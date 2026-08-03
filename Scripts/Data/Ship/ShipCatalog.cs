@@ -1,6 +1,7 @@
 using Godot;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 
 namespace DreadnoughtDeparture.Core;
 
@@ -48,6 +49,58 @@ public static class ShipCatalog
 
 	/// <summary>返回所有可用的 ShipId 列表（供下拉框使用）。</summary>
 	public static IReadOnlyList<string> ShipIds => Entries.Select(e => e.ShipId).ToList();
+
+	/// <summary>导出服务端结算所需的 ShipData 数值表（ShipId/PV/MaxHp/船级/破损阈值/各状态航速）。</summary>
+	public static string ExportShipDataJson()
+	{
+		EnsureScanned();
+		var list = new List<object>();
+		foreach (Entry entry in _entries)
+		{
+			if (entry.Data == null)
+			{
+				continue;
+			}
+			list.Add(new
+			{
+				shipId = entry.ShipId,
+				pv = entry.Data.PV,
+				maxHp = entry.Data.MaxHp,
+				shipClass = entry.Data.ShipClass,
+				hull = new[]
+				{
+					entry.Data.HullLight,
+					entry.Data.HullModerate,
+					entry.Data.HullHeavy,
+					entry.Data.HullSunk,
+				},
+				speeds = new[]
+				{
+					entry.Data.SpeedIntact,
+					entry.Data.SpeedLight,
+					entry.Data.SpeedModerate,
+					entry.Data.SpeedHeavy,
+				},
+				attackRange = entry.Data.AttackRange,
+				attackPower = entry.Data.AttackPower,
+				mainAmmo = entry.Data.MainAmmo,
+				forwardFire = entry.Data.ForwardFire,
+				sideFire = entry.Data.SideFire,
+				backwardFire = entry.Data.BackwardFire,
+				gunCaliber = entry.Data.GunCaliber,
+				secondaryForwardFire = entry.Data.SecondaryForwardFire,
+				secondarySideFire = entry.Data.SecondarySideFire,
+				secondaryBackwardFire = entry.Data.SecondaryBackwardFire,
+				secondaryGunCaliber = entry.Data.SecondaryGunCaliber,
+				secondaryAttackPower = entry.Data.SecondaryAttackPower,
+				armorClose = entry.Data.ArmorClose,
+				armorMedium = entry.Data.ArmorMedium,
+				armorFar = entry.Data.ArmorFar,
+				radarType = entry.Data.RadarType,
+			});
+		}
+		return JsonSerializer.Serialize(list);
+	}
 
 	private static void EnsureScanned()
 	{

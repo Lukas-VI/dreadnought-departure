@@ -494,8 +494,29 @@ public partial class GameplayDirector : Node
 			EnemyScore = enemyScoreProp.GetInt32();
 		}
 		EmitCommandStateUpdated();
-		MoveRulesEvaluator.SyncFormationGroups(_playerShips.Where(IsShipAlive).ToList());
-		MoveRulesEvaluator.SyncFormationGroups(_enemyShips.Where(IsShipAlive).ToList());
+		foreach (JsonElement ship in ships.EnumerateArray())
+		{
+			string id = ship.TryGetProperty("id", out JsonElement idProp)
+				? idProp.GetString() ?? ""
+				: "";
+			if (!_remoteShips.TryGetValue(id, out ShipComponent component))
+			{
+				continue;
+			}
+			string leadId = ship.TryGetProperty("formationLeadId", out JsonElement leadProp)
+				&& leadProp.ValueKind == JsonValueKind.String
+				? leadProp.GetString() ?? ""
+				: "";
+			int formationIndex = ship.TryGetProperty("formationIndex", out JsonElement indexProp)
+				? indexProp.GetInt32()
+				: -1;
+			component.FormationLead =
+				!string.IsNullOrEmpty(leadId) &&
+				_remoteShips.TryGetValue(leadId, out ShipComponent lead)
+					? lead
+					: null;
+			component.FormationIndex = formationIndex;
+		}
 
 		bool myTurn = state.TryGetProperty("activePlayer", out JsonElement activeProp) &&
 			activeProp.GetString() == NetworkClient.Instance.UserId;
@@ -618,7 +639,7 @@ public partial class GameplayDirector : Node
 				ship.UpdateUi();
 			}
 		// 移动阶段保留贪吃蛇编队标记；只在速度调整阶段按几何关系重建。
-		if (_currentPhase == BattlePhase.SpeedAdjust)
+		if (!_remotePvp && _currentPhase == BattlePhase.SpeedAdjust)
 			MoveRulesEvaluator.SyncFormationGroups(_playerShips.Where(IsShipAlive).ToList());
 		StartPhaseTimer(true);
 		_player.BeginPhaseAction(this, _playerShips, _enemyShips, _mapGenerator, _overlay);

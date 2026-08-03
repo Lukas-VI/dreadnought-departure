@@ -601,7 +601,17 @@ public partial class GameplayDirector : Node
 		{
 			_remotePhaseActive = true;
 			_remoteMyTurn = true;
-			CallDeferred(nameof(BeginPlayerPhase));
+			if (_currentPhase is BattlePhase.ReconLighting or BattlePhase.Torpedo)
+			{
+				if (!_remoteCommandsSent)
+				{
+					SendRemoteCommands();
+				}
+			}
+			else
+			{
+				CallDeferred(nameof(BeginPlayerPhase));
+			}
 		}
 		else if (!myTurn || status != "active")
 		{

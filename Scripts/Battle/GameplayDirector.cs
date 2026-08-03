@@ -130,11 +130,22 @@ public partial class GameplayDirector : Node
 	{
 		if (_remotePvp)
 		{
-			if (_remoteTimerEndAt > 0 && _remoteMyTurn && !_remoteCommandsSent &&
-				DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() +
-					NetworkClient.Instance.ServerTimeOffsetMs >= _remoteTimerEndAt)
+			if (_remoteTimerEndAt > 0)
 			{
-				SendRemoteCommands();
+				long nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+					+ NetworkClient.Instance.ServerTimeOffsetMs;
+				_phaseTimerRemaining = Math.Max(0f, (_remoteTimerEndAt - nowMs) / 1000f);
+				_phaseTimerTotal = _remoteTimerTotal;
+				_timerEmitAccumulator += (float)delta;
+				if (_timerEmitAccumulator >= 0.1f)
+				{
+					_timerEmitAccumulator = 0f;
+					EmitPhaseTimerUpdated();
+				}
+				if (_remoteMyTurn && !_remoteCommandsSent && nowMs >= _remoteTimerEndAt)
+				{
+					SendRemoteCommands();
+				}
 			}
 			return;
 		}
@@ -292,6 +303,10 @@ public partial class GameplayDirector : Node
 			_currentPhase = RemotePhaseToLocal(phase);
 			_remoteCommandsSent = false;
 			_remoteTimerEndAt = 0;
+			foreach (ShipComponent ship in _remoteShips.Values)
+			{
+				ship.TurnedThisPhase = false;
+			}
 			CancelPhaseTimer();
 			EmitPhaseChanged();
 			bus.EmitLog($"—— PvP 第 {turn} 回合 · {phase} ——");

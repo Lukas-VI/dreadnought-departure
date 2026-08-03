@@ -113,7 +113,7 @@ public partial class PlayerController : Node, IUnitController
 		PreviewNextArrival(ship);
 		bus.EmitSignal("ShipInfoRequested", ship);
 		bus.EmitSignal("ActionSelected", "_show_menu");
-		bus.EmitSignal("CameraTopDownRequested", ShipWorld(ship));
+		bus.EmitSignal("CameraTopDownRequested", ship.GlobalPosition);
 		bus.EmitSignal("LogMessage", $"⚓ 轮到 {ship.ShipName}（剩余 {_pendingShips.Count} 艘）");
 	}
 

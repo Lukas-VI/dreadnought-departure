@@ -73,15 +73,6 @@ public partial class GameplayDirector : Node
 	private bool _remoteMyTurn;
 	private Button _advanceButton;
 	private readonly Dictionary<string, ShipComponent> _remoteShips = new();
-	private static readonly HexDirection[] ServerFacingToHexDirection =
-	{
-		HexDirection.SE, // server 0 = E
-		HexDirection.NE, // server 1 = SE
-		HexDirection.N,  // server 2 = SW
-		HexDirection.NW, // server 3 = W
-		HexDirection.SW, // server 4 = NW
-		HexDirection.S,  // server 5 = NE
-	};
 	private readonly Dictionary<ShipComponent, FormationTrail> _formationTrails = new();
 
 	/// <summary>单纵阵首舰历史轨迹：Cells[i] 对应到达后的航向 Headings[i]。</summary>
@@ -364,7 +355,7 @@ public partial class GameplayDirector : Node
 				: GenerationSide.Enemy;
 			Vector2I coords = new Vector2I(hex[0].GetInt32(), hex[1].GetInt32());
 			component.MoveToHex(_mapGenerator, coords);
-			component.AnimateTurnTo(ServerFacingToHexDirection[facing % 6]);
+			component.AnimateTurnTo((HexDirection)(facing % 6));
 			component.CurrentSpeed = speed;
 			if (maxHp > 0)
 			{

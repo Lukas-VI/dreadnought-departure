@@ -586,7 +586,9 @@ public partial class GameplayDirector : Node
 			"move1" => BattlePhase.MovePhase1,
 			"move2" => BattlePhase.MovePhase2,
 			"move3" => BattlePhase.MovePhase3,
+			"recon" => BattlePhase.ReconLighting,
 			"gunnery" => BattlePhase.Gunfire,
+			"torpedo" => BattlePhase.Torpedo,
 			_ => BattlePhase.SpeedAdjust,
 		};
 	}

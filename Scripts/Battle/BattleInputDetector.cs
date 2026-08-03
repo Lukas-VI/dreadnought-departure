@@ -44,7 +44,7 @@ public partial class BattleInputDetector : Node
 				var ship = hitNode.GetParentOrNull<ShipComponent>();
 				if (ship != null)
 				{
-					_bus?.EmitSignal("ShipClicked", ship);
+					_bus?.EmitSignal("HexClicked", ship.HexCoords);
 					return;
 				}
 			}

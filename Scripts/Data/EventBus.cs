@@ -24,9 +24,6 @@ public partial class EventBus : Node
 	[Signal] public delegate void ShipInfoRequestedEventHandler(ShipComponent ship);
 	[Signal] public delegate void ShipStatusChangedEventHandler(ShipComponent ship);
 	[Signal] public delegate void ShipSelectionChangedEventHandler(ShipComponent ship, bool selected);
-	[Signal] public delegate void ShipClickedEventHandler(ShipComponent ship);
-	[Signal] public delegate void StackSelectionRequestedEventHandler(Godot.Collections.Array ships);
-	[Signal] public delegate void StackShipSelectedEventHandler(ShipComponent ship);
 	[Signal] public delegate void OverlayDrawRequestedEventHandler(
 		Vector2I center, int move, int attack, int direction, int arcMask, int state);
 	[Signal] public delegate void OverlayArcDrawRequestedEventHandler(Vector2I center, int direction, int range);

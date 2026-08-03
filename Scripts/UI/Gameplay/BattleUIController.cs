@@ -43,7 +43,6 @@ public partial class BattleUIController : Control
 		var bus = GetNode<EventBus>("../../EventBus");
 		bus.LogMessage += (msg) => _hud?.DisplayConsoleLog(msg);
 		bus.ShipInfoRequested += OnShipInfoRequested;
-		bus.ShipClicked += OnShipClickedRefresh;
 		bus.HexClicked += OnHexClicked;
 		bus.ActionSelected += OnActionSelected;
 		bus.OverlayClearRequested += HideActionMenu;
@@ -63,10 +62,6 @@ public partial class BattleUIController : Control
 		RefreshShipLists();
 	}
 
-	private void OnShipClickedRefresh(ShipComponent ship)
-	{
-		RefreshShipLists();
-	}
 
 	private void OnHexClicked(Vector2I hex)
 	{

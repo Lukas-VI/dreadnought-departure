@@ -351,6 +351,12 @@ public partial class GameplayDirector : Node
 			int maxHp = ship.TryGetProperty("maxHp", out JsonElement maxHpProp)
 				? maxHpProp.GetInt32()
 				: 0;
+			int stackIndex = ship.TryGetProperty("stackIndex", out JsonElement stackIndexProp)
+				? stackIndexProp.GetInt32()
+				: 0;
+			int stackTotal = ship.TryGetProperty("stackTotal", out JsonElement stackTotalProp)
+				? stackTotalProp.GetInt32()
+				: 1;
 
 			if (!_remoteShips.TryGetValue(id, out ShipComponent component))
 			{
@@ -387,7 +393,7 @@ public partial class GameplayDirector : Node
 				component.CurrentHp = Math.Clamp(hp, 0, maxHp);
 			}
 			LevelDataManager.BattlefieldUnits[coords] = component;
-			pending.Add((id, component, coords, isNew, 0, 1));
+			pending.Add((id, component, coords, isNew, stackIndex, stackTotal));
 		}
 
 		var stale = new List<string>();
@@ -419,6 +425,12 @@ public partial class GameplayDirector : Node
 				stacks[(entry.Hex, (int)entry.Ship.BattleSide)] = group;
 			}
 			group.Add(entry.Ship);
+		}
+		foreach (var group in stacks.Values)
+		{
+			group.Sort((a, b) =>
+				pending.Find(entry => entry.Ship == a).StackIndex
+					.CompareTo(pending.Find(entry => entry.Ship == b).StackIndex));
 		}
 
 		foreach (var kv in stacks)

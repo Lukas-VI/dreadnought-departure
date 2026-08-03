@@ -401,7 +401,16 @@ public partial class GameplayDirector : Node
 				? GenerationSide.Player
 				: GenerationSide.Enemy;
 			Vector2I coords = new Vector2I(hex[0].GetInt32(), hex[1].GetInt32());
-			component.AnimateTurnTo((HexDirection)(facing % 6));
+			int previousFacing = (int)component.Direction;
+			if (isNew)
+			{
+				component.Direction = (HexDirection)(facing % 6);
+				component.TurnedThisPhase = false;
+			}
+			else if (previousFacing != facing % 6)
+			{
+				component.AnimateTurnTo((HexDirection)(facing % 6));
+			}
 			component.CurrentSpeed = speed;
 			if (maxHp > 0)
 			{

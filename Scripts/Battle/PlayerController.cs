@@ -431,8 +431,9 @@ public partial class PlayerController : Node, IUnitController
 		int movePhase = _director.CurrentMovePhase > 0 ? _director.CurrentMovePhase : 1;
 		bool oddTurn = _director.TurnNumber % 2 == 1;
 		int steps = SpeedTable.MoveForPhase(speed, movePhase, oddTurn);
-		if (steps <= 0) return;
-		Vector2I target = ship.HexCoords + HexDirectionUtility.Offset(dir) * steps;
+		var path = MoveRulesEvaluator.BuildMovePath(ship.HexCoords, dir, steps);
+		if (path.Count == 0) return;
+		Vector2I target = path[^1].Hex;
 		bus.EmitSignal("MoveTargetHighlighted", target);
 		bus.EmitSignal("CameraFocusBetweenRequested", ShipWorld(ship), _map.HexToWorld(target.X, target.Y));
 	}

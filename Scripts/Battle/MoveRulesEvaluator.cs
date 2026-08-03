@@ -1,4 +1,5 @@
 using Godot;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -9,11 +10,38 @@ namespace DreadnoughtDeparture.Core;
 /// </summary>
 public static class MoveRulesEvaluator
 {
+	/// <summary>逐格移动路径的一步：到达格 + 到达后的航向。</summary>
+	public sealed record MovementStep(Vector2I Hex, HexDirection Heading);
+
 	// ═════════════════════════════════════════
 	//  3.1  A2 速力→阶段位移映射（已在 SpeedTable 中）
 	// ═════════════════════════════════════════
 	public static int MovementForPhase(int speed, int phase, bool oddTurn)
 		=> SpeedTable.MoveForPhase(speed, phase, oddTurn);
+
+	/// <summary>
+	/// 生成逐格移动路径。每步最多允许一次 60° 转向；turnDeltas[i] 表示
+	/// 第 i 步出发前的转向（+1 右转 / -1 左转），缺省按当前航向直行。
+	/// </summary>
+	public static List<MovementStep> BuildMovePath(Vector2I start, HexDirection direction,
+		int steps, IReadOnlyList<int> turnDeltas = null)
+	{
+		var path = new List<MovementStep>();
+		HexDirection heading = direction;
+		Vector2I cursor = start;
+		for (int i = 0; i < steps; i++)
+		{
+			if (turnDeltas != null && i < turnDeltas.Count)
+			{
+				int delta = Math.Clamp(turnDeltas[i], -1, 1);
+				if (delta > 0) heading = HexDirectionUtility.TurnRight(heading);
+				else if (delta < 0) heading = HexDirectionUtility.TurnLeft(heading);
+			}
+			cursor += HexDirectionUtility.Offset(heading);
+			path.Add(new MovementStep(cursor, heading));
+		}
+		return path;
+	}
 
 	/// <summary>返回从 from 到 to 最接近的六向航向（用于射界/转向判定）。</summary>
 	public static HexDirection DirectionTo(Vector2I from, Vector2I to)

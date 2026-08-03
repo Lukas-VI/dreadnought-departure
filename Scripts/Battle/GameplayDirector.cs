@@ -108,6 +108,7 @@ public partial class GameplayDirector : Node
 		if (PvpFlowState.PvpBattle)
 		{
 			_remotePvp = true;
+			ProcessMode = ProcessModeEnum.Always;
 			if (_ai != null)
 			{
 				_ai.ProcessMode = ProcessModeEnum.Disabled;

@@ -20,6 +20,8 @@ public partial class GridOverlayController : Node
 	/// <summary>方向性 overlay 模型的基础朝向，和船模共用同一套角度。</summary>
 	[Export] public float DirectionYawOffsetDegrees = 0f;
 	[Export] public float NSModelYawOffsetDegrees = 30f;
+	/// <summary>overlay 模型相对六角格中心的竖轴偏移。</summary>
+	[Export] public float OverlayHeightOffset = 0.5f;
 
 	private Dictionary<Vector2I, MeshInstance3D> _targets = new();
 	private Dictionary<MeshInstance3D, Material> _originalMaterials = new();
@@ -219,7 +221,7 @@ public partial class GridOverlayController : Node
 		Node3D instance = scene.Instantiate<Node3D>();
 		_overlayRoot.AddChild(instance);
 		Vector3 world = _mapGenerator?.HexToWorld(hex.X, hex.Y) ?? Vector3.Zero;
-		instance.Position = new Vector3(world.X, 0.18f, world.Z);
+		instance.Position = new Vector3(world.X, OverlayHeightOffset, world.Z);
 		if (direction.HasValue)
 			instance.RotationDegrees = new Vector3(0f, OverlayYaw(direction.Value), 0f);
 		return instance;

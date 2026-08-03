@@ -518,6 +518,10 @@ public partial class LobbyMenuController : Control
 			PvpMapState.MapJson = text;
 			PvpMapState.MapName = name;
 			await NetworkClient.Instance.UploadMapAsync(roomId, map);
+			using var shipDataDocument = JsonDocument.Parse(ShipCatalog.ExportShipDataJson());
+			await NetworkClient.Instance.UploadShipDataAsync(
+				roomId,
+				shipDataDocument.RootElement);
 			_statusLabel.Text = $"地图 {name} 已上传";
 			if (_selectedRoomId == roomId)
 			{

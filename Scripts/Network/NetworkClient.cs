@@ -309,6 +309,14 @@ public partial class NetworkClient : Node
 		return await RequestAsync($"/api/lobby/rooms/{roomId}/map", "GET");
 	}
 
+	public async Task<JsonElement> UploadShipDataAsync(string roomId, JsonElement ships)
+	{
+		return await RequestAsync(
+			$"/api/lobby/rooms/{roomId}/shipdata",
+			"PUT",
+			new { ships });
+	}
+
 	public async Task<JsonElement> StartBattleAsync(string roomId)
 	{
 		return await RequestAsync("/api/battle/start", "POST", new { roomId });

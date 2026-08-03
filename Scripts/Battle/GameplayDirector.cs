@@ -73,6 +73,15 @@ public partial class GameplayDirector : Node
 	private bool _remoteMyTurn;
 	private Button _advanceButton;
 	private readonly Dictionary<string, ShipComponent> _remoteShips = new();
+	private static readonly HexDirection[] ServerFacingToHexDirection =
+	{
+		HexDirection.SE, // server 0 = E
+		HexDirection.NE, // server 1 = SE
+		HexDirection.N,  // server 2 = SW
+		HexDirection.NW, // server 3 = W
+		HexDirection.SW, // server 4 = NW
+		HexDirection.S,  // server 5 = NE
+	};
 	private readonly Dictionary<ShipComponent, FormationTrail> _formationTrails = new();
 
 	/// <summary>单纵阵首舰历史轨迹：Cells[i] 对应到达后的航向 Headings[i]。</summary>
@@ -184,6 +193,7 @@ public partial class GameplayDirector : Node
 			if (_dataManager.LoadMapFromJson(PvpMapState.MapJson))
 			{
 				_mapGenerator.BuildMap(_dataManager.TerrainData);
+				FrameRemoteMap(bus);
 				bus.EmitLog($"PvP 地图已加载（地形 {_dataManager.TerrainSources.Count}）");
 			}
 			else
@@ -203,6 +213,26 @@ public partial class GameplayDirector : Node
 		{
 			NetworkClient.Instance.SendWsGetBattleState(PvpFlowState.PendingBattleId);
 		}
+	}
+
+	private void FrameRemoteMap(EventBus bus)
+	{
+		if (_dataManager.TerrainSources.Count == 0)
+		{
+			return;
+		}
+		Vector2I min = new Vector2I(int.MaxValue, int.MaxValue);
+		Vector2I max = new Vector2I(int.MinValue, int.MinValue);
+		foreach (Vector2I hex in _dataManager.TerrainSources.Keys)
+		{
+			min = new Vector2I(Mathf.Min(min.X, hex.X), Mathf.Min(min.Y, hex.Y));
+			max = new Vector2I(Mathf.Max(max.X, hex.X), Mathf.Max(max.Y, hex.Y));
+		}
+		Vector3 center = (_mapGenerator.HexToWorld(min.X, min.Y)
+			+ _mapGenerator.HexToWorld(max.X, max.Y)) * 0.5f;
+		float span = Mathf.Sqrt((max - min).LengthSquared());
+		float distance = Mathf.Clamp(span * 2.2f, 24f, 140f);
+		bus.EmitSignal("CameraFocusRequested", center, distance, 55f);
 	}
 
 	private void OnRemotePvpMessage(string json)
@@ -334,7 +364,7 @@ public partial class GameplayDirector : Node
 				: GenerationSide.Enemy;
 			Vector2I coords = new Vector2I(hex[0].GetInt32(), hex[1].GetInt32());
 			component.MoveToHex(_mapGenerator, coords);
-			component.AnimateTurnTo((HexDirection)(facing % 6));
+			component.AnimateTurnTo(ServerFacingToHexDirection[facing % 6]);
 			component.CurrentSpeed = speed;
 			if (maxHp > 0)
 			{

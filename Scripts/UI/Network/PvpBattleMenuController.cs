@@ -31,6 +31,15 @@ public partial class PvpBattleMenuController : Control
 	private MapGenerator _mapGenerator;
 	private Node3D _shipsRoot;
 	private readonly Dictionary<string, ShipComponent> _ships3D = new();
+	private static readonly HexDirection[] ServerFacingToHexDirection =
+	{
+		HexDirection.SE,
+		HexDirection.NE,
+		HexDirection.N,
+		HexDirection.NW,
+		HexDirection.SW,
+		HexDirection.S,
+	};
 	private bool _3dReady;
 	private string _lastPhase = "";
 	private int _lastTurn = -1;
@@ -423,7 +432,7 @@ public partial class PvpBattleMenuController : Control
 			component.MoveToHex(
 				_mapGenerator,
 				new Vector2I(hex[0].GetInt32(), hex[1].GetInt32()));
-			component.AnimateTurnTo((HexDirection)(facing % 6));
+			component.AnimateTurnTo(ServerFacingToHexDirection[facing % 6]);
 			component.CurrentSpeed = speed;
 			if (maxHp > 0)
 			{

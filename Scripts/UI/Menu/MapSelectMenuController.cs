@@ -267,7 +267,7 @@ public partial class MapSelectMenuController : Control
 		string path = $"{LevelDataManager.DefaultExportFolder}/{safe}.json";
 		using var file = FileAccess.Open(path, FileAccess.ModeFlags.Write);
 		if (file == null) return;
-		string orientation = _newOrientation.Selected == 1 ? "ns" : "ew";
+		string orientation = _newOrientation.Selected == 1 ? "ew" : "ns";
 		int pc = (int)_playerCommandSpin.Value, ec = (int)_enemyCommandSpin.Value;
 		int pcp = (int)_playerCPSpin.Value, ecp = (int)_enemyCPSpin.Value;
 		int ini = (int)_initiativeSpin.Value, vis = (int)_visionSpin.Value, turns = (int)_maxTurnsSpin.Value;

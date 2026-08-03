@@ -461,6 +461,39 @@ public partial class GameplayDirector : Node
 		_enemyShips = _remoteShips.Values
 			.Where(ship => ship.BattleSide == GenerationSide.Enemy)
 			.ToList();
+		if (state.TryGetProperty("playerCommand", out JsonElement playerCommandProp))
+		{
+			PlayerCommandValue = playerCommandProp.GetInt32();
+		}
+		if (state.TryGetProperty("enemyCommand", out JsonElement enemyCommandProp))
+		{
+			EnemyCommandValue = enemyCommandProp.GetInt32();
+		}
+		if (state.TryGetProperty("playerMaxCP", out JsonElement playerMaxProp))
+		{
+			MaxCP = playerMaxProp.GetInt32();
+		}
+		if (state.TryGetProperty("enemyMaxCP", out JsonElement enemyMaxProp))
+		{
+			EnemyMaxCP = enemyMaxProp.GetInt32();
+		}
+		if (state.TryGetProperty("playerCP", out JsonElement playerCpProp))
+		{
+			CurrentCP = playerCpProp.GetInt32();
+		}
+		if (state.TryGetProperty("enemyCP", out JsonElement enemyCpProp))
+		{
+			EnemyCurrentCP = enemyCpProp.GetInt32();
+		}
+		if (state.TryGetProperty("playerScore", out JsonElement playerScoreProp))
+		{
+			PlayerScore = playerScoreProp.GetInt32();
+		}
+		if (state.TryGetProperty("enemyScore", out JsonElement enemyScoreProp))
+		{
+			EnemyScore = enemyScoreProp.GetInt32();
+		}
+		EmitCommandStateUpdated();
 		MoveRulesEvaluator.SyncFormationGroups(_playerShips.Where(IsShipAlive).ToList());
 		MoveRulesEvaluator.SyncFormationGroups(_enemyShips.Where(IsShipAlive).ToList());
 

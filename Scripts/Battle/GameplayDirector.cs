@@ -153,14 +153,47 @@ public partial class GameplayDirector : Node
 		StartBattle();
 	}
 
-	private void StartRemotePvp()
+	private async void StartRemotePvp()
 	{
-		GetNode<EventBus>("EventBus").EmitLog("PvP 远程战场已启动，等待服务端状态...");
+		var bus = GetNode<EventBus>("EventBus");
+		bus.EmitLog("PvP 远程战场已启动，等待服务端状态...");
+		if (string.IsNullOrEmpty(PvpMapState.MapJson) &&
+			!string.IsNullOrEmpty(PvpFlowState.PendingRoomId))
+		{
+			try
+			{
+				JsonElement mapResult = await NetworkClient.Instance.DownloadMapAsync(
+					PvpFlowState.PendingRoomId);
+				if (mapResult.TryGetProperty("map", out JsonElement map) &&
+					map.ValueKind == JsonValueKind.Object)
+				{
+					PvpMapState.MapJson = map.GetRawText();
+					PvpMapState.MapName = map.TryGetProperty("Name", out JsonElement nameProp)
+						? nameProp.GetString() ?? ""
+						: "";
+				}
+			}
+			catch (Exception ex)
+			{
+				bus.EmitLog($"PvP 地图下载失败：{ex.Message}");
+			}
+		}
 		if (!string.IsNullOrEmpty(PvpMapState.MapJson) &&
 			_dataManager.TerrainSources.Count == 0)
 		{
-			_dataManager.LoadMapFromJson(PvpMapState.MapJson);
-			_mapGenerator.BuildMap(_dataManager.TerrainData);
+			if (_dataManager.LoadMapFromJson(PvpMapState.MapJson))
+			{
+				_mapGenerator.BuildMap(_dataManager.TerrainData);
+				bus.EmitLog($"PvP 地图已加载（地形 {_dataManager.TerrainSources.Count}）");
+			}
+			else
+			{
+				bus.EmitLog("PvP 地图加载失败");
+			}
+		}
+		else if (_dataManager.TerrainSources.Count == 0)
+		{
+			bus.EmitLog("PvP 地图为空，未生成地形");
 		}
 		if (!string.IsNullOrEmpty(PvpFlowState.PendingRoomId))
 		{
@@ -276,8 +309,15 @@ public partial class GameplayDirector : Node
 
 			if (!_remoteShips.TryGetValue(id, out ShipComponent component))
 			{
-				PackedScene prefab = ResourceLoader.Load<PackedScene>(
-					"res://Ships/BaseShip/ship_3d.tscn");
+				string shipId = ship.TryGetProperty("shipId", out JsonElement shipIdProp)
+					? shipIdProp.GetString() ?? ""
+					: "";
+				PackedScene prefab = ShipCatalog.GetScene(shipId);
+				if (prefab == null)
+				{
+					prefab = ResourceLoader.Load<PackedScene>(
+						"res://Ships/BaseShip/ship_3d.tscn");
+				}
 				if (prefab == null)
 				{
 					continue;

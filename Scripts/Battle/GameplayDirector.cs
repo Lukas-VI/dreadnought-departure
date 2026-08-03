@@ -612,6 +612,23 @@ public partial class GameplayDirector : Node
 			_phaseTimerTotal = _remoteTimerTotal;
 			EmitPhaseTimerUpdated();
 		}
+		if (status != "active" && !_battleEnded)
+		{
+			_battleEnded = true;
+			string winner = state.TryGetProperty("winner", out JsonElement winnerProp) &&
+				winnerProp.ValueKind == JsonValueKind.String
+				? winnerProp.GetString() ?? ""
+				: "";
+			string result = string.IsNullOrEmpty(winner)
+				? "平局"
+				: winner == NetworkClient.Instance.UserId
+					? "胜利"
+					: "失败";
+			GetNode<EventBus>("EventBus").EmitSignal(
+				"BattleEnded",
+				result,
+				$"回合 {turn} · {phase}");
+		}
 		RefreshAdvanceButton();
 	}
 

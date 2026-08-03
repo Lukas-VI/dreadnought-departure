@@ -125,6 +125,10 @@ public partial class GameplayDirector : Node
 
 	public override void _Process(double delta)
 	{
+		if (_remotePvp)
+		{
+			return;
+		}
 		if (!_phaseTimerRunning) return;
 		_phaseTimerRemaining = Mathf.Max(0f, _phaseTimerRemaining - (float)delta);
 		_timerEmitAccumulator += (float)delta;
@@ -534,9 +538,12 @@ public partial class GameplayDirector : Node
 			_remotePhaseActive = false;
 			_remoteMyTurn = myTurn;
 		}
-		if (status == "active" && !myTurn && !_phaseTimerRunning)
+		if (state.TryGetProperty("timerRemaining", out JsonElement timerRemainingProp) &&
+			state.TryGetProperty("timerTotal", out JsonElement timerTotalProp))
 		{
-			StartPhaseTimer(false);
+			_phaseTimerRemaining = (float)timerRemainingProp.GetDouble();
+			_phaseTimerTotal = (float)timerTotalProp.GetDouble();
+			EmitPhaseTimerUpdated();
 		}
 		RefreshAdvanceButton();
 	}
@@ -568,7 +575,6 @@ public partial class GameplayDirector : Node
 		NetworkClient.Instance.SendWsBattleShipsCommand(
 			PvpFlowState.PendingBattleId,
 			ships);
-		StartPhaseTimer(false);
 		GetNode<EventBus>("EventBus").EmitLog($"PvP 已提交 {ships.Count} 艘船指令");
 	}
 
@@ -641,7 +647,10 @@ public partial class GameplayDirector : Node
 		// 移动阶段保留贪吃蛇编队标记；只在速度调整阶段按几何关系重建。
 		if (!_remotePvp && _currentPhase == BattlePhase.SpeedAdjust)
 			MoveRulesEvaluator.SyncFormationGroups(_playerShips.Where(IsShipAlive).ToList());
-		StartPhaseTimer(true);
+		if (!_remotePvp)
+		{
+			StartPhaseTimer(true);
+		}
 		_player.BeginPhaseAction(this, _playerShips, _enemyShips, _mapGenerator, _overlay);
 	}
 

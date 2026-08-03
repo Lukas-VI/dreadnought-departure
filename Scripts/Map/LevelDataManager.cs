@@ -429,7 +429,7 @@ public partial class LevelDataManager : Node
 			Name = CurrentMapName,
 			Version = 3,
 			MapType = MapType,
-			Orientation = MapOrientation == HexOrientation.NSVertical ? "ew" : "ns",
+			Orientation = MapOrientation == HexOrientation.NSVertical ? "ns" : "ew",
 			PlayerCommand = PlayerCommand,
 			EnemyCommand = EnemyCommand,
 			PlayerInitialCP = PlayerInitialCP,
@@ -540,8 +540,8 @@ public partial class LevelDataManager : Node
 		MapType = root.TryGetProperty("MapType", out JsonElement mapTypeElement) ? mapTypeElement.GetString() ?? "day" : "day";
 		MapOrientation = root.TryGetProperty("Orientation", out JsonElement orientationElement)
 			&& orientationElement.GetString() == "ns"
-			? HexOrientation.EWHorizontal
-			: HexOrientation.NSVertical;
+			? HexOrientation.NSVertical
+			: HexOrientation.EWHorizontal;
 		PlayerCommand = root.TryGetProperty("PlayerCommand", out JsonElement playerCommand) ? playerCommand.GetInt32() : 5;
 		EnemyCommand = root.TryGetProperty("EnemyCommand", out JsonElement enemyCommand) ? enemyCommand.GetInt32() : 4;
 		PlayerInitialCP = root.TryGetProperty("PlayerInitialCP", out JsonElement playerCp) ? playerCp.GetInt32() : 8;

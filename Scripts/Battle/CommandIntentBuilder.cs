@@ -82,12 +82,7 @@ public static class CommandIntentBuilder
 				ship.PendingAttackTarget != null &&
 				GodotObject.IsInstanceValid(ship.PendingAttackTarget))
 			{
-				if (!string.IsNullOrEmpty(ship.PendingAttackTarget
-					.GetMeta("serverShipId", "")
-					.AsString()))
-				{
-					action = "fire";
-				}
+				action = "fire";
 			}
 
 			list.Add(new ShipCommandIntent(

@@ -1,4 +1,5 @@
 using Godot;
+using System;
 using System.Collections.Generic;
 
 namespace DreadnoughtDeparture.Core;
@@ -222,28 +223,45 @@ public partial class GridOverlayController : Node
 		var hexes = new List<Vector2I>(_dataManager.TerrainSources.Keys);
 		if (hexes.Count == 0) return;
 
-		Vector2I origin = hexes[0];
-		Vector3 originWorld = HexToWorld(origin);
+		Vector3 minWorld = HexToWorld(hexes[0]);
 		foreach (Vector2I hex in hexes)
 		{
 			Vector3 world = HexToWorld(hex);
-			if (world.X < originWorld.X - 0.01f
-				|| (Mathf.Abs(world.X - originWorld.X) <= 0.01f && world.Z < originWorld.Z))
-			{
-				origin = hex;
-				originWorld = world;
-			}
+			minWorld = new Vector3(Mathf.Min(minWorld.X, world.X), 0f, Mathf.Min(minWorld.Z, world.Z));
 		}
+
+		float radius = GameConfig.HexRadius;
+		float cellWidth = _orientation == HexOrientation.NSVertical
+			? Mathf.Sqrt(3f) * radius
+			: 1.5f * radius;
+		float cellHeight = _orientation == HexOrientation.NSVertical
+			? 1.5f * radius
+			: Mathf.Sqrt(3f) * radius;
 
 		foreach (Vector2I hex in hexes)
 		{
 			Node3D instance = SpawnOverlay(GridOverlayScene, hex, null, _globalGridRoot);
 			if (instance == null) continue;
-			Label3D label = instance.GetNodeOrNull<Label3D>("grid/Label3D");
+			Label3D label = instance.FindChild("Label3D", true, false) as Label3D;
 			if (label != null)
-				label.Text = $"{hex.X - origin.X},{hex.Y - origin.Y}";
+			{
+				Vector3 world = HexToWorld(hex);
+				int col = Mathf.RoundToInt((world.X - minWorld.X) / cellWidth);
+				int row = Mathf.RoundToInt((world.Z - minWorld.Z) / cellHeight);
+				label.Text = EncodeCoord(col) + EncodeCoord(row);
+			}
 			_globalGridInstances.Add(instance);
 		}
+	}
+
+	/// <summary>两位 base-36：0-9 后接 A-Z，例如 1 → 01、35 → 0Z、36 → 10。</summary>
+	private static string EncodeCoord(int value)
+	{
+		const string digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+		int safe = Math.Max(0, value);
+		int high = Mathf.Clamp(safe / 36, 0, 35);
+		int low = safe % 36;
+		return $"{digits[high]}{digits[low]}";
 	}
 
 	public void ClearGlobalGrid()

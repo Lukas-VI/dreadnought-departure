@@ -368,6 +368,49 @@ public partial class NetworkClient : Node
 			new { pool, count, idempotencyKey });
 	}
 
+	public async Task<JsonElement> GetGachaPoolsAsync()
+	{
+		return await RequestAsync("/api/gacha/pools", "GET");
+	}
+
+	public async Task<JsonElement> UpdateProfileAsync(string nickname, string avatar = "")
+	{
+		return await RequestAsync(
+			"/api/me/profile",
+			"PATCH",
+			new { nickname, avatar });
+	}
+
+	public async Task<JsonElement> GetBackpackAsync()
+	{
+		return await RequestAsync("/api/backpack", "GET");
+	}
+
+	public async Task<JsonElement> GetShopCatalogAsync()
+	{
+		return await RequestAsync("/api/shop", "GET");
+	}
+
+	public async Task<JsonElement> BuyShopItemAsync(string itemId)
+	{
+		return await RequestAsync("/api/shop/buy", "POST", new { itemId });
+	}
+
+	public async Task<JsonElement> GetMailAsync()
+	{
+		return await RequestAsync("/api/mail", "GET");
+	}
+
+	public async Task<JsonElement> ReadMailAsync(string mailId)
+	{
+		return await RequestAsync($"/api/mail/{mailId}/read", "POST");
+	}
+
+	public async Task<JsonElement> ClaimMailAsync(string mailId)
+	{
+		return await RequestAsync($"/api/mail/{mailId}/claim", "POST");
+	}
+
 	private async Task<JsonElement> RequestAsync(
 		string path,
 		string method,
@@ -533,6 +576,7 @@ public partial class NetworkClient : Node
 	{
 		return method.ToUpperInvariant() switch
 		{
+			"PATCH" => HttpClient.Method.Patch,
 			"POST" => HttpClient.Method.Post,
 			"PUT" => HttpClient.Method.Put,
 			"DELETE" => HttpClient.Method.Delete,

@@ -11,6 +11,7 @@ public partial class MainMenuController : Control
 	[Export] public string MapSelectMenuPath = "res://Scenes/UI/Menu/MainMenu/map_select_menu.tscn";
 	[Export] public string DockScenePath = "res://Scenes/UI/Menu/Dock/dock_ui.tscn";
 	[Export] public string PvpLoginMenuPath = "res://Scenes/UI/Network/login_menu.tscn";
+	[Export] public string NetworkCenterScenePath = "res://Scenes/UI/Network/network_center.tscn";
 
 	/// <summary> 编辑器入口：先进入画布选择菜单，编辑器模式打开地图编辑器。 </summary>
 	public void _OnEditorPressed()
@@ -31,6 +32,9 @@ public partial class MainMenuController : Control
 
 	/// <summary> PvP 入口：先登录/注册，再进入联机大厅。 </summary>
 	public void _OnPvpPressed() => GetTree().ChangeSceneToFile(PvpLoginMenuPath);
+
+	/// <summary> 网游中心：个人资料、背包、抽卡、商店、邮件。 </summary>
+	public void _OnNetworkCenterPressed() => GetTree().ChangeSceneToFile(NetworkCenterScenePath);
 
 	/// <summary> Quit button: close the application. </summary>
 	public void _OnQuitPressed() => GetTree().Quit();

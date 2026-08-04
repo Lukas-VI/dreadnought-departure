@@ -4,6 +4,15 @@ using System.Collections.Generic;
 
 namespace DreadnoughtDeparture.Core;
 
+/// <summary>一次炮击的受击反馈事件，供结算阶段逐船演绎。</summary>
+public sealed class HitFeedbackEvent
+{
+	public ShipComponent Attacker;
+	public ShipComponent Target;
+	public bool Hit;
+	public int Damage;
+}
+
 /// <summary>
 /// 舰船实体组件（Node3D），挂载在 tscn 预制体根节点。
 /// 包含运行时属性（HP/航速/方向/坐标）、伤害结算缓冲（PendingDamage）、
@@ -59,6 +68,8 @@ public partial class ShipComponent : Node3D
 	// 当前战舰所在的六角格轴向坐标 (Q, R)
 	public Vector2I HexCoords { get; set; }
 	public int PendingDamage;
+	/// <summary>本回合炮击产生的受击反馈事件。</summary>
+	public List<HitFeedbackEvent> PendingHitEvents { get; } = new();
 	/// <summary>本回合炮击的判定记录，回合结算时打印到 InfoLabel。</summary>
 	public List<string> PendingShotChecks { get; } = new();
 

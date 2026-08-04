@@ -208,6 +208,13 @@ public static class CombatRulesEvaluator
 			desc = $"{attacker.ShipName} 副炮命中 {defender.ShipName}，造成 {totalDamage} 点悬空损伤";
 		else
 			desc = $"{attacker.ShipName} 跨射散布，炮弹落水！";
+		defender.PendingHitEvents.Add(new HitFeedbackEvent
+		{
+			Attacker = attacker,
+			Target = defender,
+			Hit = totalDamage > 0,
+			Damage = totalDamage,
+		});
 		return (totalDamage > 0, totalDamage, desc);
 	}
 

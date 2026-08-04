@@ -31,6 +31,7 @@ public partial class EventBus : Node
 	[Signal] public delegate void MoveTargetHighlightedEventHandler(Vector2I target, int direction);
 	[Signal] public delegate void DirectionOverlayRequestedEventHandler(Vector2I hex, int direction);
 	[Signal] public delegate void DirectionOverlayClearRequestedEventHandler();
+	[Signal] public delegate void HitFeedbackRequestedEventHandler(ShipComponent target, bool hit, int damage);
 
 	// -- 相机焦点（全局运镜接口，剧情/演绎可直接使用）--
 	[Signal] public delegate void CameraFocusRequestedEventHandler(Vector3 worldPos, float distance, float pitchDegrees);

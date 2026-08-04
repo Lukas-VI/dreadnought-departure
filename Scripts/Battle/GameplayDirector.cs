@@ -33,6 +33,7 @@ public partial class GameplayDirector : Node
 	private MapGenerator _mapGenerator;
 	private UnitSpawner _unitSpawner;
 	private GridOverlayController _overlay;
+	private BattleFeedbackController _feedback;
 	private PlayerController _player;
 	private AIController _ai;
 	private BattleHudBroker _hud;
@@ -99,6 +100,8 @@ public partial class GameplayDirector : Node
 		_mapGenerator = GetNode<MapGenerator>("MapGenerator");
 		_unitSpawner = GetNode<UnitSpawner>("UnitSpawner");
 		_overlay = GetNode<GridOverlayController>("GridOverlayController");
+		_feedback = new BattleFeedbackController();
+		AddChild(_feedback);
 		_player = GetNode<PlayerController>("PlayerController");
 		_ai = GetNodeOrNull<AIController>("AIController");
 		_hud = GetNodeOrNull<BattleHudBroker>("CanvasLayer/BattleUI/InfoLabel");
@@ -1157,6 +1160,26 @@ public partial class GameplayDirector : Node
 			if (checks.Count > 0)
 				bus.EmitSignal("LogMessage", string.Join("\n", checks));
 
+			var hitEvents = _playerShips.Concat(_enemyShips)
+				.SelectMany(ship => ship.PendingHitEvents)
+				.Where(ev => ev != null
+					&& GodotObject.IsInstanceValid(ev.Attacker)
+					&& GodotObject.IsInstanceValid(ev.Target))
+				.ToList();
+			var playerAttacks = hitEvents
+				.Where(ev => ev.Attacker.BattleSide == GenerationSide.Player)
+				.ToList();
+			var enemyAttacks = hitEvents
+				.Where(ev => ev.Attacker.BattleSide == GenerationSide.Enemy)
+				.ToList();
+			foreach (var ev in playerAttacks.Concat(enemyAttacks))
+			{
+				bus.EmitSignal("CameraFocusBetweenRequested",
+					ev.Attacker.GlobalPosition, ev.Target.GlobalPosition);
+				bus.EmitSignal("HitFeedbackRequested", ev.Target, ev.Hit, ev.Damage);
+				await ToSignal(GetTree().CreateTimer(0.55f), "timeout");
+			}
+
 			foreach (var ship in _playerShips.Concat(_enemyShips))
 				if (GodotObject.IsInstanceValid(ship) && ship.PendingDamage > 0)
 					ship.ApplyPendingDamage();
@@ -1165,7 +1188,10 @@ public partial class GameplayDirector : Node
 
 			foreach (var ship in _playerShips.Concat(_enemyShips))
 				if (GodotObject.IsInstanceValid(ship))
+				{
 					ship.PendingShotChecks.Clear();
+					ship.PendingHitEvents.Clear();
+				}
 
 			if (!CheckBattleEnd())
 				await ToSignal(GetTree(), "process_frame");

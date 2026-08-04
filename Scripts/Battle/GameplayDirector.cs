@@ -186,6 +186,7 @@ public partial class GameplayDirector : Node
 	public void LaunchBattleField()
 	{
 		_mapGenerator.BuildMap(_dataManager.TerrainData);
+		_overlay.BuildGlobalGrid();
 		if (_remotePvp)
 		{
 			_overlay.InitializeOverlayTargets(_mapGenerator.SpawnedTileMeshes);
@@ -236,6 +237,7 @@ public partial class GameplayDirector : Node
 			if (_dataManager.LoadMapFromJson(PvpMapState.MapJson))
 			{
 				_mapGenerator.BuildMap(_dataManager.TerrainData);
+				_overlay.BuildGlobalGrid();
 				FrameRemoteMap(bus);
 				bus.EmitLog($"PvP 地图已加载（地形 {_dataManager.TerrainSources.Count}）");
 			}

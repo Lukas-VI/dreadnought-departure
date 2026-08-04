@@ -30,7 +30,9 @@ public partial class GridOverlayController : Node
 	private HexOrientation _orientation = HexOrientation.EWHorizontal;
 	private Node3D _overlayRoot;
 	private Node3D _directionRoot;
+	private Node3D _globalGridRoot;
 	private readonly List<Node3D> _directionInstances = new();
+	private readonly List<Node3D> _globalGridInstances = new();
 
 	public override void _Ready()
 	{
@@ -41,6 +43,8 @@ public partial class GridOverlayController : Node
 		AddChild(_overlayRoot);
 		_directionRoot = new Node3D { Name = "DirectionOverlayRoot" };
 		AddChild(_directionRoot);
+		_globalGridRoot = new Node3D { Name = "GlobalGridOverlayRoot" };
+		AddChild(_globalGridRoot);
 		EnsureOverlayScenes();
 
 		var bus = GetNode<EventBus>("../EventBus");
@@ -76,7 +80,7 @@ public partial class GridOverlayController : Node
 				int dist = BattleRulesEvaluator.GetHexDistance(center, coords);
 				if (dist <= moveRange && dist > 0)
 				{
-					SpawnOverlay(GridOverlayScene, coords);
+					continue;
 				}
 				else if (dist <= attackRange && dist > moveRange)
 				{
@@ -145,7 +149,7 @@ public partial class GridOverlayController : Node
 				int dist = BattleRulesEvaluator.GetHexDistance(center, coords);
 				if (dist <= range && dist > 0
 					&& MoveRulesEvaluator.IsInForwardArc(center, coords, direction))
-					SpawnOverlay(GridOverlayScene, coords);
+					continue;
 			}
 			return;
 		}
@@ -206,6 +210,55 @@ public partial class GridOverlayController : Node
 		}
 		_directionInstances.Clear();
 	}
+
+	/// <summary>
+	/// 以全地图最西北格为 0,0 生成全局坐标网格。Label3D 显示相对轴向坐标。
+	/// </summary>
+	public void BuildGlobalGrid()
+	{
+		ClearGlobalGrid();
+		if (GridOverlayScene == null || _dataManager == null || _globalGridRoot == null) return;
+
+		var hexes = new List<Vector2I>(_dataManager.TerrainSources.Keys);
+		if (hexes.Count == 0) return;
+
+		Vector2I origin = hexes[0];
+		Vector3 originWorld = HexToWorld(origin);
+		foreach (Vector2I hex in hexes)
+		{
+			Vector3 world = HexToWorld(hex);
+			if (world.X < originWorld.X - 0.01f
+				|| (Mathf.Abs(world.X - originWorld.X) <= 0.01f && world.Z < originWorld.Z))
+			{
+				origin = hex;
+				originWorld = world;
+			}
+		}
+
+		foreach (Vector2I hex in hexes)
+		{
+			Node3D instance = SpawnOverlay(GridOverlayScene, hex, null, _globalGridRoot);
+			if (instance == null) continue;
+			Label3D label = instance.GetNodeOrNull<Label3D>("grid/Label3D");
+			if (label != null)
+				label.Text = $"{hex.X - origin.X},{hex.Y - origin.Y}";
+			_globalGridInstances.Add(instance);
+		}
+	}
+
+	public void ClearGlobalGrid()
+	{
+		foreach (Node3D instance in _globalGridInstances)
+		{
+			if (!GodotObject.IsInstanceValid(instance)) continue;
+			_globalGridRoot?.RemoveChild(instance);
+			instance.QueueFree();
+		}
+		_globalGridInstances.Clear();
+	}
+
+	private Vector3 HexToWorld(Vector2I hex)
+		=> _mapGenerator?.HexToWorld(hex.X, hex.Y) ?? Vector3.Zero;
 
 	private bool OverlayModelMode()
 		=> GridOverlayScene != null || DirectionOverlayScene != null

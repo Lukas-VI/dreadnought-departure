@@ -609,6 +609,7 @@ public partial class GameplayDirector : Node
 					: null;
 			component.FormationIndex = formationIndex;
 		}
+		RefreshDirectionOverlays();
 
 		bool myTurn = state.TryGetProperty("activePlayer", out JsonElement activeProp) &&
 			activeProp.GetString() == NetworkClient.Instance.UserId;
@@ -751,6 +752,7 @@ public partial class GameplayDirector : Node
 
 		// 启动首阶段
 		if (CheckBattleEnd()) return;
+		RefreshDirectionOverlays();
 		BeginPlayerPhase();
 	}
 
@@ -782,6 +784,7 @@ public partial class GameplayDirector : Node
 		// 移动阶段保留贪吃蛇编队标记；只在速度调整阶段按几何关系重建。
 		if (!_remotePvp && _currentPhase == BattlePhase.SpeedAdjust)
 			MoveRulesEvaluator.SyncFormationGroups(_playerShips.Where(IsShipAlive).ToList());
+		RefreshDirectionOverlays();
 		if (!_remotePvp)
 		{
 			StartPhaseTimer(true);
@@ -1246,6 +1249,7 @@ public partial class GameplayDirector : Node
 		if (longest > 0f)
 			await ToSignal(GetTree().CreateTimer(longest + 0.1f), "timeout");
 		RefreshStackOffsets();
+		RefreshDirectionOverlays();
 	}
 
 	private float AnimateStraightShip(ShipComponent ship, int phase, bool oddTurn, EventBus bus,
@@ -1425,6 +1429,18 @@ public partial class GameplayDirector : Node
 		if (hex == ship.HexCoords) return true;
 		if (list.Any(s => s.BattleSide != ship.BattleSide)) return false;
 		return list.Count < 2;
+	}
+
+	/// <summary>刷新方向标记：只标记单纵阵头与独行舰，跟随舰不显示。</summary>
+	private void RefreshDirectionOverlays()
+	{
+		if (_overlay == null) return;
+		var entries = _playerShips.Concat(_enemyShips)
+			.Where(IsShipAlive)
+			.Where(ship => ship.FormationLead == null || ReferenceEquals(ship.FormationLead, ship))
+			.Select(ship => (ship.HexCoords, ship.Direction))
+			.ToList();
+		_overlay.RefreshDirections(entries);
 	}
 
 	/// <summary>按同格同阵营堆叠序号自动调整模型 y 高度。</summary>

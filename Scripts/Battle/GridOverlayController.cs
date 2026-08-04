@@ -20,6 +20,8 @@ public partial class GridOverlayController : Node
 	/// <summary>方向性 overlay 模型的基础朝向，和船模共用同一套角度。</summary>
 	[Export] public float DirectionYawOffsetDegrees = 180f;
 	[Export] public float NSModelYawOffsetDegrees = 30f;
+	/// <summary>overlay 模型相对六角格中心的竖轴偏移。</summary>
+	[Export] public float OverlayHeightOffset = 0.25f;
 
 	private Dictionary<Vector2I, MeshInstance3D> _targets = new();
 	private Dictionary<MeshInstance3D, Material> _originalMaterials = new();
@@ -27,6 +29,8 @@ public partial class GridOverlayController : Node
 	private LevelDataManager _dataManager;
 	private HexOrientation _orientation = HexOrientation.EWHorizontal;
 	private Node3D _overlayRoot;
+	private Node3D _directionRoot;
+	private readonly List<Node3D> _directionInstances = new();
 
 	public override void _Ready()
 	{
@@ -35,6 +39,8 @@ public partial class GridOverlayController : Node
 		_orientation = _dataManager?.MapOrientation ?? HexOrientation.EWHorizontal;
 		_overlayRoot = new Node3D { Name = "OverlayRoot" };
 		AddChild(_overlayRoot);
+		_directionRoot = new Node3D { Name = "DirectionOverlayRoot" };
+		AddChild(_directionRoot);
 		EnsureOverlayScenes();
 
 		var bus = GetNode<EventBus>("../EventBus");
@@ -42,6 +48,8 @@ public partial class GridOverlayController : Node
 		bus.OverlayArcDrawRequested += DrawForwardArc;
 		bus.OverlayClearRequested += ClearOverlay;
 		bus.MoveTargetHighlighted += HighlightMoveTarget;
+		bus.DirectionOverlayRequested += ShowDirection;
+		bus.DirectionOverlayClearRequested += ClearDirectionOverlay;
 	}
 
 	public void InitializeOverlayTargets(Dictionary<Vector2I, MeshInstance3D> meshes)
@@ -63,8 +71,6 @@ public partial class GridOverlayController : Node
 
 		if (OverlayModelMode())
 		{
-			if (moveRange > 0)
-				SpawnOverlay(DirectionOverlayScene, center, direction);
 			foreach (var (coords, _) in _targets)
 			{
 				int dist = BattleRulesEvaluator.GetHexDistance(center, coords);
@@ -115,12 +121,12 @@ public partial class GridOverlayController : Node
 	}
 
 	// 机动目标：只高亮惯性推算的唯一到达格
-	public void HighlightMoveTarget(Vector2I target)
+	public void HighlightMoveTarget(Vector2I target, int directionInt)
 	{
 		ClearOverlay();
 		if (OverlayModelMode())
 		{
-			SpawnOverlay(ArriveOverlayScene, target);
+			SpawnOverlay(ArriveOverlayScene, target, (HexDirection)directionInt);
 			return;
 		}
 		if (_targets.TryGetValue(target, out var mesh) && GodotObject.IsInstanceValid(mesh))
@@ -134,7 +140,6 @@ public partial class GridOverlayController : Node
 		HexDirection direction = (HexDirection)directionInt;
 		if (OverlayModelMode())
 		{
-			SpawnOverlay(DirectionOverlayScene, center, direction);
 			foreach (var (coords, _) in _targets)
 			{
 				int dist = BattleRulesEvaluator.GetHexDistance(center, coords);
@@ -170,6 +175,38 @@ public partial class GridOverlayController : Node
 		}
 	}
 
+	/// <summary>在单位所在格显示控制方向标记（单纵阵头 / 独行舰）。</summary>
+	public void ShowDirection(Vector2I hex, int directionInt)
+	{
+		RefreshDirections(new[] { (hex, (HexDirection)directionInt) });
+	}
+
+	/// <summary>刷新所有“控制方向”单位的方向标记：单纵阵头与独行舰。</summary>
+	public void RefreshDirections(IReadOnlyList<(Vector2I Hex, HexDirection Direction)> entries)
+	{
+		ClearDirectionOverlay();
+		if (DirectionOverlayScene == null || _directionRoot == null) return;
+		foreach (var entry in entries)
+		{
+			_directionInstances.Add(SpawnOverlay(
+				DirectionOverlayScene,
+				entry.Hex,
+				entry.Direction,
+				_directionRoot));
+		}
+	}
+
+	public void ClearDirectionOverlay()
+	{
+		foreach (Node3D instance in _directionInstances)
+		{
+			if (!GodotObject.IsInstanceValid(instance)) continue;
+			_directionRoot?.RemoveChild(instance);
+			instance.QueueFree();
+		}
+		_directionInstances.Clear();
+	}
+
 	private bool OverlayModelMode()
 		=> GridOverlayScene != null || DirectionOverlayScene != null
 			|| ArriveOverlayScene != null || AttackFrontBackScene != null
@@ -185,13 +222,15 @@ public partial class GridOverlayController : Node
 		AttackSideScene ??= ResourceLoader.Load<PackedScene>($"{overlayRoot}/attack_side.tscn");
 	}
 
-	private Node3D SpawnOverlay(PackedScene scene, Vector2I hex, HexDirection? direction = null)
+	private Node3D SpawnOverlay(PackedScene scene, Vector2I hex,
+		HexDirection? direction = null, Node3D parent = null)
 	{
-		if (scene == null || _overlayRoot == null) return null;
+		parent ??= _overlayRoot;
+		if (scene == null || parent == null) return null;
 		Node3D instance = scene.Instantiate<Node3D>();
-		_overlayRoot.AddChild(instance);
+		parent.AddChild(instance);
 		Vector3 world = _mapGenerator?.HexToWorld(hex.X, hex.Y) ?? Vector3.Zero;
-		instance.Position = new Vector3(world.X, 0.18f, world.Z);
+		instance.Position = new Vector3(world.X, OverlayHeightOffset, world.Z);
 		if (direction.HasValue)
 			instance.RotationDegrees = new Vector3(0f, OverlayYaw(direction.Value), 0f);
 		return instance;

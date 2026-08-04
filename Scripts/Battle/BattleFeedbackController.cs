@@ -72,8 +72,15 @@ public partial class BattleFeedbackController : Node3D
 	private void EnsureHitMaterial()
 	{
 		if (_hitMaterial != null) return;
-		Shader shader = ResourceLoader.Load<Shader>("res://assets/Shaders/hit_flash.gdshader");
-		if (shader == null) return;
+		var shader = new Shader
+		{
+			Code = "shader_type spatial;\n"
+				+ "render_mode unshaded;\n"
+				+ "void fragment() {\n"
+				+ "\tALBEDO = vec3(1.0, 0.25, 0.2);\n"
+				+ "\tEMISSION = vec3(0.8, 0.05, 0.0);\n"
+				+ "}\n",
+		};
 		_hitMaterial = new ShaderMaterial { Shader = shader };
 	}
 

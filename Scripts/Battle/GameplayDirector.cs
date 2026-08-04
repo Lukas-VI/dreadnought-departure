@@ -1172,6 +1172,13 @@ public partial class GameplayDirector : Node
 			var enemyAttacks = hitEvents
 				.Where(ev => ev.Attacker.BattleSide == GenerationSide.Enemy)
 				.ToList();
+
+			foreach (var ship in _playerShips.Concat(_enemyShips))
+				if (GodotObject.IsInstanceValid(ship) && ship.PendingDamage > 0)
+					ship.ApplyPendingDamage();
+			RefreshStackOffsets();
+			RefreshCommandValues();
+
 			foreach (var ev in playerAttacks.Concat(enemyAttacks))
 			{
 				bus.EmitSignal("CameraFocusBetweenRequested",
@@ -1179,12 +1186,6 @@ public partial class GameplayDirector : Node
 				bus.EmitSignal("HitFeedbackRequested", ev.Target, ev.Hit, ev.Damage);
 				await ToSignal(GetTree().CreateTimer(0.55f), "timeout");
 			}
-
-			foreach (var ship in _playerShips.Concat(_enemyShips))
-				if (GodotObject.IsInstanceValid(ship) && ship.PendingDamage > 0)
-					ship.ApplyPendingDamage();
-			RefreshStackOffsets();
-			RefreshCommandValues();
 
 			foreach (var ship in _playerShips.Concat(_enemyShips))
 				if (GodotObject.IsInstanceValid(ship))

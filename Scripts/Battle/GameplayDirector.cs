@@ -1172,6 +1172,7 @@ public partial class GameplayDirector : Node
 			var enemyAttacks = hitEvents
 				.Where(ev => ev.Attacker.BattleSide == GenerationSide.Enemy)
 				.ToList();
+			GD.Print($"结算演绎：我方 {playerAttacks.Count} 条 / 敌方 {enemyAttacks.Count} 条");
 
 			foreach (var ship in _playerShips.Concat(_enemyShips))
 				if (GodotObject.IsInstanceValid(ship) && ship.PendingDamage > 0)
@@ -1183,7 +1184,7 @@ public partial class GameplayDirector : Node
 			{
 				bus.EmitSignal("CameraFocusBetweenRequested",
 					ev.Attacker.GlobalPosition, ev.Target.GlobalPosition);
-				bus.EmitSignal("HitFeedbackRequested", ev.Target, ev.Hit, ev.Damage);
+				_feedback.PlayFeedback(ev.Target, ev.Hit, ev.Damage);
 				await ToSignal(GetTree().CreateTimer(0.55f), "timeout");
 			}
 

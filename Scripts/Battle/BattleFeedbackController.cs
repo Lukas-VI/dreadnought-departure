@@ -19,6 +19,15 @@ public partial class BattleFeedbackController : Node3D
 		{
 			return;
 		}
+		PlayFeedback(target, hit, damage);
+	}
+
+	public void PlayFeedback(ShipComponent target, bool hit, int damage)
+	{
+		if (!GodotObject.IsInstanceValid(target))
+		{
+			return;
+		}
 		_ = PlayFeedbackAsync(target, hit, damage);
 	}
 

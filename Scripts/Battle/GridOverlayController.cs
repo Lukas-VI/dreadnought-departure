@@ -21,6 +21,8 @@ public partial class GridOverlayController : Node
 	/// <summary>方向性 overlay 模型的基础朝向，和船模共用同一套角度。</summary>
 	[Export] public float DirectionYawOffsetDegrees = 180f;
 	[Export] public float NSModelYawOffsetDegrees = 30f;
+	/// <summary>NS 地图全局 grid 的额外旋转；顺时针为负 Y。</summary>
+	[Export] public float NSGridRotationDegrees = -90f;
 	/// <summary>overlay 模型相对六角格中心的竖轴偏移。</summary>
 	[Export] public float OverlayHeightOffset = 0.25f;
 
@@ -242,6 +244,8 @@ public partial class GridOverlayController : Node
 		{
 			Node3D instance = SpawnOverlay(GridOverlayScene, hex, null, _globalGridRoot);
 			if (instance == null) continue;
+			if (_orientation == HexOrientation.NSVertical)
+				instance.RotationDegrees = new Vector3(0f, NSGridRotationDegrees, 0f);
 			Label3D label = instance.FindChild("Label3D", true, false) as Label3D;
 			if (label != null)
 			{

@@ -600,6 +600,8 @@ public static class PvpFlowState
 	public static string PendingRoomId = "";
 	public static string PendingBattleId = "";
 	public static bool PvpBattle = false;
+	/// <summary>登录成功后跳转的路径；留空表示进入主菜单。</summary>
+	public static string LoginReturnPath = "";
 }
 
 /// <summary>PvP 房间缓存的地图 JSON，双方进入战斗前共用。</summary>

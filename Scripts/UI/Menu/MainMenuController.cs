@@ -1,4 +1,5 @@
 using Godot;
+using DreadnoughtDeparture.Network;
 
 namespace DreadnoughtDeparture.Core;
 
@@ -31,7 +32,11 @@ public partial class MainMenuController : Control
 	public void _OnDockPressed() => GetTree().ChangeSceneToFile(DockScenePath);
 
 	/// <summary> PvP 入口：先登录/注册，再进入联机大厅。 </summary>
-	public void _OnPvpPressed() => GetTree().ChangeSceneToFile(PvpLoginMenuPath);
+	public void _OnPvpPressed()
+	{
+		PvpFlowState.LoginReturnPath = "res://Scenes/UI/Network/lobby_menu.tscn";
+		GetTree().ChangeSceneToFile(PvpLoginMenuPath);
+	}
 
 	/// <summary> 网游中心：个人资料、背包、抽卡、商店、邮件。 </summary>
 	public void _OnNetworkCenterPressed() => GetTree().ChangeSceneToFile(NetworkCenterScenePath);

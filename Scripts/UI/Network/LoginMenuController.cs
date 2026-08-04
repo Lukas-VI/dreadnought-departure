@@ -5,7 +5,7 @@ using DreadnoughtDeparture.Network;
 
 namespace DreadnoughtDeparture.UI.Network;
 
-/// <summary>PvP 登录 / 注册界面：可编辑服务器地址，成功后进入大厅。</summary>
+/// <summary>全局登录 / 注册界面：可编辑服务器地址；本地 token 有效时自动进入主菜单或 PvP 大厅。</summary>
 public partial class LoginMenuController : Control
 {
 	[Export] public string LobbyMenuPath = "res://Scenes/UI/Network/lobby_menu.tscn";
@@ -49,7 +49,7 @@ public partial class LoginMenuController : Control
 
 		var title = new Label
 		{
-			Text = "PvP 登录 / 注册",
+			Text = "Dreadnought Departure 登录",
 			HorizontalAlignment = HorizontalAlignment.Center,
 		};
 		title.AddThemeFontSizeOverride("font_size", 28);
@@ -76,11 +76,18 @@ public partial class LoginMenuController : Control
 		buttons.AddChild(_registerButton);
 		box.AddChild(buttons);
 
-		box.AddChild(MakeButton("返回主菜单", () => GetTree().ChangeSceneToFile(MainMenuPath)));
+		if (!string.IsNullOrEmpty(PvpFlowState.LoginReturnPath))
+		{
+			box.AddChild(MakeButton("返回主菜单", () =>
+			{
+				PvpFlowState.LoginReturnPath = "";
+				GetTree().ChangeSceneToFile(MainMenuPath);
+			}));
+		}
 
 		_statusLabel = new Label
 		{
-			Text = "连接本机虚拟机服务器，或改为自建服务器地址",
+			Text = "登录或注册后进入游戏；本地 token 有效时自动恢复",
 			HorizontalAlignment = HorizontalAlignment.Center,
 			AutowrapMode = TextServer.AutowrapMode.WordSmart,
 		};
@@ -120,8 +127,8 @@ public partial class LoginMenuController : Control
 					_passwordEdit.Text);
 			}
 
-			_statusLabel.Text = register ? "注册成功，进入大厅..." : "登录成功，进入大厅...";
-			GetTree().ChangeSceneToFile(LobbyMenuPath);
+			_statusLabel.Text = register ? "注册成功，进入游戏..." : "登录成功，进入游戏...";
+			GetTree().ChangeSceneToFile(NextSceneAfterLogin());
 		}
 		catch (Exception ex)
 		{
@@ -153,14 +160,25 @@ public partial class LoginMenuController : Control
 		try
 		{
 			await client.GetMeAsync();
-			_statusLabel.Text = "已恢复登录，进入大厅...";
-			GetTree().ChangeSceneToFile(LobbyMenuPath);
+			_statusLabel.Text = "已恢复登录，自动进入游戏...";
+			GetTree().ChangeSceneToFile(NextSceneAfterLogin());
 		}
 		catch
 		{
 			client.Logout();
 			_statusLabel.Text = "本地登录已失效，请重新登录";
 		}
+	}
+
+	private static string NextSceneAfterLogin()
+	{
+		string target = string.IsNullOrEmpty(PvpFlowState.LoginReturnPath)
+			? ""
+			: PvpFlowState.LoginReturnPath;
+		PvpFlowState.LoginReturnPath = "";
+		return string.IsNullOrEmpty(target)
+			? "res://Scenes/UI/Menu/MainMenu/main_menu.tscn"
+			: target;
 	}
 
 	private static LineEdit MakeLineEdit(string placeholder, string value)

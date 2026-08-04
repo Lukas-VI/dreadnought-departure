@@ -51,20 +51,23 @@ public partial class BattleFeedbackController : Node3D
 		var label = new Label3D
 		{
 			Text = hit ? $"HIT -{damage}" : "MISS",
-			FontSize = 52,
+			FontSize = 120,
+			OutlineSize = 24,
+			PixelSize = 0.03f,
+			NoDepthTest = true,
 			Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
 			Modulate = hit ? new Color(1f, 0.55f, 0.4f, 1f) : new Color(0.6f, 0.8f, 1f, 1f),
 			Position = new Vector3(
 				target.GlobalPosition.X,
-				target.GlobalPosition.Y + 2.8f,
+				target.GlobalPosition.Y + 3.2f,
 				target.GlobalPosition.Z),
 		};
 		AddChild(label);
 
 		Tween tween = CreateTween();
 		tween.SetParallel();
-		tween.TweenProperty(label, "position:y", label.Position.Y + 1.4f, 0.8f);
-		tween.TweenProperty(label, "modulate:a", 0f, 0.8f);
+		tween.TweenProperty(label, "position:y", label.Position.Y + 2.2f, 1.0f);
+		tween.TweenProperty(label, "modulate:a", 0f, 1.0f);
 		tween.Chain().TweenCallback(Callable.From(() =>
 		{
 			if (GodotObject.IsInstanceValid(label))

@@ -254,11 +254,13 @@ public partial class GridOverlayController : Node
 		}
 	}
 
-	/// <summary>两位 base-36：0-9 后接 A-Z，例如 1 → 01、35 → 0Z、36 → 10。</summary>
+	/// <summary>0-99 用两位十进制，超过 99 才转两位 base-36。</summary>
 	private static string EncodeCoord(int value)
 	{
 		const string digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 		int safe = Math.Max(0, value);
+		if (safe <= 99)
+			return safe.ToString("00");
 		int high = Mathf.Clamp(safe / 36, 0, 35);
 		int low = safe % 36;
 		return $"{digits[high]}{digits[low]}";

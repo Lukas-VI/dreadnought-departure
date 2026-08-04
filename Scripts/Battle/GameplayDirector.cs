@@ -1173,6 +1173,10 @@ public partial class GameplayDirector : Node
 				.Where(ev => ev.Attacker.BattleSide == GenerationSide.Enemy)
 				.ToList();
 			GD.Print($"结算演绎：我方 {playerAttacks.Count} 条 / 敌方 {enemyAttacks.Count} 条");
+			bool playerFirst = _dataManager?.InitiativeOwner != "enemy";
+			var replayOrder = playerFirst
+				? playerAttacks.Concat(enemyAttacks)
+				: enemyAttacks.Concat(playerAttacks);
 
 			foreach (var ship in _playerShips.Concat(_enemyShips))
 				if (GodotObject.IsInstanceValid(ship) && ship.PendingDamage > 0)
@@ -1180,12 +1184,14 @@ public partial class GameplayDirector : Node
 			RefreshStackOffsets();
 			RefreshCommandValues();
 
-			foreach (var ev in playerAttacks.Concat(enemyAttacks))
+			foreach (var ev in replayOrder)
 			{
-				bus.EmitSignal("CameraFocusBetweenRequested",
-					ev.Attacker.GlobalPosition, ev.Target.GlobalPosition);
+				bus.EmitSignal("CameraTopDownRequested", ev.Attacker.GlobalPosition);
+				await ToSignal(GetTree().CreateTimer(0.45f), "timeout");
+				bus.EmitSignal("CameraTopDownRequested", ev.Target.GlobalPosition);
+				await ToSignal(GetTree().CreateTimer(0.45f), "timeout");
 				_feedback.PlayFeedback(ev.Target, ev.Hit, ev.Damage);
-				await ToSignal(GetTree().CreateTimer(0.55f), "timeout");
+				await ToSignal(GetTree().CreateTimer(0.65f), "timeout");
 			}
 
 			foreach (var ship in _playerShips.Concat(_enemyShips))

@@ -28,7 +28,7 @@ public partial class EventBus : Node
 		Vector2I center, int move, int attack, int direction, int arcMask, int state);
 	[Signal] public delegate void OverlayArcDrawRequestedEventHandler(Vector2I center, int direction, int range);
 	[Signal] public delegate void OverlayClearRequestedEventHandler();
-	[Signal] public delegate void MoveTargetHighlightedEventHandler(Vector2I target);
+	[Signal] public delegate void MoveTargetHighlightedEventHandler(Vector2I target, int direction);
 	[Signal] public delegate void DirectionOverlayRequestedEventHandler(Vector2I hex, int direction);
 	[Signal] public delegate void DirectionOverlayClearRequestedEventHandler();
 

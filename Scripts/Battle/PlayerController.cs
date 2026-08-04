@@ -434,7 +434,7 @@ public partial class PlayerController : Node, IUnitController
 		var path = MoveRulesEvaluator.BuildMovePath(ship.HexCoords, dir, steps);
 		if (path.Count == 0) return;
 		Vector2I target = path[^1].Hex;
-		bus.EmitSignal("MoveTargetHighlighted", target);
+		bus.EmitSignal("MoveTargetHighlighted", target, (int)dir);
 		bus.EmitSignal("CameraFocusBetweenRequested", ShipWorld(ship), _map.HexToWorld(target.X, target.Y));
 	}
 

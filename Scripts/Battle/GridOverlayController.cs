@@ -121,12 +121,12 @@ public partial class GridOverlayController : Node
 	}
 
 	// 机动目标：只高亮惯性推算的唯一到达格
-	public void HighlightMoveTarget(Vector2I target)
+	public void HighlightMoveTarget(Vector2I target, int directionInt)
 	{
 		ClearOverlay();
 		if (OverlayModelMode())
 		{
-			SpawnOverlay(ArriveOverlayScene, target);
+			SpawnOverlay(ArriveOverlayScene, target, (HexDirection)directionInt);
 			return;
 		}
 		if (_targets.TryGetValue(target, out var mesh) && GodotObject.IsInstanceValid(mesh))

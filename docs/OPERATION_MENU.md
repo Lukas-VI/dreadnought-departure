@@ -7,6 +7,9 @@
 - `chapter_select.tscn`：章节列表，进入时触发 `chapter_enter`
 - `level_select.tscn`：当前章节的关卡数轴，进入关卡时触发 `level_enter`
 
+关卡列表是横向卷轴式，背景节点 `ScrollBackground` 是 `TextureRect`，
+后期可直接在 `LevelSelectController.ScrollBackgroundTexture` 导入长图背景。
+
 ## 关卡命名
 
 官方关卡放在 `export/maps/`，文件名按“章节-关卡”：

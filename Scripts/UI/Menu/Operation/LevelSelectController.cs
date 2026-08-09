@@ -14,10 +14,11 @@ public partial class LevelSelectController : Control
 
 	[Export] public string ChapterSelectPath = "res://Scenes/UI/Menu/Operation/chapter_select.tscn";
 	[Export] public string BattleScenePath = "res://Scenes/Battle/battle_scene.tscn";
+	[Export] public Texture2D ScrollBackgroundTexture;
 
 	private static readonly Regex LevelNamePattern = new(@"^(\d{2})-(\d{2})\.json$");
 
-	private HFlowContainer _levelAxis;
+	private HBoxContainer _levelAxis;
 	private Label _statusLabel;
 	private Label _titleLabel;
 	private readonly SortedDictionary<int, string> _levels = new();
@@ -28,8 +29,13 @@ public partial class LevelSelectController : Control
 		AddChild(story);
 
 		_titleLabel = GetNode<Label>("TopBar/Title");
-		_levelAxis = GetNode<HFlowContainer>("Body/Box/LevelAxis");
+		_levelAxis = GetNode<HBoxContainer>("Body/Box/LevelScroll/LevelAxis");
 		_statusLabel = GetNode<Label>("Body/Box/StatusLabel");
+		var scrollBackground = GetNodeOrNull<TextureRect>("Body/Box/ScrollBackground");
+		if (scrollBackground != null && ScrollBackgroundTexture != null)
+		{
+			scrollBackground.Texture = ScrollBackgroundTexture;
+		}
 		GetNode<Button>("TopBar/BackButton").Pressed += () =>
 			GetTree().ChangeSceneToFile(ChapterSelectPath);
 

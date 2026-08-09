@@ -53,16 +53,28 @@ theme_override_constants/margin_bottom = 20
 layout_mode = 2
 theme_override_constants/separation = 14
 
+[node name="ScrollBackground" type="TextureRect" parent="Body/Box"]
+custom_minimum_size = Vector2(0, 260)
+layout_mode = 2
+size_flags_vertical = 3
+stretch_mode = 5
+expand_mode = 1
+
 [node name="LevelLabel" type="Label" parent="Body/Box"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 22
 text = "关卡"
 
-[node name="LevelAxis" type="HFlowContainer" parent="Body/Box"]
+[node name="LevelScroll" type="ScrollContainer" parent="Body/Box"]
 custom_minimum_size = Vector2(0, 180)
 layout_mode = 2
-theme_override_constants/h_separation = 14
-theme_override_constants/v_separation = 14
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 2
+
+[node name="LevelAxis" type="HBoxContainer" parent="Body/Box/LevelScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 14
 
 [node name="StatusLabel" type="Label" parent="Body/Box"]
 layout_mode = 2

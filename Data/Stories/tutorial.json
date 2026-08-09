@@ -1,13 +1,13 @@
 {
   "background": "#0b0f17",
   "steps": [
-    { "type": "say", "speaker": "指挥系统", "text": "欢迎来到 Dreadnought Departure。这里会演示基础对话系统。" },
-    { "type": "choice", "text": "是否开始教程？", "options": [
-      { "text": "开始教程", "next": 2 },
-      { "text": "跳过", "next": 4 }
-    ] },
-    { "type": "say", "speaker": "指挥系统", "text": "你可以点击屏幕下方的选项或继续按钮推进对话。" },
-    { "type": "flag", "key": "tutorial_done", "value": true },
-    { "type": "say", "speaker": "指挥系统", "text": "教程标记已写入剧情状态。" }
+	{ "type": "say", "speaker": "指挥系统", "text": "欢迎来到 Dreadnought Departure。这里会演示基础对话系统。" },
+	{ "type": "choice", "text": "是否开始教程？", "options": [
+	  { "text": "开始教程", "next": 2 },
+	  { "text": "跳过", "next": 4 }
+	] },
+	{ "type": "say", "speaker": "指挥系统", "text": "你可以点击屏幕下方的选项或继续按钮推进对话。" },
+	{ "type": "flag", "key": "tutorial_done", "value": true },
+	{ "type": "say", "speaker": "指挥系统", "text": "教程标记已写入剧情状态。" }
   ]
 }

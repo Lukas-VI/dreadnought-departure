@@ -1,0 +1,6 @@
+{
+  "background": "#101a2b",
+  "steps": [
+    { "type": "say", "speaker": "舰队指挥", "text": "地图 1 作战开始，各舰进入预定阵位。" }
+  ]
+}

@@ -18,11 +18,13 @@ public partial class StoryDirector : Node
 	private readonly Dictionary<string, bool> _flags = new();
 	private DialogueRunner _runner;
 	private string _playingScript = "";
+	private string _currentMapName = "";
 
 	private sealed class TriggerRule
 	{
 		public string Event;
 		public string Key;
+		public string Map;
 		public string Script;
 	}
 
@@ -31,6 +33,7 @@ public partial class StoryDirector : Node
 		Instance = this;
 		_runner = new DialogueRunner();
 		AddChild(_runner);
+		_currentMapName = GetNodeOrNull<LevelDataManager>("../LevelDataManager")?.CurrentMapName ?? "";
 		LoadTriggers();
 		var bus = GetNodeOrNull<EventBus>("../EventBus");
 		if (bus != null)
@@ -64,6 +67,7 @@ public partial class StoryDirector : Node
 		{
 			if (rule.Event != eventName) continue;
 			if (!string.IsNullOrEmpty(rule.Key) && rule.Key != key) continue;
+			if (!string.IsNullOrEmpty(rule.Map) && rule.Map != _currentMapName) continue;
 			if (_played.Contains(rule.Script)) continue;
 			Play(rule.Script);
 			return;
@@ -78,6 +82,11 @@ public partial class StoryDirector : Node
 	public void SetFlag(string key, bool value)
 	{
 		_flags[key] = value;
+	}
+
+	public void SetMapName(string mapName)
+	{
+		_currentMapName = mapName ?? "";
 	}
 
 	public bool GetFlag(string key)
@@ -100,6 +109,9 @@ public partial class StoryDirector : Node
 					: "",
 				Key = entry.TryGetProperty("key", out JsonElement keyProp)
 					? keyProp.GetString() ?? ""
+					: "",
+				Map = entry.TryGetProperty("map", out JsonElement mapProp)
+					? mapProp.GetString() ?? ""
 					: "",
 				Script = entry.TryGetProperty("script", out JsonElement scriptProp)
 					? scriptProp.GetString() ?? ""

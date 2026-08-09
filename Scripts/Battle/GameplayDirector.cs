@@ -244,6 +244,7 @@ public partial class GameplayDirector : Node
 			{
 				_mapGenerator.BuildMap(_dataManager.TerrainData);
 				_overlay.BuildGlobalGrid();
+				StoryDirector.Instance?.SetMapName(_dataManager.CurrentMapName);
 				FrameRemoteMap(bus);
 				bus.EmitLog($"PvP 地图已加载（地形 {_dataManager.TerrainSources.Count}）");
 			}
@@ -757,6 +758,7 @@ public partial class GameplayDirector : Node
 		EmitCommandStateUpdated();
 		GetNode<EventBus>("EventBus").EmitSignal("LogMessage",
 			$"—— 第 {_turnNumber} 回合 —— {PhaseLabels[(int)_currentPhase]}");
+		StoryDirector.Instance?.SetMapName(_dataManager.CurrentMapName);
 		GetNode<EventBus>("EventBus").EmitSignal("BattleStarted");
 
 		// 启动首阶段

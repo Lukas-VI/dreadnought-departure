@@ -29,6 +29,54 @@ SourceId = 6
 DisplayName = "玩家生成点"
 Swatch = Color(0.3, 0.5, 1, 1)
 
+[sub_resource type="Resource" id="entry_special_story"]
+script = ExtResource("1_entry")
+Category = "Special"
+SourceId = 1
+DisplayName = "剧情触发"
+Swatch = Color(0.95, 0.75, 0.2, 1)
+OverlayScenePath = "res://Scenes/Map/Tile/Prefab/SpecialCell/special_story.tscn"
+
+[sub_resource type="Resource" id="entry_special_encounter"]
+script = ExtResource("1_entry")
+Category = "Special"
+SourceId = 2
+DisplayName = "遭遇战"
+Swatch = Color(0.9, 0.25, 0.25, 1)
+OverlayScenePath = "res://Scenes/Map/Tile/Prefab/SpecialCell/special_encounter.tscn"
+
+[sub_resource type="Resource" id="entry_special_supply"]
+script = ExtResource("1_entry")
+Category = "Special"
+SourceId = 3
+DisplayName = "补给点"
+Swatch = Color(0.25, 0.9, 0.4, 1)
+OverlayScenePath = "res://Scenes/Map/Tile/Prefab/SpecialCell/special_supply.tscn"
+
+[sub_resource type="Resource" id="entry_special_radar"]
+script = ExtResource("1_entry")
+Category = "Special"
+SourceId = 4
+DisplayName = "雷达站"
+Swatch = Color(0.25, 0.8, 0.95, 1)
+OverlayScenePath = "res://Scenes/Map/Tile/Prefab/SpecialCell/special_radar.tscn"
+
+[sub_resource type="Resource" id="entry_special_hazard"]
+script = ExtResource("1_entry")
+Category = "Special"
+SourceId = 5
+DisplayName = "危险区"
+Swatch = Color(0.95, 0.45, 0.15, 1)
+OverlayScenePath = "res://Scenes/Map/Tile/Prefab/SpecialCell/special_hazard.tscn"
+
+[sub_resource type="Resource" id="entry_special_objective"]
+script = ExtResource("1_entry")
+Category = "Special"
+SourceId = 6
+DisplayName = "目标点"
+Swatch = Color(0.55, 0.35, 0.95, 1)
+OverlayScenePath = "res://Scenes/Map/Tile/Prefab/SpecialCell/special_objective.tscn"
+
 [resource]
 script = ExtResource("2_catalog")
-Entries = Array[ExtResource("1_entry")]([SubResource("entry_island"), SubResource("entry_ocean"), SubResource("entry_enemy"), SubResource("entry_player")])
+Entries = Array[ExtResource("1_entry")]([SubResource("entry_island"), SubResource("entry_ocean"), SubResource("entry_enemy"), SubResource("entry_player"), SubResource("entry_special_story"), SubResource("entry_special_encounter"), SubResource("entry_special_supply"), SubResource("entry_special_radar"), SubResource("entry_special_hazard"), SubResource("entry_special_objective")])

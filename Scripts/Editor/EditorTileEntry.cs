@@ -13,4 +13,6 @@ public partial class EditorTileEntry : Resource
 	[Export] public int SourceId;
 	[Export] public string DisplayName = "未命名";
 	[Export] public Color Swatch = Colors.White;
+	/// <summary>配套 overlay 场景路径；后续可替换为 Blender 导入的模型。</summary>
+	[Export] public string OverlayScenePath = "";
 }

@@ -1584,6 +1584,10 @@ public partial class GameplayDirector : Node
 			var customBus = GetNode<EventBus>("EventBus");
 			customBus.EmitLog($"🏁 {customResultText}：{customDetail}");
 			customBus.EmitSignal("BattleEnded", customResultText, customDetail);
+			if (customResult == VictoryRulesEvaluator.VictoryResult.PlayerWin)
+			{
+				NotifyLevelComplete();
+			}
 			return true;
 		}
 
@@ -1600,6 +1604,10 @@ public partial class GameplayDirector : Node
 				var scoreBus = GetNode<EventBus>("EventBus");
 				scoreBus.EmitLog($"🏁 {scoreResult}：{scoreDetail}");
 				scoreBus.EmitSignal("BattleEnded", scoreResult, scoreDetail);
+				if (scoreResult == "胜利")
+				{
+					NotifyLevelComplete();
+				}
 				return true;
 			}
 			return false;
@@ -1614,6 +1622,10 @@ public partial class GameplayDirector : Node
 		var bus = GetNode<EventBus>("EventBus");
 		bus.EmitLog($"🏁 {result}：{detail}");
 		bus.EmitSignal("BattleEnded", result, detail);
+		if (playerWon)
+		{
+			NotifyLevelComplete();
+		}
 		return true;
 	}
 
@@ -1648,6 +1660,11 @@ public partial class GameplayDirector : Node
 			ActionCounts = new Dictionary<string, int>(_playerActionCounts),
 		};
 		return VictoryRulesEvaluator.Evaluate(_dataManager.VictoryJson, snapshot);
+	}
+
+	private void NotifyLevelComplete()
+	{
+		StoryDirector.Instance?.Trigger("level_complete", _dataManager?.CurrentMapName ?? "");
 	}
 
 	/// <summary>损伤导致的降速不立即生效，统一在下一回合速度调整阶段强制压速。</summary>

@@ -1,5 +1,7 @@
 {
   "triggers": [
-    { "event": "player_action", "key": "turn_left", "checkpoint": "tutorial_turn_seen", "script": "tutorial_turn" }
+    { "event": "player_action", "key": "turn_left", "checkpoint": "tutorial_turn_seen", "script": "tutorial_turn" },
+    { "event": "chapter_enter", "key": "01", "checkpoint": "chapter_01_entered", "script": "chapter_01_enter" },
+    { "event": "level_complete", "key": "01-01", "checkpoint": "level_01_01_complete", "script": "level_01_01_complete" }
   ]
 }

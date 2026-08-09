@@ -1,0 +1,26 @@
+{
+  "Name": "01-02",
+  "Version": 3,
+  "Orientation": "ew",
+  "MapType": "day",
+  "PlayerCommand": 5,
+  "EnemyCommand": 4,
+  "PlayerInitialCP": 8,
+  "EnemyInitialCP": 8,
+  "InitiativeValue": 5,
+  "InitiativeOwner": "player",
+  "BasicVision": 6,
+  "TorpedoModePlayer": 7,
+  "TorpedoModeEnemy": 4,
+  "MaxTurns": 12,
+  "TorpedoPhaseEnabled": false,
+  "PhaseSecondsPerShip": [5, 5, 5, 5, 5, 10, 10, 0],
+  "PhaseExtraSeconds": 5,
+  "Terrain": { "0,0": 2, "1,0": 2, "2,0": 2, "-2,0": 2, "-3,0": 2 },
+  "Generation": { "0,0": { "SourceId": 2, "Side": 0 }, "-2,0": { "SourceId": 2, "Side": 1 } },
+  "Special": {},
+  "Ships": {
+    "0,0": [{ "ShipId": "frigate", "Direction": 1, "Speed": 2 }],
+    "-2,0": [{ "ShipId": "frigate", "Direction": 4, "Speed": 2 }]
+  }
+}

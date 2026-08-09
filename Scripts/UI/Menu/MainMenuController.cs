@@ -14,6 +14,7 @@ public partial class MainMenuController : Control
 	[Export] public string DockScenePath = "res://Scenes/UI/Menu/Dock/dock_ui.tscn";
 	[Export] public string PvpLoginMenuPath = "res://Scenes/UI/Network/login_menu.tscn";
 	[Export] public string NetworkCenterScenePath = "res://Scenes/UI/Network/network_center.tscn";
+	[Export] public string OperationMenuPath = "res://Scenes/UI/Menu/Operation/operation_menu.tscn";
 
 	public override void _Ready()
 	{
@@ -50,6 +51,9 @@ public partial class MainMenuController : Control
 
 	/// <summary> 剧情示例：演示主界面玩家操作可触发演绎。 </summary>
 	public void _OnStoryPressed() => StoryDirector.Instance?.Play("tutorial");
+
+	/// <summary> 作战入口：章节选择与官方剧情关卡。 </summary>
+	public void _OnOperationPressed() => GetTree().ChangeSceneToFile(OperationMenuPath);
 
 	/// <summary> Quit button: close the application. </summary>
 	public void _OnQuitPressed() => GetTree().Quit();

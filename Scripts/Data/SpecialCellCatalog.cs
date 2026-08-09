@@ -28,12 +28,12 @@ public static class SpecialCellCatalog
 
 	public static string ScenePath(int specialId) => specialId switch
 	{
-		1 => "res://Scenes/Map/Tile/Prefab/SpecialCell/special_story.tscn",
-		2 => "res://Scenes/Map/Tile/Prefab/SpecialCell/special_encounter.tscn",
-		3 => "res://Scenes/Map/Tile/Prefab/SpecialCell/special_supply.tscn",
-		4 => "res://Scenes/Map/Tile/Prefab/SpecialCell/special_radar.tscn",
-		5 => "res://Scenes/Map/Tile/Prefab/SpecialCell/special_hazard.tscn",
-		6 => "res://Scenes/Map/Tile/Prefab/SpecialCell/special_objective.tscn",
+		1 => "res://Scenes/Map/Tile/Prefab/Overlay3D/Special/special_story.tscn",
+		2 => "res://Scenes/Map/Tile/Prefab/Overlay3D/Special/special_encounter.tscn",
+		3 => "res://Scenes/Map/Tile/Prefab/Overlay3D/Special/special_supply.tscn",
+		4 => "res://Scenes/Map/Tile/Prefab/Overlay3D/Special/special_radar.tscn",
+		5 => "res://Scenes/Map/Tile/Prefab/Overlay3D/Special/special_hazard.tscn",
+		6 => "res://Scenes/Map/Tile/Prefab/Overlay3D/Special/special_objective.tscn",
 		_ => "",
 	};
 

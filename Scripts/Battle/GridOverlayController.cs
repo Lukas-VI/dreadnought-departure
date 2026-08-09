@@ -34,8 +34,10 @@ public partial class GridOverlayController : Node
 	private Node3D _overlayRoot;
 	private Node3D _directionRoot;
 	private Node3D _globalGridRoot;
+	private Node3D _specialCellRoot;
 	private readonly List<Node3D> _directionInstances = new();
 	private readonly List<Node3D> _globalGridInstances = new();
+	private readonly List<Node3D> _specialCellInstances = new();
 
 	public override void _Ready()
 	{
@@ -48,6 +50,8 @@ public partial class GridOverlayController : Node
 		AddChild(_directionRoot);
 		_globalGridRoot = new Node3D { Name = "GlobalGridOverlayRoot" };
 		AddChild(_globalGridRoot);
+		_specialCellRoot = new Node3D { Name = "SpecialCellOverlayRoot" };
+		AddChild(_specialCellRoot);
 		EnsureOverlayScenes();
 
 		var bus = GetNode<EventBus>("../EventBus");
@@ -279,6 +283,36 @@ public partial class GridOverlayController : Node
 			instance.QueueFree();
 		}
 		_globalGridInstances.Clear();
+	}
+
+	/// <summary>按地图 Special 表生成特殊格 overlay，使用 Overlay3D/Special 场景。</summary>
+	public void BuildSpecialCellOverlays()
+	{
+		ClearSpecialCellOverlays();
+		if (_dataManager == null || _specialCellRoot == null) return;
+		foreach (var (hex, specialId) in _dataManager.SpecialTiles)
+		{
+			string scenePath = SpecialCellCatalog.ScenePath(specialId);
+			if (string.IsNullOrEmpty(scenePath)) continue;
+			var scene = ResourceLoader.Load<PackedScene>(scenePath);
+			if (scene == null) continue;
+			var instance = SpawnOverlay(scene, hex, null, _specialCellRoot);
+			if (instance != null)
+			{
+				_specialCellInstances.Add(instance);
+			}
+		}
+	}
+
+	public void ClearSpecialCellOverlays()
+	{
+		foreach (Node3D instance in _specialCellInstances)
+		{
+			if (!GodotObject.IsInstanceValid(instance)) continue;
+			_specialCellRoot?.RemoveChild(instance);
+			instance.QueueFree();
+		}
+		_specialCellInstances.Clear();
 	}
 
 	private Vector3 HexToWorld(Vector2I hex)

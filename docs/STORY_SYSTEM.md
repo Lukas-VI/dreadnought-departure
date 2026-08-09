@@ -80,6 +80,10 @@
 特殊格资源占位位于 `Scenes/Map/Tile/Prefab/SpecialCell/`，六个类型各一个 `.tscn`。编辑器绘制顺序为：地形 → 生成点 → 特殊格 → 网格 → 选区，特殊格在最顶层。
 可通过 `SpecialCellCatalog.Name / ScenePath / ColorFor(specialId)` 读取名称、场景路径与颜色。
 
+战场内使用 `Scenes/Map/Tile/Prefab/Overlay3D/Special/` 下的 3D overlay 场景显示特殊格；
+后续导入 Blender 模型后直接替换这些 `.tscn` 即可，`GridOverlayController.BuildSpecialCellOverlays()`
+会自动按地图 `Special` 表实例化。
+
 ## 接口入口
 
 - 主菜单“剧情示例”按钮直接播放 `tutorial`

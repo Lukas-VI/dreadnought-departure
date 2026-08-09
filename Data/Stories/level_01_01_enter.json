@@ -1,0 +1,6 @@
+{
+  "background": "#101a2b",
+  "steps": [
+    { "type": "say", "speaker": "剧情", "text": "进入 01-01，舰队开始接敌。" }
+  ]
+}

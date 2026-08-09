@@ -80,6 +80,12 @@ public partial class GameplayDirector : Node
 	private readonly Dictionary<string, ShipComponent> _remoteShips = new();
 	private readonly Dictionary<string, Tween> _remoteTweens = new();
 	private readonly Dictionary<ShipComponent, FormationTrail> _formationTrails = new();
+	private readonly HashSet<Vector2I> _playerReachedHexes = new();
+	private readonly HashSet<Vector2I> _enemyReachedHexes = new();
+	private readonly Dictionary<string, int> _playerActionCounts = new();
+	private readonly HashSet<ShipComponent> _countedSunk = new();
+	private int _enemySunkCount;
+	private int _playerSunkCount;
 
 	/// <summary>单纵阵首舰历史轨迹：Cells[i] 对应到达后的航向 Headings[i]。</summary>
 	private sealed class FormationTrail
@@ -112,6 +118,11 @@ public partial class GameplayDirector : Node
 		AddChild(storyDirector);
 		bus.AdvancePhaseClicked += AdvancePhase;
 		bus.PlayerSideFinished += OnPlayerSideFinished;
+		bus.PlayerActionPerformed += actionId =>
+		{
+			_playerActionCounts.TryGetValue(actionId, out int count);
+			_playerActionCounts[actionId] = count + 1;
+		};
 		if (PvpFlowState.PvpBattle)
 		{
 			_remotePvp = true;
@@ -1189,6 +1200,20 @@ public partial class GameplayDirector : Node
 			foreach (var ship in _playerShips.Concat(_enemyShips))
 				if (GodotObject.IsInstanceValid(ship) && ship.PendingDamage > 0)
 					ship.ApplyPendingDamage();
+			foreach (var ship in _playerShips.Concat(_enemyShips))
+				if (GodotObject.IsInstanceValid(ship)
+					&& ship.DamageState == DamageState.Sunk
+					&& _countedSunk.Add(ship))
+				{
+					if (ship.BattleSide == GenerationSide.Player)
+					{
+						_playerSunkCount++;
+					}
+					else
+					{
+						_enemySunkCount++;
+					}
+				}
 			RefreshStackOffsets();
 			RefreshCommandValues();
 
@@ -1298,6 +1323,14 @@ public partial class GameplayDirector : Node
 			if (IsShipAlive(ship)
 				&& _dataManager?.SpecialTiles.TryGetValue(ship.HexCoords, out int specialId) == true)
 			{
+				if (ship.BattleSide == GenerationSide.Player)
+				{
+					_playerReachedHexes.Add(ship.HexCoords);
+				}
+				else
+				{
+					_enemyReachedHexes.Add(ship.HexCoords);
+				}
 				bus.EmitSignal("SpecialCellEntered", ship.HexCoords, specialId);
 			}
 	}
@@ -1538,6 +1571,22 @@ public partial class GameplayDirector : Node
 	/// <summary>任一方全灭时结束战斗，并通知 UI 显示结果。</summary>
 	private bool CheckBattleEnd()
 	{
+		VictoryRulesEvaluator.VictoryResult customResult = EvaluateVictoryConditions();
+		if (customResult != VictoryRulesEvaluator.VictoryResult.None)
+		{
+			_battleEnded = true;
+			string customResultText = customResult == VictoryRulesEvaluator.VictoryResult.PlayerWin
+				? "胜利"
+				: customResult == VictoryRulesEvaluator.VictoryResult.EnemyWin
+					? "失败"
+					: "平局";
+			string customDetail = $"关卡目标达成判定：{customResultText}";
+			var customBus = GetNode<EventBus>("EventBus");
+			customBus.EmitLog($"🏁 {customResultText}：{customDetail}");
+			customBus.EmitSignal("BattleEnded", customResultText, customDetail);
+			return true;
+		}
+
 		int playerCount = _playerShips.Count(IsShipAlive);
 		int enemyCount = _enemyShips.Count(IsShipAlive);
 		if (playerCount > 0 && enemyCount > 0)
@@ -1570,6 +1619,36 @@ public partial class GameplayDirector : Node
 
 	private static bool IsShipAlive(ShipComponent ship)
 		=> GodotObject.IsInstanceValid(ship) && ship.CurrentHp > 0;
+
+	private VictoryRulesEvaluator.VictoryResult EvaluateVictoryConditions()
+	{
+		if (string.IsNullOrEmpty(_dataManager?.VictoryJson))
+		{
+			return VictoryRulesEvaluator.VictoryResult.None;
+		}
+		var checkpoints = new HashSet<string>();
+		if (StoryDirector.Instance != null)
+		{
+			foreach (string key in StoryDirector.Instance.GetTrueFlags())
+			{
+				checkpoints.Add(key);
+			}
+		}
+		var snapshot = new VictoryRulesEvaluator.VictorySnapshot
+		{
+			Turn = _turnNumber,
+			MaxTurns = _dataManager?.MaxTurns ?? 18,
+			PlayerAlive = _playerShips.Count(IsShipAlive),
+			EnemyAlive = _enemyShips.Count(IsShipAlive),
+			PlayerDestroyed = _playerSunkCount,
+			EnemyDestroyed = _enemySunkCount,
+			PlayerReached = new HashSet<Vector2I>(_playerReachedHexes),
+			EnemyReached = new HashSet<Vector2I>(_enemyReachedHexes),
+			CompletedCheckpoints = checkpoints,
+			ActionCounts = new Dictionary<string, int>(_playerActionCounts),
+		};
+		return VictoryRulesEvaluator.Evaluate(_dataManager.VictoryJson, snapshot);
+	}
 
 	/// <summary>损伤导致的降速不立即生效，统一在下一回合速度调整阶段强制压速。</summary>
 	private void ApplyDeferredSpeedCaps()

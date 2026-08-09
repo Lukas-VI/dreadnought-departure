@@ -1,6 +1,7 @@
 using Godot;
 using System.Collections.Generic;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System;
 using DreadnoughtDeparture.Network;
 
@@ -92,6 +93,8 @@ public partial class LevelDataManager : Node
 	public int TorpedoModePlayer { get; private set; } = 7;
 	public int TorpedoModeEnemy { get; private set; } = 4;
 	public int MaxTurns { get; private set; } = 18;
+	/// <summary>关卡声明式胜负条件原始 JSON；空表示使用默认全灭/PV 判定。</summary>
+	public string VictoryJson { get; private set; } = "";
 	/// <summary>鱼雷阶段是否启用；当前鱼雷玩法未实现，默认关闭。</summary>
 	public bool TorpedoPhaseEnabled { get; private set; }
 	/// <summary>各阶段每船限时（秒）：速度/三移动/视野/炮击/鱼雷/结算。</summary>
@@ -299,6 +302,7 @@ public partial class LevelDataManager : Node
 		InitiativeOwner = initiativeOwner;
 		BasicVision = vision;
 		MaxTurns = maxTurns;
+		VictoryJson = "";
 		PhaseSecondsPerShip = phaseSecondsPerShip != null && phaseSecondsPerShip.Length >= 8
 			? (int[])phaseSecondsPerShip.Clone()
 			: new[] { 5, 5, 5, 5, 5, 10, 10, 0 };
@@ -397,6 +401,7 @@ public partial class LevelDataManager : Node
 		public int TorpedoModePlayer { get; set; } = 7;
 		public int TorpedoModeEnemy { get; set; } = 4;
 		public int MaxTurns { get; set; } = 18;
+		public JsonNode Victory { get; set; }
 		public bool TorpedoPhaseEnabled { get; set; }
 		public int[] PhaseSecondsPerShip { get; set; } = { 5, 5, 5, 5, 5, 10, 10, 0 };
 		public int PhaseExtraSeconds { get; set; } = 5;
@@ -442,6 +447,7 @@ public partial class LevelDataManager : Node
 			TorpedoModePlayer = TorpedoModePlayer,
 			TorpedoModeEnemy = TorpedoModeEnemy,
 			MaxTurns = MaxTurns,
+			Victory = string.IsNullOrEmpty(VictoryJson) ? null : JsonNode.Parse(VictoryJson),
 			TorpedoPhaseEnabled = TorpedoPhaseEnabled,
 			PhaseSecondsPerShip = (int[])PhaseSecondsPerShip.Clone(),
 			PhaseExtraSeconds = PhaseExtraSeconds
@@ -556,6 +562,9 @@ public partial class LevelDataManager : Node
 		TorpedoModePlayer = root.TryGetProperty("TorpedoModePlayer", out JsonElement tp) ? tp.GetInt32() : 7;
 		TorpedoModeEnemy = root.TryGetProperty("TorpedoModeEnemy", out JsonElement te) ? te.GetInt32() : 4;
 		MaxTurns = root.TryGetProperty("MaxTurns", out JsonElement maxTurns) ? maxTurns.GetInt32() : 18;
+		VictoryJson = root.TryGetProperty("Victory", out JsonElement victory)
+			? victory.GetRawText()
+			: "";
 		TorpedoPhaseEnabled = root.TryGetProperty("TorpedoPhaseEnabled", out JsonElement torpedoEnabled)
 			&& torpedoEnabled.ValueKind == JsonValueKind.True;
 		PhaseSecondsPerShip = root.TryGetProperty("PhaseSecondsPerShip", out JsonElement phaseSeconds)

@@ -1,5 +1,6 @@
 using Godot;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using DreadnoughtDeparture.Core;
 
@@ -103,6 +104,9 @@ public partial class StoryDirector : Node
 
 	public bool GetFlag(string key)
 		=> _flags.TryGetValue(key, out bool value) && value;
+
+	public IEnumerable<string> GetTrueFlags()
+		=> _flags.Where(pair => pair.Value).Select(pair => pair.Key);
 
 	private void LoadTriggers()
 	{

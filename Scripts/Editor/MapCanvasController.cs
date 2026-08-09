@@ -314,8 +314,8 @@ public partial class MapCanvasController : Node2D
 	public override void _Draw()
 	{
 		DrawTerrain();
-		DrawSpecial();
 		DrawGeneration();
+		DrawSpecial();
 		if (ShowGrid) DrawGrid();
 		DrawSelection();
 	}
@@ -331,8 +331,14 @@ public partial class MapCanvasController : Node2D
 
 	private void DrawSpecial()
 	{
+		Font font = ThemeDB.FallbackFont;
 		foreach (var kv in _data.SpecialTiles)
-			DrawHex(kv.Key, new Color(1f, 0.78f, 0.25f, 0.55f), new Color(0.9f, 0.6f, 0f, 1f));
+		{
+			DrawHex(kv.Key, SpecialCellCatalog.ColorFor(kv.Value), new Color(0.9f, 0.6f, 0f, 1f));
+			Vector2 center = HexMath.HexToLocal(Orientation, kv.Key, Radius);
+			DrawString(font, center + new Vector2(-16f, 7f), SpecialCellCatalog.Name(kv.Value),
+				HorizontalAlignment.Left, 12f, 18, Colors.White);
+		}
 	}
 
 	private void DrawGeneration()

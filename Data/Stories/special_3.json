@@ -1,6 +1,6 @@
 {
   "background": "#301c1c",
   "steps": [
-    { "type": "say", "speaker": "预警系统", "text": "前方是危险水域，建议减速规避。" }
+	{ "type": "say", "speaker": "预警系统", "text": "前方是危险水域，建议减速规避。" }
   ]
 }

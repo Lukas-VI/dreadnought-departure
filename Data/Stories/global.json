@@ -1,0 +1,5 @@
+{
+  "triggers": [
+    { "event": "player_action", "key": "turn_left", "checkpoint": "tutorial_turn_seen", "script": "tutorial_turn" }
+  ]
+}

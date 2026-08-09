@@ -1,0 +1,5 @@
+{
+  "triggers": [
+    { "event": "battle_start", "checkpoint": "story_map_2_started", "script": "battle_start_map_2" }
+  ]
+}

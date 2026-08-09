@@ -1,6 +1,6 @@
 {
   "background": "#1a2f22",
   "steps": [
-    { "type": "say", "speaker": "补给站", "text": "进入补给区域，舰队获得补给。" }
+	{ "type": "say", "speaker": "补给站", "text": "进入补给区域，舰队获得补给。" }
   ]
 }

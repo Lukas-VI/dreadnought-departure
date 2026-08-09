@@ -1,0 +1,8 @@
+{
+  "triggers": [
+    { "event": "battle_start", "checkpoint": "story_map_1_started", "script": "battle_start_map_1" },
+    { "event": "special_cell", "key": "1", "checkpoint": "story_special_1", "script": "special_1" },
+    { "event": "special_cell", "key": "2", "checkpoint": "story_special_2", "script": "special_2" },
+    { "event": "special_cell", "key": "3", "checkpoint": "story_special_3", "script": "special_3" }
+  ]
+}

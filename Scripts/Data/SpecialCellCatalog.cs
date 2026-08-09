@@ -1,3 +1,5 @@
+using Godot;
+
 namespace DreadnoughtDeparture.Core;
 
 /// <summary>关卡 Special 表约定：不同数值代表不同类型特殊格。</summary>
@@ -22,5 +24,27 @@ public static class SpecialCellCatalog
 		SpecialCellType.Hazard => "危险区",
 		SpecialCellType.Objective => "目标点",
 		_ => "未知特殊格",
+	};
+
+	public static string ScenePath(int specialId) => specialId switch
+	{
+		1 => "res://Scenes/Map/Tile/Prefab/SpecialCell/special_story.tscn",
+		2 => "res://Scenes/Map/Tile/Prefab/SpecialCell/special_encounter.tscn",
+		3 => "res://Scenes/Map/Tile/Prefab/SpecialCell/special_supply.tscn",
+		4 => "res://Scenes/Map/Tile/Prefab/SpecialCell/special_radar.tscn",
+		5 => "res://Scenes/Map/Tile/Prefab/SpecialCell/special_hazard.tscn",
+		6 => "res://Scenes/Map/Tile/Prefab/SpecialCell/special_objective.tscn",
+		_ => "",
+	};
+
+	public static Color ColorFor(int specialId) => specialId switch
+	{
+		1 => new Color(0.95f, 0.75f, 0.2f, 0.6f),
+		2 => new Color(0.9f, 0.25f, 0.25f, 0.6f),
+		3 => new Color(0.25f, 0.9f, 0.4f, 0.6f),
+		4 => new Color(0.25f, 0.8f, 0.95f, 0.6f),
+		5 => new Color(0.95f, 0.45f, 0.15f, 0.6f),
+		6 => new Color(0.55f, 0.35f, 0.95f, 0.6f),
+		_ => new Color(1f, 0.78f, 0.25f, 0.55f),
 	};
 }

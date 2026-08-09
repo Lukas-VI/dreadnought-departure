@@ -28,18 +28,18 @@
 - `flag`：写入剧情状态
 - `background`：切换背景色
 
-## 触发器
+## 触发器与检查点
 
-`Data/Stories/triggers.json` 配置事件与脚本的映射：
+触发器拆成两份：
+
+- `Data/Stories/global.json`：全局规则，不绑定地图
+- `Data/Stories/maps/<mapName>.json`：当前地图配套规则
 
 ```json
 {
   "triggers": [
-    { "event": "battle_start", "map": "1", "key": "", "script": "battle_start_map_1" },
-    { "event": "battle_start", "map": "2", "key": "", "script": "battle_start_map_2" },
-    { "event": "player_action", "key": "turn_left", "script": "tutorial_turn" },
-    { "event": "special_cell", "map": "1", "key": "1", "script": "special_1" },
-    { "event": "special_cell", "map": "1", "key": "2", "script": "special_2" }
+    { "event": "battle_start", "checkpoint": "story_map_1_started", "script": "battle_start_map_1" },
+    { "event": "special_cell", "key": "1", "checkpoint": "story_special_1", "script": "special_1" }
   ]
 }
 ```
@@ -51,8 +51,18 @@
 - `player_action`：玩家选择操作（`key` 为操作 ID）
 - `special_cell`：舰船进入特殊格（`key` 为 Special 表值）
 
-`map` 字段用于限定地图作用域，留空表示全局；只有当前地图名匹配时才播放。
-脚本只播放一次；`StoryDirector.SetFlag / GetFlag` 可用来做后续条件判断。
+`checkpoint` 是全局剧情检查点，写入 `user://story_flags.json`。检查点已播放后，即使换关卡也不会重复触发；没有 `checkpoint` 的规则只在当前会话内播放一次。
+`StoryDirector.SetFlag / GetFlag` 可用于更细的剧情条件。
+
+## 对话 UI
+
+对话界面是节点化场景 `Scenes/UI/Dialogue/dialogue_ui.tscn`：
+
+- `CanvasLayer.layer = 100`，播放时始终在最顶层
+- 背景半透明，战斗/主界面仍可见
+- 底部对话框、说话人、正文、继续按钮、选项区均为独立节点
+
+`DialogueRunner` 只负责读取 JSON 脚本并驱动 UI，不再在代码里拼 UI。
 
 ## 特殊格类型约定
 
@@ -67,7 +77,8 @@
 | 5 | 危险区 | 警告、地形伤害、事件惩罚 |
 | 6 | 目标点 | 任务目标、胜利/计分点 |
 
-可通过 `SpecialCellCatalog.Name(specialId)` 读取显示名，后续规则可按类型扩展。
+特殊格资源占位位于 `Scenes/Map/Tile/Prefab/SpecialCell/`，六个类型各一个 `.tscn`。编辑器绘制顺序为：地形 → 生成点 → 特殊格 → 网格 → 选区，特殊格在最顶层。
+可通过 `SpecialCellCatalog.Name / ScenePath / ColorFor(specialId)` 读取名称、场景路径与颜色。
 
 ## 接口入口
 

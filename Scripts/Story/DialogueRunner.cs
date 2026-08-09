@@ -5,35 +5,27 @@ using System.Text.Json;
 
 namespace DreadnoughtDeparture.Story;
 
-/// <summary>基础对话演出：背景、对话框、角色名、正文、选项与脚本控制。</summary>
-public partial class DialogueRunner : CanvasLayer
+/// <summary>对话脚本驱动：读取 JSON 脚本并驱动节点化 DialogueUI。</summary>
+public partial class DialogueRunner : Node
 {
-	private Control _root;
-	private ColorRect _background;
-	private Label _speakerLabel;
-	private Label _textLabel;
-	private Button _continueButton;
-	private VBoxContainer _optionsBox;
+	private DialogueUIController _ui;
 	private bool _playing;
 
 	public override void _Ready()
 	{
-		BuildUi();
-		HideUi();
+		var scene = ResourceLoader.Load<PackedScene>("res://Scenes/UI/Dialogue/dialogue_ui.tscn");
+		if (scene != null)
+		{
+			_ui = scene.Instantiate<DialogueUIController>();
+			AddChild(_ui);
+		}
 	}
 
 	public void Play(string scriptId)
 	{
-		if (_playing) return;
+		if (_playing || _ui == null) return;
 		_playing = true;
 		_ = RunScriptAsync(scriptId);
-	}
-
-	public void Stop()
-	{
-		_playing = false;
-		HideUi();
-		StoryDirector.Instance?.NotifyFinished();
 	}
 
 	private async System.Threading.Tasks.Task RunScriptAsync(string scriptId)
@@ -41,16 +33,14 @@ public partial class DialogueRunner : CanvasLayer
 		string path = $"res://Data/Stories/{scriptId}.json";
 		if (!FileAccess.FileExists(path))
 		{
-			StoryDirector.Instance?.NotifyFinished();
-			_playing = false;
+			Finish();
 			return;
 		}
 		using var file = FileAccess.Open(path, FileAccess.ModeFlags.Read);
-		string json = file.GetAsText();
-		using var document = JsonDocument.Parse(json);
+		using var document = JsonDocument.Parse(file.GetAsText());
 		JsonElement root = document.RootElement;
 
-		ApplyBackground(Str(root, "background"));
+		_ui.SetBackgroundColor(Str(root, "background"));
 		var steps = root.TryGetProperty("steps", out JsonElement stepsProp)
 			? stepsProp.EnumerateArray().ToList()
 			: new List<JsonElement>();
@@ -88,7 +78,7 @@ public partial class DialogueRunner : CanvasLayer
 			}
 			else if (type == "background")
 			{
-				ApplyBackground(Str(step, "color"));
+				_ui.SetBackgroundColor(Str(step, "color"));
 				index++;
 			}
 			else
@@ -97,137 +87,59 @@ public partial class DialogueRunner : CanvasLayer
 			}
 		}
 
-		_playing = false;
-		HideUi();
-		StoryDirector.Instance?.NotifyFinished();
+		Finish();
 	}
 
 	private async System.Threading.Tasks.Task ShowSayAsync(string speaker, string text)
 	{
-		_root.Visible = true;
-		_speakerLabel.Text = speaker;
-		_textLabel.Text = text;
-		_continueButton.Visible = true;
-		_optionsBox.Visible = false;
-		await ToSignal(_continueButton, BaseButton.SignalName.Pressed);
+		_ui.ShowSay(speaker, text);
+		await ToSignal(_ui, DialogueUIController.SignalName.ContinuePressed);
 	}
 
 	private async System.Threading.Tasks.Task<int> ShowChoiceAsync(string prompt, JsonElement step)
 	{
-		_root.Visible = true;
-		_speakerLabel.Text = "";
-		_textLabel.Text = prompt;
-		_continueButton.Visible = false;
-		_optionsBox.Visible = true;
-		ClearOptions();
-
-		var tasks = new List<(Button Button, int Next)>();
+		var texts = new List<string>();
 		if (step.TryGetProperty("options", out JsonElement options))
 		{
 			foreach (JsonElement option in options.EnumerateArray())
 			{
-				var button = new Button
-				{
-					Text = Str(option, "text"),
-					CustomMinimumSize = new Vector2(0, 48),
-				};
-				int next = option.TryGetProperty("next", out JsonElement nextProp)
-					? nextProp.GetInt32()
-					: -1;
-				tasks.Add((button, next));
-				_optionsBox.AddChild(button);
+				texts.Add(Str(option, "text"));
 			}
 		}
-		if (tasks.Count == 0)
-		{
-			return -1;
-		}
+		_ui.ShowOptions(prompt, texts);
 
-		var completion = new GodotObject();
 		int selected = -1;
-		foreach (var (button, next) in tasks)
+		void OnSelected(int index)
 		{
-			button.Pressed += () => selected = next;
+			selected = index;
+			int next = -1;
+			if (step.TryGetProperty("options", out JsonElement optionArray))
+			{
+				var optionsList = optionArray.EnumerateArray().ToList();
+				if (index >= 0 && index < optionsList.Count
+					&& optionsList[index].TryGetProperty("next", out JsonElement nextProp))
+				{
+					next = nextProp.GetInt32();
+				}
+			}
+			_selectedNext = next;
 		}
+		_ui.OptionSelected += OnSelected;
 		while (selected < 0)
 		{
 			await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
 		}
-		return selected;
+		_ui.OptionSelected -= OnSelected;
+		return _selectedNext;
 	}
 
-	private void BuildUi()
+	private int _selectedNext = -1;
+
+	private void Finish()
 	{
-		_root = new Control();
-		_root.SetAnchorsPreset(Control.LayoutPreset.FullRect);
-		_root.MouseFilter = Control.MouseFilterEnum.Stop;
-		AddChild(_root);
-
-		_background = new ColorRect
-		{
-			Color = new Color(0.03f, 0.05f, 0.09f, 0.96f),
-			MouseFilter = Control.MouseFilterEnum.Ignore,
-		};
-		_background.SetAnchorsPreset(Control.LayoutPreset.FullRect);
-		_root.AddChild(_background);
-
-		var panel = new PanelContainer();
-		panel.SetAnchorsPreset(Control.LayoutPreset.BottomWide);
-		panel.OffsetTop = -260;
-		panel.OffsetBottom = -40;
-		panel.OffsetLeft = 120;
-		panel.OffsetRight = -120;
-		_root.AddChild(panel);
-
-		var box = new VBoxContainer();
-		box.AddThemeConstantOverride("separation", 12);
-		panel.AddChild(box);
-
-		_speakerLabel = new Label { Text = "" };
-		_speakerLabel.AddThemeFontSizeOverride("font_size", 22);
-		box.AddChild(_speakerLabel);
-
-		_textLabel = new Label
-		{
-			Text = "",
-			AutowrapMode = TextServer.AutowrapMode.WordSmart,
-			CustomMinimumSize = new Vector2(0, 120),
-		};
-		_textLabel.AddThemeFontSizeOverride("font_size", 24);
-		box.AddChild(_textLabel);
-
-		_continueButton = new Button { Text = "继续 ▸", CustomMinimumSize = new Vector2(180, 48) };
-		box.AddChild(_continueButton);
-
-		_optionsBox = new VBoxContainer();
-		_optionsBox.Visible = false;
-		_optionsBox.SetAnchorsPreset(Control.LayoutPreset.Center);
-		_optionsBox.OffsetTop = 80;
-		_optionsBox.AddThemeConstantOverride("separation", 10);
-		_root.AddChild(_optionsBox);
-	}
-
-	private void ClearOptions()
-	{
-		foreach (Node child in _optionsBox.GetChildren())
-		{
-			_optionsBox.RemoveChild(child);
-			child.QueueFree();
-		}
-	}
-
-	private void ApplyBackground(string color)
-	{
-		if (string.IsNullOrEmpty(color)) return;
-		_background.Color = Color.FromHtml(color);
-	}
-
-	private void HideUi()
-	{
-		if (_root != null)
-		{
-			_root.Visible = false;
-		}
+		_playing = false;
+		_ui?.HideUi();
+		StoryDirector.Instance?.NotifyFinished();
 	}
 
 	private static string Str(JsonElement element, string property)

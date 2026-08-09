@@ -1,0 +1,83 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://Scripts/Story/DialogueUIController.cs" id="1_ui"]
+
+[node name="DialogueUI" type="CanvasLayer"]
+layer = 100
+script = ExtResource("1_ui")
+
+[node name="Root" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="Background" type="ColorRect" parent="Root"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.03, 0.05, 0.09, 0.82)
+
+[node name="DialogPanel" type="PanelContainer" parent="Root"]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 120.0
+offset_top = -260.0
+offset_right = -120.0
+offset_bottom = -40.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="Margin" type="MarginContainer" parent="Root/DialogPanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 16
+
+[node name="VBox" type="VBoxContainer" parent="Root/DialogPanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="SpeakerLabel" type="Label" parent="Root/DialogPanel/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = ""
+
+[node name="TextLabel" type="Label" parent="Root/DialogPanel/Margin/VBox"]
+custom_minimum_size = Vector2(0, 120)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = ""
+autowrap_mode = 3
+
+[node name="ContinueButton" type="Button" parent="Root/DialogPanel/Margin/VBox"]
+custom_minimum_size = Vector2(180, 48)
+layout_mode = 2
+text = "继续 ▸"
+
+[node name="OptionsBox" type="VBoxContainer" parent="Root"]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -240.0
+offset_top = 40.0
+offset_right = 240.0
+offset_bottom = 260.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 10

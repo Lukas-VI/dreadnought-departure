@@ -19,12 +19,14 @@ public partial class StoryDirector : Node
 	private DialogueRunner _runner;
 	private string _playingScript = "";
 	private string _currentMapName = "";
+	private string _pendingCheckpoint = "";
 
 	private sealed class TriggerRule
 	{
 		public string Event;
 		public string Key;
 		public string Map;
+		public string Checkpoint;
 		public string Script;
 	}
 
@@ -34,6 +36,7 @@ public partial class StoryDirector : Node
 		_runner = new DialogueRunner();
 		AddChild(_runner);
 		_currentMapName = GetNodeOrNull<LevelDataManager>("../LevelDataManager")?.CurrentMapName ?? "";
+		LoadFlags();
 		LoadTriggers();
 		var bus = GetNodeOrNull<EventBus>("../EventBus");
 		if (bus != null)
@@ -53,11 +56,12 @@ public partial class StoryDirector : Node
 		}
 	}
 
-	public void Play(string scriptId)
+	public void Play(string scriptId, string checkpoint = "")
 	{
 		if (_runner == null || _playingScript.Length > 0) return;
 		_playingScript = scriptId;
 		_played.Add(scriptId);
+		_pendingCheckpoint = checkpoint;
 		_runner.Play(scriptId);
 	}
 
@@ -68,25 +72,33 @@ public partial class StoryDirector : Node
 			if (rule.Event != eventName) continue;
 			if (!string.IsNullOrEmpty(rule.Key) && rule.Key != key) continue;
 			if (!string.IsNullOrEmpty(rule.Map) && rule.Map != _currentMapName) continue;
+			if (!string.IsNullOrEmpty(rule.Checkpoint) && GetFlag(rule.Checkpoint)) continue;
 			if (_played.Contains(rule.Script)) continue;
-			Play(rule.Script);
+			Play(rule.Script, rule.Checkpoint);
 			return;
 		}
 	}
 
 	public void NotifyFinished()
 	{
+		if (_pendingCheckpoint.Length > 0)
+		{
+			SetFlag(_pendingCheckpoint, true);
+		}
+		_pendingCheckpoint = "";
 		_playingScript = "";
 	}
 
 	public void SetFlag(string key, bool value)
 	{
 		_flags[key] = value;
+		SaveFlags();
 	}
 
 	public void SetMapName(string mapName)
 	{
 		_currentMapName = mapName ?? "";
+		LoadTriggers();
 	}
 
 	public bool GetFlag(string key)
@@ -94,7 +106,16 @@ public partial class StoryDirector : Node
 
 	private void LoadTriggers()
 	{
-		const string path = "res://Data/Stories/triggers.json";
+		_triggers.Clear();
+		LoadTriggerFile("res://Data/Stories/global.json");
+		if (_currentMapName.Length > 0)
+		{
+			LoadTriggerFile($"res://Data/Stories/maps/{_currentMapName}.json");
+		}
+	}
+
+	private void LoadTriggerFile(string path)
+	{
 		if (!FileAccess.FileExists(path)) return;
 		using var file = FileAccess.Open(path, FileAccess.ModeFlags.Read);
 		using var document = JsonDocument.Parse(file.GetAsText());
@@ -113,10 +134,34 @@ public partial class StoryDirector : Node
 				Map = entry.TryGetProperty("map", out JsonElement mapProp)
 					? mapProp.GetString() ?? ""
 					: "",
+				Checkpoint = entry.TryGetProperty("checkpoint", out JsonElement checkpointProp)
+					? checkpointProp.GetString() ?? ""
+					: "",
 				Script = entry.TryGetProperty("script", out JsonElement scriptProp)
 					? scriptProp.GetString() ?? ""
 					: "",
 			});
 		}
+	}
+
+	private const string FlagFilePath = "user://story_flags.json";
+
+	private void LoadFlags()
+	{
+		if (!FileAccess.FileExists(FlagFilePath)) return;
+		using var file = FileAccess.Open(FlagFilePath, FileAccess.ModeFlags.Read);
+		using var document = JsonDocument.Parse(file.GetAsText());
+		JsonElement root = document.RootElement;
+		foreach (JsonProperty property in root.EnumerateObject())
+		{
+			_flags[property.Name] = property.Value.ValueKind == JsonValueKind.True;
+		}
+	}
+
+	private void SaveFlags()
+	{
+		using var file = FileAccess.Open(FlagFilePath, FileAccess.ModeFlags.Write);
+		if (file == null) return;
+		file.StoreString(JsonSerializer.Serialize(_flags));
 	}
 }

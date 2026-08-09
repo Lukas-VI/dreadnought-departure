@@ -12,25 +12,30 @@ public partial class ChapterSelectController : Control
 {
 	[Export] public string MainMenuPath = "res://Scenes/UI/Menu/MainMenu/main_menu.tscn";
 	[Export] public string LevelSelectPath = "res://Scenes/UI/Menu/Operation/level_select.tscn";
+	[Export] public Texture2D ScrollBackgroundTexture;
 
 	private static readonly Regex LevelNamePattern = new(@"^(\d{2})-(\d{2})\.json$");
 	private const string StateFilePath = "user://operation_state.cfg";
 
-	private ItemList _chapterList;
+	private HBoxContainer _chapterAxis;
 	private Label _statusLabel;
 	private readonly SortedSet<string> _chapters = new();
+	private string _highlightedChapter = "";
 
 	public override void _Ready()
 	{
 		var story = new StoryDirector();
 		AddChild(story);
 
-		_chapterList = GetNode<ItemList>("Center/Panel/Margin/Box/ChapterList");
+		_chapterAxis = GetNode<HBoxContainer>("Center/Panel/Margin/Box/ChapterScroll/ChapterAxis");
 		_statusLabel = GetNode<Label>("Center/Panel/Margin/Box/StatusLabel");
+		var scrollBackground = GetNodeOrNull<TextureRect>("Center/Panel/Margin/Box/ScrollBackground");
+		if (scrollBackground != null && ScrollBackgroundTexture != null)
+		{
+			scrollBackground.Texture = ScrollBackgroundTexture;
+		}
 		GetNode<Button>("TopBar/BackButton").Pressed += () =>
 			GetTree().ChangeSceneToFile(MainMenuPath);
-		GetNode<Button>("Center/Panel/Margin/Box/EnterButton").Pressed += EnterChapter;
-		_chapterList.ItemActivated += _ => EnterChapter();
 
 		ScanChapters();
 		LoadSelectedChapter();
@@ -65,11 +70,21 @@ public partial class ChapterSelectController : Control
 
 	private void RefreshList()
 	{
-		_chapterList.Clear();
+		foreach (Node child in _chapterAxis.GetChildren())
+		{
+			_chapterAxis.RemoveChild(child);
+			child.QueueFree();
+		}
 		foreach (string chapter in _chapters)
 		{
-			_chapterList.AddItem($"第 {chapter} 章");
-			_chapterList.SetItemMetadata(_chapterList.ItemCount - 1, chapter);
+			string captured = chapter;
+			var button = new Button
+			{
+				Text = $"第 {chapter} 章",
+				CustomMinimumSize = new Vector2(180, 90),
+			};
+			button.Pressed += () => EnterChapter(captured);
+			_chapterAxis.AddChild(button);
 		}
 		if (_chapters.Count == 0)
 		{
@@ -81,22 +96,20 @@ public partial class ChapterSelectController : Control
 		{
 			selected = _chapters.First();
 		}
-		for (int i = 0; i < _chapterList.ItemCount; i++)
+		foreach (Node child in _chapterAxis.GetChildren())
 		{
-			if (_chapterList.GetItemMetadata(i).AsString() == selected)
+			if (child is Button button
+				&& button.Text == $"第 {selected} 章")
 			{
-				_chapterList.Select(i);
-				break;
+				button.Modulate = new Color(1f, 0.85f, 0.45f, 1f);
+				_highlightedChapter = selected;
 			}
 		}
 		_statusLabel.Text = $"已记忆章节：第 {selected} 章";
 	}
 
-	private void EnterChapter()
+	private void EnterChapter(string chapter)
 	{
-		if (_chapterList.GetSelectedItems().Length == 0) return;
-		int index = _chapterList.GetSelectedItems()[0];
-		string chapter = _chapterList.GetItemMetadata(index).AsString();
 		LevelSelectController.PendingChapter = chapter;
 		var config = new ConfigFile();
 		config.SetValue("operation", "chapter", chapter);

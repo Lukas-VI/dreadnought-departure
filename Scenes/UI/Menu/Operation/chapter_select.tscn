@@ -1,8 +1,8 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=3 uid="uid://yd6wa2257eex"]
 
-[ext_resource type="Script" path="res://Scripts/UI/Menu/Operation/ChapterSelectController.cs" id="1_ch"]
+[ext_resource type="Script" uid="uid://il1oq7bbu2sd" path="res://Scripts/UI/Menu/Operation/ChapterSelectController.cs" id="1_ch"]
 
-[node name="ChapterSelect" type="Control"]
+[node name="ChapterSelect" type="Control" unique_id=1031027282]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -11,7 +11,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_ch")
 
-[node name="TopBar" type="HBoxContainer" parent="."]
+[node name="TopBar" type="HBoxContainer" parent="." unique_id=1708241179]
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
@@ -19,62 +19,77 @@ offset_left = 24.0
 offset_top = 18.0
 offset_right = -24.0
 offset_bottom = 72.0
+grow_horizontal = 2
 theme_override_constants/separation = 16
 
-[node name="Title" type="Label" parent="TopBar"]
+[node name="Title" type="Label" parent="TopBar" unique_id=228925590]
 layout_mode = 2
 theme_override_font_sizes/font_size = 28
 text = "选择章节"
 
-[node name="Spacer" type="Control" parent="TopBar"]
+[node name="Spacer" type="Control" parent="TopBar" unique_id=1255180759]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="BackButton" type="Button" parent="TopBar"]
+[node name="BackButton" type="Button" parent="TopBar" unique_id=134824532]
 custom_minimum_size = Vector2(160, 46)
 layout_mode = 2
 text = "返回主菜单"
 
-[node name="Center" type="CenterContainer" parent="."]
+[node name="Center" type="CenterContainer" parent="." unique_id=1619094046]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_top = 86.0
 offset_bottom = -24.0
+grow_horizontal = 2
+grow_vertical = 2
 
-[node name="Panel" type="PanelContainer" parent="Center"]
-custom_minimum_size = Vector2(520, 0)
+[node name="Panel" type="PanelContainer" parent="Center" unique_id=58858647]
 layout_mode = 2
 
-[node name="Margin" type="MarginContainer" parent="Center/Panel"]
+[node name="Margin" type="MarginContainer" parent="Center/Panel" unique_id=1985714899]
 layout_mode = 2
 theme_override_constants/margin_left = 18
 theme_override_constants/margin_top = 16
 theme_override_constants/margin_right = 18
 theme_override_constants/margin_bottom = 16
 
-[node name="Box" type="VBoxContainer" parent="Center/Panel/Margin"]
+[node name="Box" type="VBoxContainer" parent="Center/Panel/Margin" unique_id=1926197822]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="Hint" type="Label" parent="Center/Panel/Margin/Box"]
+[node name="Hint" type="Label" parent="Center/Panel/Margin/Box" unique_id=1234406727]
 layout_mode = 2
 text = "选择章节后进入关卡列表"
 autowrap_mode = 3
 
-[node name="ChapterList" type="ItemList" parent="Center/Panel/Margin/Box"]
-custom_minimum_size = Vector2(0, 360)
+[node name="ScrollBackground" type="TextureRect" parent="Center/Panel/Margin/Box"]
+custom_minimum_size = Vector2(0, 300)
 layout_mode = 2
 size_flags_vertical = 3
+stretch_mode = 5
+expand_mode = 1
 
-[node name="EnterButton" type="Button" parent="Center/Panel/Margin/Box"]
+[node name="ChapterScroll" type="ScrollContainer" parent="Center/Panel/Margin/Box"]
+custom_minimum_size = Vector2(0, 220)
+layout_mode = 2
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 2
+
+[node name="ChapterAxis" type="HBoxContainer" parent="Center/Panel/Margin/Box/ChapterScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 14
+
+[node name="EnterButton" type="Button" parent="Center/Panel/Margin/Box" unique_id=251683445]
 custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
 text = "进入章节"
+visible = false
 
-[node name="StatusLabel" type="Label" parent="Center/Panel/Margin/Box"]
+[node name="StatusLabel" type="Label" parent="Center/Panel/Margin/Box" unique_id=782224450]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.8, 0.9, 1, 1)
-text = ""
 autowrap_mode = 3

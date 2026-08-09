@@ -9,6 +9,7 @@
 
 关卡列表是横向卷轴式，背景节点 `ScrollBackground` 是 `TextureRect`，
 后期可直接在 `LevelSelectController.ScrollBackgroundTexture` 导入长图背景。
+章节列表同样是横向卷轴式，背景可导入 `ChapterSelectController.ScrollBackgroundTexture`。
 
 ## 关卡命名
 

@@ -132,6 +132,10 @@ public partial class PlayerController : Node, IUnitController
 		}
 
 		var phase = _director?.CurrentPhase ?? BattlePhase.EndTurn;
+		if (actionId != "_show_menu" && actionId != "skip")
+		{
+			GetNode<EventBus>("../EventBus").EmitSignal("PlayerActionPerformed", actionId);
+		}
 
 		if (actionId == "radar")
 		{

@@ -1,0 +1,7 @@
+{
+  "triggers": [
+    { "event": "battle_start", "key": "", "script": "battle_start" },
+    { "event": "player_action", "key": "turn_left", "script": "tutorial_turn" },
+    { "event": "special_cell", "key": "1", "script": "special_1" }
+  ]
+}

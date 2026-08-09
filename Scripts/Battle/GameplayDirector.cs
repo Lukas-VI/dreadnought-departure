@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using DreadnoughtDeparture.Network;
+using DreadnoughtDeparture.Story;
 
 namespace DreadnoughtDeparture.Core;
 
@@ -107,6 +108,8 @@ public partial class GameplayDirector : Node
 		_hud = GetNodeOrNull<BattleHudBroker>("CanvasLayer/BattleUI/InfoLabel");
 
 		var bus = GetNode<EventBus>("EventBus");
+		var storyDirector = new StoryDirector();
+		AddChild(storyDirector);
 		bus.AdvancePhaseClicked += AdvancePhase;
 		bus.PlayerSideFinished += OnPlayerSideFinished;
 		if (PvpFlowState.PvpBattle)
@@ -754,6 +757,7 @@ public partial class GameplayDirector : Node
 		EmitCommandStateUpdated();
 		GetNode<EventBus>("EventBus").EmitSignal("LogMessage",
 			$"—— 第 {_turnNumber} 回合 —— {PhaseLabels[(int)_currentPhase]}");
+		GetNode<EventBus>("EventBus").EmitSignal("BattleStarted");
 
 		// 启动首阶段
 		if (CheckBattleEnd()) return;
@@ -1286,6 +1290,12 @@ public partial class GameplayDirector : Node
 			await ToSignal(GetTree().CreateTimer(longest + 0.1f), "timeout");
 		RefreshStackOffsets();
 		RefreshDirectionOverlays();
+		foreach (var ship in _playerShips.Concat(_enemyShips))
+			if (IsShipAlive(ship)
+				&& _dataManager?.SpecialTiles.TryGetValue(ship.HexCoords, out int specialId) == true)
+			{
+				bus.EmitSignal("SpecialCellEntered", ship.HexCoords, specialId);
+			}
 	}
 
 	private float AnimateStraightShip(ShipComponent ship, int phase, bool oddTurn, EventBus bus,

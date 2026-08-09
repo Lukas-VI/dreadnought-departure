@@ -1,0 +1,7 @@
+{
+  "background": "#101a2b",
+  "steps": [
+    { "type": "say", "speaker": "舰队指挥", "text": "作战开始，各舰进入预定阵位。" },
+    { "type": "say", "speaker": "舰队指挥", "text": "接下来请按照阶段推进操作。" }
+  ]
+}

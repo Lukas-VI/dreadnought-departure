@@ -64,6 +64,12 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "网游中心"
 
+[node name="BtnStory" type="Button" parent="CenterContainer/VBoxContainer" unique_id=1446092046]
+custom_minimum_size = Vector2(300, 60)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "剧情示例"
+
 [node name="BtnQuit" type="Button" parent="CenterContainer/VBoxContainer" unique_id=1602749771]
 custom_minimum_size = Vector2(300, 60)
 layout_mode = 2
@@ -75,4 +81,5 @@ text = "退出"
 [connection signal="pressed" from="CenterContainer/VBoxContainer/BtnDock" to="." method="_OnDockPressed"]
 [connection signal="pressed" from="CenterContainer/VBoxContainer/BtnPvp" to="." method="_OnPvpPressed"]
 [connection signal="pressed" from="CenterContainer/VBoxContainer/BtnNetworkCenter" to="." method="_OnNetworkCenterPressed"]
+[connection signal="pressed" from="CenterContainer/VBoxContainer/BtnStory" to="." method="_OnStoryPressed"]
 [connection signal="pressed" from="CenterContainer/VBoxContainer/BtnQuit" to="." method="_OnQuitPressed"]

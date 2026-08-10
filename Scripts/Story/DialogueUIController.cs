@@ -13,8 +13,11 @@ public partial class DialogueUIController : CanvasLayer
 	private ColorRect _background;
 	private Label _speakerLabel;
 	private Label _textLabel;
-	private Button _continueButton;
+	private Button _historyButton;
+	private PanelContainer _historyPanel;
+	private RichTextLabel _historyText;
 	private VBoxContainer _optionsBox;
+	private readonly List<string> _historyLines = new();
 
 	public override void _Ready()
 	{
@@ -23,10 +26,23 @@ public partial class DialogueUIController : CanvasLayer
 		_background = GetNode<ColorRect>("Root/Background");
 		_speakerLabel = GetNode<Label>("Root/DialogPanel/Margin/VBox/SpeakerLabel");
 		_textLabel = GetNode<Label>("Root/DialogPanel/Margin/VBox/TextLabel");
-		_continueButton = GetNode<Button>("Root/DialogPanel/Margin/VBox/ContinueButton");
+		_historyButton = GetNode<Button>("Root/DialogPanel/Margin/VBox/HBoxContainer/HistoryButton");
+		_historyPanel = GetNode<PanelContainer>("Root/HistoryPanel");
+		_historyText = GetNode<RichTextLabel>("Root/HistoryPanel/HistoryText");
 		_optionsBox = GetNode<VBoxContainer>("Root/OptionsBox");
-		_continueButton.Pressed += () => EmitSignal(SignalName.ContinuePressed);
+		_root.GuiInput += OnRootInput;
+		_historyButton.Pressed += ToggleHistory;
 		HideUi();
+	}
+
+	private void OnRootInput(InputEvent @event)
+	{
+		if (@event is InputEventMouseButton mouse
+			&& mouse.Pressed
+			&& mouse.ButtonIndex == MouseButton.Left)
+		{
+			EmitSignal(SignalName.ContinuePressed);
+		}
 	}
 
 	public void ShowSay(string speaker, string text)
@@ -34,8 +50,11 @@ public partial class DialogueUIController : CanvasLayer
 		_root.Visible = true;
 		_speakerLabel.Text = speaker;
 		_textLabel.Text = text;
-		_continueButton.Visible = true;
 		_optionsBox.Visible = false;
+		if (!string.IsNullOrEmpty(text))
+		{
+			_historyLines.Add(string.IsNullOrEmpty(speaker) ? text : $"{speaker}：{text}");
+		}
 	}
 
 	public void ShowOptions(string prompt, IReadOnlyList<string> options)
@@ -43,7 +62,6 @@ public partial class DialogueUIController : CanvasLayer
 		_root.Visible = true;
 		_speakerLabel.Text = "";
 		_textLabel.Text = prompt;
-		_continueButton.Visible = false;
 		_optionsBox.Visible = true;
 		ClearOptions();
 		for (int i = 0; i < options.Count; i++)
@@ -70,6 +88,20 @@ public partial class DialogueUIController : CanvasLayer
 		if (_root != null)
 		{
 			_root.Visible = false;
+			if (_historyPanel != null)
+			{
+				_historyPanel.Visible = false;
+			}
+		}
+	}
+
+	private void ToggleHistory()
+	{
+		if (_historyPanel == null) return;
+		_historyPanel.Visible = !_historyPanel.Visible;
+		if (_historyPanel.Visible && _historyText != null)
+		{
+			_historyText.Text = string.Join("\n", _historyLines);
 		}
 	}
 

@@ -1,21 +1,20 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=3 uid="uid://b8ssv5cu5uu2x"]
 
-[ext_resource type="Script" path="res://Scripts/Story/DialogueUIController.cs" id="1_ui"]
+[ext_resource type="Script" uid="uid://cpawov4nb40ds" path="res://Scripts/Story/DialogueUIController.cs" id="1_ui"]
 
-[node name="DialogueUI" type="CanvasLayer"]
+[node name="DialogueUI" type="CanvasLayer" unique_id=911439303]
 layer = 100
 script = ExtResource("1_ui")
 
-[node name="Root" type="Control" parent="."]
+[node name="Root" type="Control" parent="." unique_id=383652514]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-mouse_filter = 0
 
-[node name="Background" type="ColorRect" parent="Root"]
+[node name="Background" type="ColorRect" parent="Root" unique_id=1369230056]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -23,9 +22,9 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-color = Color(0.03, 0.05, 0.09, 0.82)
+color = Color(0.18, 0.0594, 0.0594, 0.2627451)
 
-[node name="DialogPanel" type="PanelContainer" parent="Root"]
+[node name="DialogPanel" type="PanelContainer" parent="Root" unique_id=388520620]
 layout_mode = 1
 anchors_preset = 12
 anchor_top = 1.0
@@ -37,36 +36,40 @@ offset_right = -120.0
 offset_bottom = -40.0
 grow_horizontal = 2
 grow_vertical = 0
+mouse_filter = 2
 
-[node name="Margin" type="MarginContainer" parent="Root/DialogPanel"]
+[node name="Margin" type="MarginContainer" parent="Root/DialogPanel" unique_id=1548939950]
 layout_mode = 2
 theme_override_constants/margin_left = 24
 theme_override_constants/margin_top = 16
 theme_override_constants/margin_right = 24
 theme_override_constants/margin_bottom = 16
 
-[node name="VBox" type="VBoxContainer" parent="Root/DialogPanel/Margin"]
+[node name="VBox" type="VBoxContainer" parent="Root/DialogPanel/Margin" unique_id=505967736]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="SpeakerLabel" type="Label" parent="Root/DialogPanel/Margin/VBox"]
+[node name="HBoxContainer" type="HBoxContainer" parent="Root/DialogPanel/Margin/VBox" unique_id=1779665191]
 layout_mode = 2
+
+[node name="SpeakerLabel" type="Label" parent="Root/DialogPanel/Margin/VBox/HBoxContainer" unique_id=1739446477]
+layout_mode = 2
+size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 22
-text = ""
 
-[node name="TextLabel" type="Label" parent="Root/DialogPanel/Margin/VBox"]
-custom_minimum_size = Vector2(0, 120)
-layout_mode = 2
-theme_override_font_sizes/font_size = 24
-text = ""
-autowrap_mode = 3
-
-[node name="ContinueButton" type="Button" parent="Root/DialogPanel/Margin/VBox"]
+[node name="HistoryButton" type="Button" parent="Root/DialogPanel/Margin/VBox/HBoxContainer" unique_id=1885316116]
 custom_minimum_size = Vector2(180, 48)
 layout_mode = 2
-text = "继续 ▸"
+text = "履历"
 
-[node name="OptionsBox" type="VBoxContainer" parent="Root"]
+[node name="TextLabel" type="Label" parent="Root/DialogPanel/Margin/VBox" unique_id=1487438949]
+custom_minimum_size = Vector2(1080, 140)
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+autowrap_mode = 3
+mouse_filter = 2
+
+[node name="OptionsBox" type="VBoxContainer" parent="Root" unique_id=1151143894]
 visible = false
 layout_mode = 1
 anchors_preset = 8
@@ -81,3 +84,24 @@ offset_bottom = 260.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 10
+
+[node name="HistoryPanel" type="PanelContainer" parent="Root"]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -420.0
+offset_top = -260.0
+offset_right = 420.0
+offset_bottom = 260.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="HistoryText" type="RichTextLabel" parent="Root/HistoryPanel"]
+layout_mode = 2
+bbcode_enabled = false
+scroll_following = true
+theme_override_font_sizes/font_size = 20

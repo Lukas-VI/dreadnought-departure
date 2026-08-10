@@ -1591,6 +1591,11 @@ public partial class GameplayDirector : Node
 			return true;
 		}
 
+		if (!string.IsNullOrEmpty(_dataManager?.VictoryJson))
+		{
+			return false;
+		}
+
 		int playerCount = _playerShips.Count(IsShipAlive);
 		int enemyCount = _enemyShips.Count(IsShipAlive);
 		if (playerCount > 0 && enemyCount > 0)

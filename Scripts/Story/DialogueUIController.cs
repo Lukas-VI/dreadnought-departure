@@ -12,6 +12,8 @@ public partial class DialogueUIController : CanvasLayer
 
 	private Control _root;
 	private ColorRect _background;
+	private TextureRect _backgroundImage;
+	private TextureRect _avatarRect;
 	private Label _speakerLabel;
 	private Label _textLabel;
 	private Button _historyButton;
@@ -34,6 +36,8 @@ public partial class DialogueUIController : CanvasLayer
 		Layer = 100;
 		_root = GetNode<Control>("Root");
 		_background = GetNode<ColorRect>("Root/Background");
+		_backgroundImage = GetNodeOrNull<TextureRect>("Root/BackgroundImage");
+		_avatarRect = GetNodeOrNull<TextureRect>("Root/Avatar");
 		_speakerLabel = GetNode<Label>("Root/DialogPanel/Margin/VBox/HBoxContainer/SpeakerLabel");
 		_textLabel = GetNode<Label>("Root/DialogPanel/Margin/VBox/TextLabel");
 		_historyButton = GetNode<Button>("Root/DialogPanel/Margin/VBox/HBoxContainer/HistoryButton");
@@ -91,7 +95,7 @@ public partial class DialogueUIController : CanvasLayer
 		{
 			return;
 		}
-		if (Time.GetTicksMsec() - _showAt < 1500)
+		if (Time.GetTicksMsec() - _showAt < 200)
 		{
 			return;
 		}
@@ -128,10 +132,61 @@ public partial class DialogueUIController : CanvasLayer
 		}
 	}
 
+	public void ApplyBackground(string color, float alpha, string image, string overlay)
+	{
+		if (_backgroundImage != null)
+		{
+			if (!string.IsNullOrEmpty(image))
+			{
+				Texture2D texture = ResourceLoader.Load<Texture2D>(image);
+				if (texture != null)
+				{
+					_backgroundImage.Texture = texture;
+					_backgroundImage.Visible = true;
+				}
+			}
+			else if (_backgroundImage.Texture == null)
+			{
+				_backgroundImage.Visible = false;
+			}
+		}
+		if (!string.IsNullOrEmpty(overlay))
+		{
+			_background.Color = NarrativeState.ParseColor(overlay);
+		}
+		else if (!string.IsNullOrEmpty(color))
+		{
+			_background.Color = NarrativeState.ParseColor(color, alpha);
+		}
+	}
+
 	public void SetBackgroundColor(string color)
 	{
-		if (string.IsNullOrEmpty(color)) return;
-		_background.Color = Color.FromHtml(color);
+		ApplyBackground(color, -1f, "", "");
+	}
+
+	public void ApplyAvatar(string path, string position, float scale)
+	{
+		if (_avatarRect == null) return;
+		if (string.IsNullOrEmpty(path))
+		{
+			if (position == "hidden")
+			{
+				HideAvatar();
+			}
+			return;
+		}
+		if (path == "hidden" || position == "hidden")
+		{
+			HideAvatar();
+			return;
+		}
+		Texture2D texture = ResourceLoader.Load<Texture2D>(path);
+		if (texture == null) return;
+		_avatarRect.Texture = texture;
+		_avatarRect.Visible = true;
+		ApplyAvatarPosition(string.IsNullOrEmpty(position) ? "left" : position,
+			scale > 0f ? scale : 1f);
 	}
 
 	public void SetHistory(IReadOnlyList<string> lines)
@@ -188,6 +243,52 @@ public partial class DialogueUIController : CanvasLayer
 			{
 				_debugPanel.Visible = false;
 			}
+			if (_avatarRect != null)
+			{
+				_avatarRect.Visible = false;
+			}
+		}
+	}
+
+	private void ApplyAvatarPosition(string position, float scale)
+	{
+		if (_avatarRect == null) return;
+		float width = 360f * scale;
+		float height = 540f * scale;
+		const float sideGap = 32f;
+		const float bottomGap = 40f;
+		_avatarRect.AnchorTop = 1f;
+		_avatarRect.AnchorBottom = 1f;
+		switch (position)
+		{
+			case "right":
+				_avatarRect.AnchorLeft = 1f;
+				_avatarRect.AnchorRight = 1f;
+				_avatarRect.OffsetLeft = -sideGap - width;
+				_avatarRect.OffsetRight = -sideGap;
+				break;
+			case "center":
+				_avatarRect.AnchorLeft = 0.5f;
+				_avatarRect.AnchorRight = 0.5f;
+				_avatarRect.OffsetLeft = -width * 0.5f;
+				_avatarRect.OffsetRight = width * 0.5f;
+				break;
+			default:
+				_avatarRect.AnchorLeft = 0f;
+				_avatarRect.AnchorRight = 0f;
+				_avatarRect.OffsetLeft = sideGap;
+				_avatarRect.OffsetRight = sideGap + width;
+				break;
+		}
+		_avatarRect.OffsetTop = -bottomGap - height;
+		_avatarRect.OffsetBottom = -bottomGap;
+	}
+
+	private void HideAvatar()
+	{
+		if (_avatarRect != null)
+		{
+			_avatarRect.Visible = false;
 		}
 	}
 

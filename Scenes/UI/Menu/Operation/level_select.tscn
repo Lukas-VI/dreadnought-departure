@@ -31,6 +31,11 @@ text = "选择关卡"
 layout_mode = 2
 size_flags_horizontal = 3
 
+[node name="WatchStoryCheck" type="CheckBox" parent="TopBar"]
+custom_minimum_size = Vector2(180, 46)
+layout_mode = 2
+text = "观看剧情"
+
 [node name="BackButton" type="Button" parent="TopBar" unique_id=908339794]
 custom_minimum_size = Vector2(160, 46)
 layout_mode = 2

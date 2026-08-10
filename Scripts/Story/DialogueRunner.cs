@@ -11,6 +11,10 @@ public partial class DialogueRunner : Node
 	private bool _running;
 	private Timer _waitTimer;
 	private NarrativeStep _waitStep;
+	private string _background = "";
+	private float _backgroundAlpha = 1f;
+	private string _backgroundImage = "";
+	private string _backgroundOverlay = "";
 
 	public NarrativeState State => _state;
 
@@ -32,6 +36,10 @@ public partial class DialogueRunner : Node
 		}
 		_state = state;
 		_running = true;
+		_background = state.Background;
+		_backgroundAlpha = state.BackgroundAlpha;
+		_backgroundImage = state.BackgroundImage;
+		_backgroundOverlay = state.BackgroundOverlay;
 		RenderCurrent();
 	}
 
@@ -45,6 +53,10 @@ public partial class DialogueRunner : Node
 	{
 		if (!_running || _state == null || snapshot == null) return;
 		_state.Restore(snapshot);
+		_background = _state.Background;
+		_backgroundAlpha = _state.BackgroundAlpha;
+		_backgroundImage = _state.BackgroundImage;
+		_backgroundOverlay = _state.BackgroundOverlay;
 		StopWaitTimer();
 		RenderCurrent();
 	}
@@ -79,10 +91,16 @@ public partial class DialogueRunner : Node
 			Finish();
 			return;
 		}
-		if (!string.IsNullOrEmpty(_state.Background))
+		if (!string.IsNullOrEmpty(step.Background) || !string.IsNullOrEmpty(step.BackgroundImage))
 		{
-			_ui.SetBackgroundColor(_state.Background);
+			_background = step.Background;
+			_backgroundAlpha = step.BackgroundAlpha;
+			_backgroundImage = step.BackgroundImage;
+			_backgroundOverlay = step.BackgroundOverlay;
 		}
+		_ui.ApplyBackground(_background, _backgroundAlpha,
+			_backgroundImage, _backgroundOverlay);
+		_ui.ApplyAvatar(step.Avatar, step.AvatarPosition, step.AvatarScale);
 		_ui.SetHistory(_state.History);
 		_ui.ShowDebugState(_state);
 		switch (step.Type)
@@ -107,7 +125,8 @@ public partial class DialogueRunner : Node
 				AdvanceAndRender();
 				break;
 			case "background":
-				_ui.SetBackgroundColor(step.Background);
+				_ui.ApplyBackground(step.Background, step.BackgroundAlpha,
+					step.BackgroundImage, step.BackgroundOverlay);
 				AdvanceAndRender();
 				break;
 			default:

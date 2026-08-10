@@ -21,6 +21,7 @@ public partial class LevelSelectController : Control
 	private HBoxContainer _levelAxis;
 	private Label _statusLabel;
 	private Label _titleLabel;
+	private CheckBox _watchStoryCheck;
 	private readonly SortedDictionary<int, string> _levels = new();
 
 	public override void _Ready()
@@ -31,6 +32,7 @@ public partial class LevelSelectController : Control
 		_titleLabel = GetNode<Label>("TopBar/Title");
 		_levelAxis = GetNode<HBoxContainer>("Body/Box/LevelScroll/LevelAxis");
 		_statusLabel = GetNode<Label>("Body/Box/StatusLabel");
+		_watchStoryCheck = GetNode<CheckBox>("TopBar/WatchStoryCheck");
 		var scrollBackground = GetNodeOrNull<TextureRect>("Body/Box/ScrollBackground");
 		if (scrollBackground != null && ScrollBackgroundTexture != null)
 		{
@@ -38,6 +40,9 @@ public partial class LevelSelectController : Control
 		}
 		GetNode<Button>("TopBar/BackButton").Pressed += () =>
 			GetTree().ChangeSceneToFile(ChapterSelectPath);
+		StorySettings.Load();
+		_watchStoryCheck.ButtonPressed = StorySettings.WatchStory;
+		_watchStoryCheck.Toggled += watch => StorySettings.Save(watch);
 
 		if (string.IsNullOrEmpty(PendingChapter))
 		{

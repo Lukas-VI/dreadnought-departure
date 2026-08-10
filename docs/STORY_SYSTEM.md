@@ -10,27 +10,51 @@
 
 ```json
 {
-  "background": "#0b0f17",
+  "background": { "color": "#0b0f17", "alpha": 0.92 },
   "steps": [
-    { "type": "say", "speaker": "指挥系统", "text": "对话内容" },
+    {
+      "type": "say",
+      "speaker": "指挥系统",
+      "text": "对话内容",
+      "avatar": "res://Ships/Xuefeng/portrait.png",
+      "avatar_position": "left",
+      "avatar_scale": 1.0
+    },
     { "type": "choice", "text": "问题", "options": [
       { "text": "选项 A", "next": 2 },
       { "text": "选项 B", "next": 4 }
     ] },
     { "type": "wait", "seconds": 1 },
     { "type": "flag", "key": "tutorial_done", "value": true },
-    { "type": "background", "color": "#101a2b" }
+    { "type": "background", "background": { "color": "#101a2b", "alpha": 0.85 } }
   ]
 }
 ```
 
 支持步骤：
 
-- `say`：显示说话人与正文
+- `say`：显示说话人与正文；可带 `avatar`（立绘路径）、`avatar_position`（`left` / `center` / `right`，默认 `left`）、`avatar_scale`
 - `choice`：显示选项，`next` 指向步骤下标
 - `wait`：等待秒数
 - `flag`：写入剧情状态
-- `background`：切换背景色
+- `background`：切换背景；`background` 或 `color` 字段支持 `#RGB / #RGBA / #RRGGBB / #RRGGBBAA`
+
+背景可写成对象，用于视觉小说式配置：
+
+```json
+{
+  "background": {
+    "color": "#0e2a45",
+    "alpha": 0.4,
+    "image": "res://Data/Stories/backgrounds/harbor.png",
+    "overlay": "#00000066"
+  }
+}
+```
+
+`color` / `alpha` 控制底色与透明度，`image` 为背景图，`overlay` 为叠加在背景上的遮罩色。
+没有显式给出 `image` 时沿用上一帧背景图，立绘同理：不写 `avatar` 则沿用，写
+`"avatar": "hidden"` 或 `"avatar_position": "hidden"` 可隐藏。
 
 ## 触发器与检查点
 
@@ -42,8 +66,8 @@
 ```json
 {
   "triggers": [
-    { "event": "battle_start", "checkpoint": "story_map_1_started", "script": "battle_start_map_1" },
-    { "event": "special_cell", "key": "1", "checkpoint": "story_special_1", "script": "special_1" }
+    { "event": "battle_start", "checkpoint": "story_00_01_started", "script": "campaign/00/01/start" },
+    { "event": "special_cell", "key": "1", "checkpoint": "story_00_01_turn_seen", "script": "campaign/00/01/turn" }
   ]
 }
 ```
@@ -55,7 +79,9 @@
 - `player_action`：玩家选择操作（`key` 为操作 ID）
 - `special_cell`：舰船进入特殊格（`key` 为 Special 表值）
 
-`checkpoint` 是全局剧情检查点，写入 `user://story_flags.json`。检查点已播放后，即使换关卡也不会重复触发；没有 `checkpoint` 的规则只在当前会话内播放一次。
+`checkpoint` 是全局剧情检查点，写入 `user://story_flags.json`，可供关卡目标与剧情标记使用。
+是否播放由关卡选择界面的“观看剧情”开关决定：勾选时正常播放（已看过的剧情也会在重新进入关卡时再次播放），
+取消勾选时跳过所有剧情触发，便于快速挑战与调试。开关持久化在 `user://story_settings.cfg`。
 `StoryDirector.SetFlag / GetFlag` 可用于更细的剧情条件。
 
 ## 树形剧情索引
@@ -141,6 +167,6 @@ DebugNext() / DebugJump(index)`。
 
 ## 接口入口
 
-- 主菜单“剧情示例”按钮直接播放 `tutorial`
+- 主菜单“剧情示例”按钮直接播放 `tutorial/demo`
 - 战斗内由 `StoryDirector` 监听 `EventBus` 自动触发
 - 任意代码可调用 `StoryDirector.Instance?.Play("script_id")`

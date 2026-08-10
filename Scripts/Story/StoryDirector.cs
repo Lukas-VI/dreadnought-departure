@@ -49,6 +49,7 @@ public partial class StoryDirector : Node
 		AddChild(_runner);
 		_catalog.Scan();
 		_currentMapName = GetNodeOrNull<LevelDataManager>("../LevelDataManager")?.CurrentMapName ?? "";
+		StorySettings.Load();
 		LoadFlags();
 		LoadTriggers();
 		var bus = GetNodeOrNull<EventBus>("../EventBus");
@@ -141,12 +142,12 @@ public partial class StoryDirector : Node
 
 	public void Trigger(string eventName, string key = "")
 	{
+		if (!StorySettings.WatchStory) return;
 		foreach (TriggerRule rule in _triggers)
 		{
 			if (rule.Event != eventName) continue;
 			if (!string.IsNullOrEmpty(rule.Key) && rule.Key != key) continue;
 			if (!string.IsNullOrEmpty(rule.Map) && rule.Map != _currentMapName) continue;
-			if (!string.IsNullOrEmpty(rule.Checkpoint) && GetFlag(rule.Checkpoint)) continue;
 			if (_played.Contains(rule.Script)) continue;
 			Play(rule.Script, rule.Checkpoint);
 			return;

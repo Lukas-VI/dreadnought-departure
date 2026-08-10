@@ -1,4 +1,5 @@
 using Godot;
+using System;
 using System.Collections.Generic;
 using System.Text.Json;
 
@@ -27,6 +28,12 @@ public sealed class NarrativeStep
 	public string Key = "";
 	public bool Value;
 	public string Background = "";
+	public float BackgroundAlpha = 1f;
+	public string BackgroundImage = "";
+	public string BackgroundOverlay = "";
+	public string Avatar = "";
+	public string AvatarPosition = "left";
+	public float AvatarScale = 1f;
 	public List<NarrativeOption> Options = new();
 }
 
@@ -36,6 +43,9 @@ public sealed class NarrativeSnapshot
 	public int Index;
 	public NarrativeStatus Status = NarrativeStatus.Idle;
 	public string Background = "";
+	public float BackgroundAlpha = 1f;
+	public string BackgroundImage = "";
+	public string BackgroundOverlay = "";
 	public List<string> History = new();
 	public Dictionary<string, bool> Flags = new();
 }
@@ -45,6 +55,9 @@ public sealed class NarrativeState
 {
 	public string ScriptId { get; private set; } = "";
 	public string Background { get; private set; } = "";
+	public float BackgroundAlpha { get; private set; } = 1f;
+	public string BackgroundImage { get; private set; } = "";
+	public string BackgroundOverlay { get; private set; } = "";
 	public NarrativeStatus Status { get; private set; } = NarrativeStatus.Idle;
 	public int Index { get; private set; }
 	public List<NarrativeStep> Steps { get; private set; } = new();
@@ -73,7 +86,13 @@ public sealed class NarrativeState
 		JsonElement root = document.RootElement;
 
 		ScriptId = scriptId;
-		Background = Str(root, "background");
+		ParseBackground(root, "background",
+			out string background, out float backgroundAlpha,
+			out string backgroundImage, out string backgroundOverlay);
+		Background = background;
+		BackgroundAlpha = backgroundAlpha;
+		BackgroundImage = backgroundImage;
+		BackgroundOverlay = backgroundOverlay;
 		Index = 0;
 		Status = NarrativeStatus.Playing;
 		Steps = new List<NarrativeStep>();
@@ -153,6 +172,9 @@ public sealed class NarrativeState
 			Background = Background,
 			History = new List<string>(History),
 			Flags = new Dictionary<string, bool>(Flags),
+			BackgroundAlpha = BackgroundAlpha,
+			BackgroundImage = BackgroundImage,
+			BackgroundOverlay = BackgroundOverlay,
 		};
 
 	public void Restore(NarrativeSnapshot snapshot)
@@ -162,6 +184,9 @@ public sealed class NarrativeState
 		Index = snapshot.Index;
 		Status = snapshot.Status;
 		Background = snapshot.Background;
+		BackgroundAlpha = snapshot.BackgroundAlpha;
+		BackgroundImage = snapshot.BackgroundImage;
+		BackgroundOverlay = snapshot.BackgroundOverlay;
 		History.Clear();
 		History.AddRange(snapshot.History);
 		Flags.Clear();
@@ -173,6 +198,9 @@ public sealed class NarrativeState
 
 	private static NarrativeStep ParseStep(JsonElement element)
 	{
+		ParseBackground(element, "color",
+			out string background, out float backgroundAlpha,
+			out string backgroundImage, out string backgroundOverlay);
 		var step = new NarrativeStep
 		{
 			Type = Str(element, "type"),
@@ -184,7 +212,15 @@ public sealed class NarrativeState
 			Key = Str(element, "key"),
 			Value = element.TryGetProperty("value", out JsonElement value)
 				&& value.ValueKind == JsonValueKind.True,
-			Background = Str(element, "color"),
+			Background = background,
+			BackgroundAlpha = backgroundAlpha,
+			BackgroundImage = backgroundImage,
+			BackgroundOverlay = backgroundOverlay,
+			Avatar = Str(element, "avatar"),
+			AvatarPosition = Str(element, "avatar_position"),
+			AvatarScale = element.TryGetProperty("avatar_scale", out JsonElement avatarScale)
+				? avatarScale.GetSingle()
+				: 1f,
 		};
 		if (element.TryGetProperty("options", out JsonElement options))
 		{
@@ -204,4 +240,99 @@ public sealed class NarrativeState
 
 	private static string Str(JsonElement element, string property)
 		=> element.TryGetProperty(property, out JsonElement value) ? value.GetString() ?? "" : "";
+
+	private static void ParseBackground(JsonElement element, string colorKey,
+		out string color, out float alpha, out string image, out string overlay)
+	{
+		color = "";
+		alpha = 1f;
+		image = "";
+		overlay = "";
+		if (element.TryGetProperty("background", out JsonElement background))
+		{
+			if (background.ValueKind == JsonValueKind.String)
+			{
+				color = background.GetString() ?? "";
+			}
+			else if (background.ValueKind == JsonValueKind.Object)
+			{
+				color = Str(background, "color");
+				if (string.IsNullOrEmpty(color))
+				{
+					color = Str(background, "background");
+				}
+				if (background.TryGetProperty("alpha", out JsonElement alphaProp))
+				{
+					alpha = alphaProp.GetSingle();
+				}
+				image = Str(background, "image");
+				overlay = Str(background, "overlay");
+			}
+		}
+		if (string.IsNullOrEmpty(color))
+		{
+			color = Str(element, colorKey);
+		}
+		if (element.TryGetProperty("alpha", out JsonElement stepAlpha))
+		{
+			alpha = stepAlpha.GetSingle();
+		}
+		if (string.IsNullOrEmpty(image))
+		{
+			image = Str(element, "background_image");
+		}
+		if (string.IsNullOrEmpty(overlay))
+		{
+			overlay = Str(element, "background_overlay");
+		}
+	}
+
+	/// <summary>解析 #RGB / #RGBA / #RRGGBB / #RRGGBBAA，alpha 参数可覆盖十六进制末两位。</summary>
+	public static Color ParseColor(string value, float alpha = -1f)
+	{
+		if (string.IsNullOrEmpty(value)) return Colors.White;
+		string hex = value.TrimStart('#');
+		try
+		{
+			if (hex.Length == 8)
+			{
+				float r = Convert.ToInt32(hex.Substring(0, 2), 16) / 255f;
+				float g = Convert.ToInt32(hex.Substring(2, 2), 16) / 255f;
+				float b = Convert.ToInt32(hex.Substring(4, 2), 16) / 255f;
+				float a = alpha >= 0f
+					? alpha
+					: Convert.ToInt32(hex.Substring(6, 2), 16) / 255f;
+				return new Color(r, g, b, a);
+			}
+			if (hex.Length == 6)
+			{
+				float r = Convert.ToInt32(hex.Substring(0, 2), 16) / 255f;
+				float g = Convert.ToInt32(hex.Substring(2, 2), 16) / 255f;
+				float b = Convert.ToInt32(hex.Substring(4, 2), 16) / 255f;
+				return new Color(r, g, b, alpha >= 0f ? alpha : 1f);
+			}
+			if (hex.Length == 4)
+			{
+				float r = Convert.ToInt32(hex[0].ToString(), 16) / 15f;
+				float g = Convert.ToInt32(hex[1].ToString(), 16) / 15f;
+				float b = Convert.ToInt32(hex[2].ToString(), 16) / 15f;
+				float a = alpha >= 0f
+					? alpha
+					: Convert.ToInt32(hex[3].ToString(), 16) / 15f;
+				return new Color(r, g, b, a);
+			}
+			if (hex.Length == 3)
+			{
+				float r = Convert.ToInt32(hex[0].ToString(), 16) / 15f;
+				float g = Convert.ToInt32(hex[1].ToString(), 16) / 15f;
+				float b = Convert.ToInt32(hex[2].ToString(), 16) / 15f;
+				return new Color(r, g, b, alpha >= 0f ? alpha : 1f);
+			}
+		}
+		catch
+		{
+			// 交给 Godot 的 FromHtml 兜底。
+		}
+		return Color.FromHtml(value);
+	}
 }

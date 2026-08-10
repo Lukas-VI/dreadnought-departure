@@ -1339,9 +1339,9 @@ public partial class GameplayDirector : Node
 		Dictionary<Vector2I, List<ShipComponent>> occupiedShips)
 	{
 		int requestedSteps = MoveRulesEvaluator.MovementForPhase(ship.CurrentSpeed, phase, oddTurn);
-		GD.Print($"[MOVE] {ship.ShipName} phase={phase} speed={ship.CurrentSpeed} steps={requestedSteps}");
 		var path = MoveRulesEvaluator.BuildMovePath(ship.HexCoords, ship.Direction, requestedSteps);
 		var moved = ResolveMovePath(ship, path, bus, occupiedShips);
+		GD.Print($"[MOVE] {ship.ShipName} phase={phase} speed={ship.CurrentSpeed} steps={requestedSteps} moved={moved.Count} from={ship.HexCoords}");
 		if (moved.Count <= 0) return 0f;
 
 		Vector2I target = moved[^1].Hex;

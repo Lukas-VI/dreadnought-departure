@@ -165,7 +165,8 @@ public partial class DialogueUIController : CanvasLayer
 		ApplyBackground(color, -1f, "", "");
 	}
 
-	public void ApplyAvatar(string path, string position, float scale)
+	public void ApplyAvatar(string path, string expression, string action,
+		string position, float scale)
 	{
 		if (_avatarRect == null) return;
 		if (string.IsNullOrEmpty(path))
@@ -181,7 +182,8 @@ public partial class DialogueUIController : CanvasLayer
 			HideAvatar();
 			return;
 		}
-		Texture2D texture = ResourceLoader.Load<Texture2D>(path);
+		string resolved = NarrativeState.ResolveAvatarPath(path, expression, action);
+		Texture2D texture = ResourceLoader.Load<Texture2D>(resolved);
 		if (texture == null) return;
 		_avatarRect.Texture = texture;
 		_avatarRect.Visible = true;

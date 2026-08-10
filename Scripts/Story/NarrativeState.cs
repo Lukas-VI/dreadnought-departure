@@ -32,6 +32,8 @@ public sealed class NarrativeStep
 	public string BackgroundImage = "";
 	public string BackgroundOverlay = "";
 	public string Avatar = "";
+	public string AvatarExpression = "";
+	public string AvatarAction = "";
 	public string AvatarPosition = "left";
 	public float AvatarScale = 1f;
 	public List<NarrativeOption> Options = new();
@@ -216,12 +218,8 @@ public sealed class NarrativeState
 			BackgroundAlpha = backgroundAlpha,
 			BackgroundImage = backgroundImage,
 			BackgroundOverlay = backgroundOverlay,
-			Avatar = Str(element, "avatar"),
-			AvatarPosition = Str(element, "avatar_position"),
-			AvatarScale = element.TryGetProperty("avatar_scale", out JsonElement avatarScale)
-				? avatarScale.GetSingle()
-				: 1f,
 		};
+		ParseAvatar(element, step);
 		if (element.TryGetProperty("options", out JsonElement options))
 		{
 			foreach (JsonElement option in options.EnumerateArray())
@@ -240,6 +238,130 @@ public sealed class NarrativeState
 
 	private static string Str(JsonElement element, string property)
 		=> element.TryGetProperty(property, out JsonElement value) ? value.GetString() ?? "" : "";
+
+	private static void ParseAvatar(JsonElement element, NarrativeStep step)
+	{
+		step.Avatar = "";
+		step.AvatarExpression = "";
+		step.AvatarAction = "";
+		step.AvatarPosition = "left";
+		step.AvatarScale = 1f;
+		if (element.TryGetProperty("avatar", out JsonElement avatar))
+		{
+			if (avatar.ValueKind == JsonValueKind.String)
+			{
+				step.Avatar = avatar.GetString() ?? "";
+			}
+			else if (avatar.ValueKind == JsonValueKind.Object)
+			{
+				step.Avatar = Str(avatar, "path");
+				if (string.IsNullOrEmpty(step.Avatar))
+				{
+					step.Avatar = Str(avatar, "src");
+				}
+				step.AvatarExpression = Str(avatar, "expression");
+				step.AvatarAction = Str(avatar, "action");
+				if (string.IsNullOrEmpty(step.AvatarAction))
+				{
+					step.AvatarAction = Str(avatar, "pose");
+				}
+				step.AvatarPosition = Str(avatar, "position");
+				step.AvatarScale = avatar.TryGetProperty("scale", out JsonElement scale)
+					? scale.GetSingle()
+					: 1f;
+			}
+		}
+		string expression = Str(element, "avatar_expression");
+		if (!string.IsNullOrEmpty(expression))
+		{
+			step.AvatarExpression = expression;
+		}
+		string action = Str(element, "avatar_action");
+		if (string.IsNullOrEmpty(action))
+		{
+			action = Str(element, "avatar_pose");
+		}
+		if (!string.IsNullOrEmpty(action))
+		{
+			step.AvatarAction = action;
+		}
+		string position = Str(element, "avatar_position");
+		if (!string.IsNullOrEmpty(position))
+		{
+			step.AvatarPosition = position;
+		}
+		if (element.TryGetProperty("avatar_scale", out JsonElement avatarScale))
+		{
+			step.AvatarScale = avatarScale.GetSingle();
+		}
+	}
+
+	/// <summary>
+	/// 解析立绘差分路径。basePath 可含 {expression} / {action} / {pose} 占位符；
+	/// 否则按 base_表情_动作、base_表情、base_动作 的顺序尝试候选文件。
+	/// </summary>
+	public static string ResolveAvatarPath(string basePath, string expression, string action)
+	{
+		if (string.IsNullOrEmpty(basePath)) return "";
+		string safeExpression = string.IsNullOrEmpty(expression) ? "default" : expression;
+		string safeAction = string.IsNullOrEmpty(action) ? "default" : action;
+		string path = basePath;
+		if (path.Contains("{expression}"))
+		{
+			path = path.Replace("{expression}", safeExpression);
+		}
+		if (path.Contains("{action}"))
+		{
+			path = path.Replace("{action}", safeAction);
+		}
+		if (path.Contains("{pose}"))
+		{
+			path = path.Replace("{pose}", safeAction);
+		}
+		if (FileAccess.FileExists(path)) return path;
+
+		string extension = System.IO.Path.GetExtension(basePath);
+		if (string.IsNullOrEmpty(extension))
+		{
+			extension = ".png";
+		}
+		string noExtension = basePath.EndsWith(extension, StringComparison.OrdinalIgnoreCase)
+			? basePath.Substring(0, basePath.Length - extension.Length)
+			: basePath;
+		var candidates = new List<string>();
+		if (!string.IsNullOrEmpty(expression) && !string.IsNullOrEmpty(action))
+		{
+			candidates.Add($"{noExtension}_{expression}_{action}{extension}");
+		}
+		if (!string.IsNullOrEmpty(expression))
+		{
+			candidates.Add($"{noExtension}_{expression}{extension}");
+		}
+		if (!string.IsNullOrEmpty(action))
+		{
+			candidates.Add($"{noExtension}_{action}{extension}");
+		}
+		if (!string.IsNullOrEmpty(expression) && !string.IsNullOrEmpty(action))
+		{
+			candidates.Add($"{noExtension}/{expression}/{action}{extension}");
+		}
+		if (!string.IsNullOrEmpty(expression))
+		{
+			candidates.Add($"{noExtension}/{expression}{extension}");
+		}
+		if (!string.IsNullOrEmpty(action))
+		{
+			candidates.Add($"{noExtension}/{action}{extension}");
+		}
+		foreach (string candidate in candidates)
+		{
+			if (FileAccess.FileExists(candidate))
+			{
+				return candidate;
+			}
+		}
+		return basePath;
+	}
 
 	private static void ParseBackground(JsonElement element, string colorKey,
 		out string color, out float alpha, out string image, out string overlay)

@@ -16,9 +16,13 @@
       "type": "say",
       "speaker": "指挥系统",
       "text": "对话内容",
-      "avatar": "res://Ships/Xuefeng/portrait.png",
-      "avatar_position": "left",
-      "avatar_scale": 1.0
+      "avatar": {
+        "path": "res://Ships/Xuefeng/portrait.png",
+        "expression": "smile",
+        "action": "wave",
+        "position": "left",
+        "scale": 1.0
+      }
     },
     { "type": "choice", "text": "问题", "options": [
       { "text": "选项 A", "next": 2 },
@@ -33,11 +37,30 @@
 
 支持步骤：
 
-- `say`：显示说话人与正文；可带 `avatar`（立绘路径）、`avatar_position`（`left` / `center` / `right`，默认 `left`）、`avatar_scale`
+- `say`：显示说话人与正文；可带 `avatar`（立绘路径或对象）、`avatar_position`（`left` / `center` / `right`，默认 `left`）、`avatar_scale`
 - `choice`：显示选项，`next` 指向步骤下标
 - `wait`：等待秒数
 - `flag`：写入剧情状态
 - `background`：切换背景；`background` 或 `color` 字段支持 `#RGB / #RGBA / #RRGGBB / #RRGGBBAA`
+
+立绘支持表情/动作差分，适合视觉小说演出。对象写法：
+
+```json
+{
+  "avatar": {
+    "path": "res://Ships/Xuefeng/portrait.png",
+    "expression": "smile",
+    "action": "wave",
+    "position": "left",
+    "scale": 1.0
+  }
+}
+```
+
+也可以拆成顶层字段：`avatar`、`avatar_expression`、`avatar_action`（或 `avatar_pose`）、
+`avatar_position`、`avatar_scale`。路径中可使用 `{expression}` / `{action}` / `{pose}`
+占位符；没有占位符时会依次尝试 `portrait_smile_wave.png`、`portrait_smile.png`、
+`portrait_wave.png`，以及 `portrait/smile/wave.png` 这类目录结构，都找不到时回退到原路径。
 
 背景可写成对象，用于视觉小说式配置：
 

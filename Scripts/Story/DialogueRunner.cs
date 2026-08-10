@@ -100,7 +100,8 @@ public partial class DialogueRunner : Node
 		}
 		_ui.ApplyBackground(_background, _backgroundAlpha,
 			_backgroundImage, _backgroundOverlay);
-		_ui.ApplyAvatar(step.Avatar, step.AvatarPosition, step.AvatarScale);
+		_ui.ApplyAvatar(step.Avatar, step.AvatarExpression,
+			step.AvatarAction, step.AvatarPosition, step.AvatarScale);
 		_ui.SetHistory(_state.History);
 		_ui.ShowDebugState(_state);
 		switch (step.Type)

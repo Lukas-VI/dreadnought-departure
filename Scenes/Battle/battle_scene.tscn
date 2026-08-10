@@ -3,10 +3,10 @@
 [ext_resource type="Script" uid="uid://t0ut6lqf525k" path="res://Scripts/Battle/GameplayDirector.cs" id="1_n1ain"]
 [ext_resource type="Script" uid="uid://dawuehorafwc5" path="res://Scripts/Map/MapGenerator.cs" id="2_4pmf7"]
 [ext_resource type="Script" uid="uid://dtc3mmrwqnl2g" path="res://Scripts/Data/EventBus.cs" id="2_fm2jp"]
-[ext_resource type="PackedScene" uid="uid://dmw6svokdbmnb" path="res://Scenes/Map/Tile/hex_tile_3d.tscn" id="3_q177b"]
-[ext_resource type="Material" uid="uid://b7vgiow7ycwsc" path="res://Data/Materials/overlay/mat_null.tres" id="4_2oujk"]
-[ext_resource type="PackedScene" uid="uid://bex2b3xfbwap" path="res://Scenes/Map/Tile/Prefab/hex_tile_island.tscn" id="5_fm2jp"]
-[ext_resource type="PackedScene" uid="uid://dc8nvge070lfk" path="res://Scenes/Map/Tile/Prefab/hex_tile_ocean.tscn" id="6_swwb8"]
+[ext_resource type="PackedScene" uid="uid://dmw6svokdbmnb" path="res://Scenes/Map/Tile/Prefab/HexTile3D/hex_tile_3d.tscn" id="3_q177b"]
+[ext_resource type="Material" uid="uid://b7vgiow7ycwsc" path="res://Data/Materials/mat_null.tres" id="4_2oujk"]
+[ext_resource type="PackedScene" uid="uid://bex2b3xfbwap" path="res://Scenes/Map/Tile/Prefab/HexTile3D/Terrain/hex_tile_island.tscn" id="5_fm2jp"]
+[ext_resource type="PackedScene" uid="uid://dc8nvge070lfk" path="res://Scenes/Map/Tile/Prefab/HexTile3D/Terrain/hex_tile_ocean.tscn" id="6_swwb8"]
 [ext_resource type="PackedScene" uid="uid://d1k2bwwbi4fan" path="res://Ships/BaseShip/ship_3d.tscn" id="8_2oujk"]
 [ext_resource type="Script" uid="uid://cptk3rxv2h7h3" path="res://Scripts/Camera/GameplayCameraController.cs" id="10_d4k4i"]
 [ext_resource type="Script" uid="uid://bud8bdtieoq8k" path="res://Scripts/Map/LevelDataManager.cs" id="11_ansb3"]
@@ -21,7 +21,7 @@
 [ext_resource type="Script" uid="uid://cbismcaqkvgj1" path="res://Scripts/Battle/BattleShipOverlayController.cs" id="18_overlay"]
 [ext_resource type="Texture2D" uid="uid://dkxjjvgf6gemw" path="res://assets/texture/Emotions/emote_alert.png" id="19_flag"]
 [ext_resource type="PackedScene" uid="uid://brj4gpw3mqqgl" path="res://Scenes/UI/Gameplay/BattleUI.tscn" id="21_fm2jp"]
-[ext_resource type="PackedScene" path="res://Scenes/UI/Menu/GameplayMenu/pause_menu.tscn" id="22_psmn"]
+[ext_resource type="PackedScene" uid="uid://j175w4lbwxf7" path="res://Scenes/UI/Menu/GameplayMenu/pause_menu.tscn" id="22_psmn"]
 
 [sub_resource type="Environment" id="Environment_ae8na"]
 background_mode = 1
@@ -47,8 +47,6 @@ _bundled = {
 "variants": [SubResource("CylinderMesh_omno1"), ExtResource("4_2oujk")],
 "version": 3
 }
-
-[sub_resource type="CapsuleMesh" id="CapsuleMesh_4dugh"]
 
 [node name="GameplayDirector" type="Node3D" unique_id=1201600104]
 script = ExtResource("1_n1ain")
@@ -108,13 +106,8 @@ script = ExtResource("17_f4hcl")
 [node name="PlayerController" type="Node" parent="." unique_id=620793671]
 script = ExtResource("16_swwb8")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=111098748]
-transform = Transform3D(3, 0, 0, 0, 3, 0, 0, 0, 3, 0, 28.324013, 0)
-mesh = SubResource("CapsuleMesh_4dugh")
-
 [node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=749103061]
 
 [node name="BattleUI" parent="CanvasLayer" unique_id=226437474 instance=ExtResource("21_fm2jp")]
 
 [node name="PauseMenu" parent="CanvasLayer" unique_id=459312885 instance=ExtResource("22_psmn")]
-layout_mode = 3

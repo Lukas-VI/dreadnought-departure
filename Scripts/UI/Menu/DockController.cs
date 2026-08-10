@@ -14,6 +14,7 @@ public partial class DockController : Control
 	private ShipCatalog.Entry[] _entries;
 	private int _index;
 	private Label _titleLabel;
+	private Label _nameLabel;
 	private Label _infoLabel;
 	private Label _statusLabel;
 	private TextureRect _portrait;
@@ -30,7 +31,8 @@ public partial class DockController : Control
 
 	private void Initialize()
 	{
-		_titleLabel = GetNode<Label>("Content/HBox/LeftPanel/Margin/VBox/TitleLabel");
+		_titleLabel = GetNode<Label>("TopBar/Margin/HBox/TitleLabel");
+		_nameLabel = GetNode<Label>("Content/HBox/LeftPanel/Margin/VBox/NameLabel");
 		_infoLabel = GetNode<Label>("Content/HBox/LeftPanel/Margin/VBox/InfoScroll/InfoLabel");
 		_statusLabel = GetNode<Label>("BottomBar/Margin/HBox/StatusLabel");
 		_portrait = GetNode<TextureRect>("Content/HBox/PortraitArea/HBox/PortraitCenter/PortraitBox/PortraitTexture");
@@ -47,7 +49,7 @@ public partial class DockController : Control
 	{
 		if (_entries == null || _entries.Length == 0)
 		{
-			_titleLabel.Text = "船坞";
+			_nameLabel.Text = "船坞";
 			_infoLabel.Text = "暂无角色数据";
 			return;
 		}
@@ -55,7 +57,8 @@ public partial class DockController : Control
 		_index = (_index + _entries.Length) % _entries.Length;
 		var entry = _entries[_index];
 		var data = entry.Data;
-		_titleLabel.Text = $"船坞 {_index + 1}/{_entries.Length} · {entry.DisplayName}";
+		_titleLabel.Text = $"船坞 {_index + 1}/{_entries.Length} ·";
+		_nameLabel.Text = $"{entry.DisplayName}";
 		_portrait.Texture = data?.Portrait;
 		_portrait.Visible = data?.Portrait != null;
 		_placeholderLabel.Visible = data?.Portrait == null;

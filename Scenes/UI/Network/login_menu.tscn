@@ -1,8 +1,8 @@
-[gd_scene format=3 uid="uid://loginmenu00001"]
+[gd_scene format=3 uid="uid://bxpmmqqojsh8k"]
 
-[ext_resource type="Script" uid="uid://pvplogin000001" path="res://Scripts/UI/Network/LoginMenuController.cs" id="1_login"]
+[ext_resource type="Script" uid="uid://b7pgmrqinb37a" path="res://Scripts/UI/Network/LoginMenuController.cs" id="1_login"]
 
-[node name="LoginMenuController" type="Control"]
+[node name="LoginMenuController" type="Control" unique_id=820497330]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0

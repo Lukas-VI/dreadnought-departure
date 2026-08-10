@@ -1,0 +1,7 @@
+[gd_scene format=3 uid="uid://otuc7eaj53lx"]
+
+[ext_resource type="PackedScene" uid="uid://bgyeofq61v5u2" path="res://assets/Model/overlay/attack_side.blend" id="1_5ltki"]
+
+[node name="AttackSide" type="Node3D" unique_id=867284105]
+
+[node name="attack_side" parent="." unique_id=1454830796 instance=ExtResource("1_5ltki")]

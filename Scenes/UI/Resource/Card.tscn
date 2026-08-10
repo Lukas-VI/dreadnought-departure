@@ -1,0 +1,52 @@
+[gd_scene format=3 uid="uid://bbc00v3givrj0"]
+
+[node name="Card" type="Control" unique_id=1889599941]
+layout_mode = 3
+anchors_preset = 0
+
+[node name="MarginContainer" type="MarginContainer" parent="." unique_id=971875812]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -204.5
+offset_right = 204.5
+offset_bottom = 214.0
+grow_horizontal = 2
+theme_override_constants/margin_left = 4
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_right = 4
+theme_override_constants/margin_bottom = 4
+
+[node name="PanelContainer" type="PanelContainer" parent="MarginContainer" unique_id=1966170472]
+custom_minimum_size = Vector2(200, 100)
+layout_mode = 2
+
+[node name="HBoxContainer" type="VBoxContainer" parent="MarginContainer/PanelContainer" unique_id=482326836]
+layout_mode = 2
+
+[node name="VBoxContainer" type="HBoxContainer" parent="MarginContainer/PanelContainer/HBoxContainer" unique_id=319161476]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="MarginContainer/PanelContainer/HBoxContainer/VBoxContainer" unique_id=127686289]
+layout_mode = 2
+text = "Type"
+
+[node name="Control" type="Control" parent="MarginContainer/PanelContainer/HBoxContainer/VBoxContainer" unique_id=43718160]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Label2" type="Label" parent="MarginContainer/PanelContainer/HBoxContainer/VBoxContainer" unique_id=826216487]
+layout_mode = 2
+text = "0-0-0"
+
+[node name="TextureRect" type="TextureRect" parent="MarginContainer/PanelContainer/HBoxContainer" unique_id=1953458251]
+custom_minimum_size = Vector2(128, 72)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="Label" type="Label" parent="MarginContainer/PanelContainer/HBoxContainer" unique_id=291505275]
+layout_mode = 2
+text = "Name"
+horizontal_alignment = 1

@@ -1,0 +1,8 @@
+{
+  "background": "#173f2e",
+  "steps": [
+    { "type": "say", "speaker": "？？？", "text": "到啦～海风真舒服，任务完成！" },
+    { "type": "say", "speaker": "调度", "text": "很好，看到你服学役时的知识没有完全丢掉，真是令人欣慰。" },
+    { "type": "flag", "key": "level_00_01_arrived", "value": true }
+  ]
+}

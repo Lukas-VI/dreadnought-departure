@@ -1,8 +1,8 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=3 uid="uid://bybu8trbv48xb"]
 
-[ext_resource type="Script" path="res://Scripts/UI/Network/NetworkCenterController.cs" id="1_center"]
+[ext_resource type="Script" uid="uid://bfkw0l1xiobm6" path="res://Scripts/UI/Network/NetworkCenterController.cs" id="1_center"]
 
-[node name="NetworkCenterController" type="Control"]
+[node name="NetworkCenterController" type="Control" unique_id=1179078666]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0

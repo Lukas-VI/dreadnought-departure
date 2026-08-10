@@ -1,8 +1,8 @@
-[gd_scene format=3 uid="uid://pvpbatmenu0001"]
+[gd_scene format=3 uid="uid://b7e10vg5ib37a"]
 
-[ext_resource type="Script" uid="uid://pvpbattle000001" path="res://Scripts/UI/Network/PvpBattleMenuController.cs" id="1_battle"]
+[ext_resource type="Script" uid="uid://o372padpocd1" path="res://Scripts/UI/Network/PvpBattleMenuController.cs" id="1_battle"]
 
-[node name="PvpBattleMenuController" type="Control"]
+[node name="PvpBattleMenuController" type="Control" unique_id=971099780]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0

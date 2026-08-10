@@ -1,16 +1,7 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene format=3 uid="uid://b6xoia8nn373e"]
 
-[sub_resource type="CylinderMesh" id="CylinderMesh_hazard"]
-top_radius = 1.2
-bottom_radius = 1.2
-height = 0.08
-radial_segments = 6
+[ext_resource type="PackedScene" uid="uid://dlito3qnlloyk" path="res://assets/Model/overlay/hazard.blend" id="1_nhxwh"]
 
-[sub_resource type="StandardMaterial3D" id="Material_hazard"]
-albedo_color = Color(0.95, 0.45, 0.15, 0.85)
+[node name="SpecialHazard" type="Node3D" unique_id=1598375243]
 
-[node name="SpecialHazard" type="Node3D"]
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
-mesh = SubResource("CylinderMesh_hazard")
-surface_material_override/0 = SubResource("Material_hazard")
+[node name="hazard" parent="." unique_id=422590637 instance=ExtResource("1_nhxwh")]

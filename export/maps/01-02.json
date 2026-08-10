@@ -20,7 +20,7 @@
   "Generation": { "0,0": { "SourceId": 2, "Side": 0 }, "-2,0": { "SourceId": 2, "Side": 1 } },
   "Special": {},
   "Ships": {
-    "0,0": [{ "ShipId": "frigate", "Direction": 1, "Speed": 2 }],
-    "-2,0": [{ "ShipId": "frigate", "Direction": 4, "Speed": 2 }]
+	"0,0": [{ "ShipId": "frigate", "Direction": 1, "Speed": 2 }],
+	"-2,0": [{ "ShipId": "frigate", "Direction": 4, "Speed": 2 }]
   }
 }

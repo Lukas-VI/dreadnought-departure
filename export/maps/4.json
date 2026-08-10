@@ -1,7 +1,7 @@
 {
-  "Name": "2",
+  "Name": "4",
   "MapType": "day",
-  "Orientation": "ew",
+  "Orientation": "ns",
   "PlayerCommand": 5,
   "EnemyCommand": 4,
   "PlayerInitialCP": 8,
@@ -12,7 +12,7 @@
   "TorpedoModePlayer": 7,
   "TorpedoModeEnemy": 4,
   "MaxTurns": 18,
-  "TorpedoPhaseEnabled": false,
+  "TorpedoPhaseEnabled": true,
   "PhaseSecondsPerShip": [
     5,
     5,
@@ -26,56 +26,61 @@
   "PhaseExtraSeconds": 5,
   "Version": 3,
   "Terrain": {
-    "-1,-1": 2,
-    "-1,0": 2,
-    "-1,1": 2,
+    "-3,0": 2,
+    "-3,1": 2,
+    "-3,2": 2,
+    "-3,3": 2,
+    "-2,3": 2,
     "-1,2": 2,
-    "0,1": 2,
-    "0,0": 2,
-    "0,-1": 2,
-    "0,-2": 2,
-    "1,-1": 2,
-    "1,0": 2,
+    "0,2": 2,
     "1,1": 2,
-    "1,2": 2,
+    "2,1": 2,
+    "2,0": 2,
+    "2,-1": 2,
+    "2,-2": 2,
+    "2,-3": 2,
     "1,-2": 2,
+    "0,-2": 2,
+    "-1,-1": 2,
+    "-2,-1": 2,
     "-2,0": 2,
     "-2,1": 2,
     "-2,2": 2,
-    "-2,3": 2,
-    "-2,4": 2,
-    "-1,3": 2,
-    "0,3": 2,
-    "0,2": 2,
-    "2,-2": 2,
-    "2,-1": 2,
-    "2,0": 2,
-    "2,1": 2,
-    "2,2": 2
+    "-1,1": 2,
+    "-1,0": 2,
+    "0,1": 2,
+    "0,0": 2,
+    "0,-1": 2,
+    "1,0": 2,
+    "1,-1": 2,
+    "3,-3": 2,
+    "3,-2": 2,
+    "3,-1": 2,
+    "3,0": 2
   },
   "Generation": {
-    "0,-1": {
-      "Side": 0,
-      "SourceId": 6
-    },
     "0,2": {
       "Side": 1,
       "SourceId": 4
+    },
+    "-2,0": {
+      "Side": 0,
+      "SourceId": 6
     }
   },
   "Special": {},
   "Ships": {
-    "0,2": [
+    "-2,0": [
       {
-        "ShipId": "frigate",
+        "ShipId": "dreadnought",
         "Direction": 0,
         "Speed": 0
       }
     ],
-    "0,-1": [
+    "0,2": [
       {
-        "ShipId": "cruiser",
-        "Direction": 2,
+        "ShipId": "frigate",
+        "Direction": 0,
         "Speed": 0
       }
     ]

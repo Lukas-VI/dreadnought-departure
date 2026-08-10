@@ -1,0 +1,7 @@
+[gd_scene format=3 uid="uid://dstr2f1hh4amc"]
+
+[ext_resource type="PackedScene" uid="uid://ch6aet6odnb17" path="res://assets/Model/overlay/attack_behindNfront.blend" id="1_506ft"]
+
+[node name="AttackBehindFront" type="Node3D" unique_id=491547246]
+
+[node name="attack_behindNfront" parent="." unique_id=304789087 instance=ExtResource("1_506ft")]

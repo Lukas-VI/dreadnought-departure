@@ -1,16 +1,7 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene format=3 uid="uid://c5a1ixrb3cj0b"]
 
-[sub_resource type="CylinderMesh" id="CylinderMesh_objective"]
-top_radius = 1.2
-bottom_radius = 1.2
-height = 0.08
-radial_segments = 6
+[ext_resource type="PackedScene" uid="uid://c02tc5nyymbxl" path="res://assets/Model/overlay/objective.blend" id="1_ru1kb"]
 
-[sub_resource type="StandardMaterial3D" id="Material_objective"]
-albedo_color = Color(0.55, 0.35, 0.95, 0.85)
+[node name="SpecialObjective" type="Node3D" unique_id=1705477735]
 
-[node name="SpecialObjective" type="Node3D"]
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
-mesh = SubResource("CylinderMesh_objective")
-surface_material_override/0 = SubResource("Material_objective")
+[node name="objective" parent="." unique_id=2113105820 instance=ExtResource("1_ru1kb")]

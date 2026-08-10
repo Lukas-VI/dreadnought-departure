@@ -1,16 +1,7 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene format=3 uid="uid://cc5625isshe0x"]
 
-[sub_resource type="CylinderMesh" id="CylinderMesh_encounter"]
-top_radius = 1.2
-bottom_radius = 1.2
-height = 0.08
-radial_segments = 6
+[ext_resource type="PackedScene" uid="uid://dsjbwytvade7u" path="res://assets/Model/overlay/encounter.blend" id="1_x3ix6"]
 
-[sub_resource type="StandardMaterial3D" id="Material_encounter"]
-albedo_color = Color(0.9, 0.25, 0.25, 0.85)
+[node name="SpecialEncounter" type="Node3D" unique_id=1896347312]
 
-[node name="SpecialEncounter" type="Node3D"]
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
-mesh = SubResource("CylinderMesh_encounter")
-surface_material_override/0 = SubResource("Material_encounter")
+[node name="encounter" parent="." unique_id=1937555144 instance=ExtResource("1_x3ix6")]

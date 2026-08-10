@@ -1,6 +1,10 @@
 [gd_scene format=3 uid="uid://bvp0i6as3fukw"]
 
 [ext_resource type="Script" uid="uid://dock000000000" path="res://Scripts/UI/Menu/DockController.cs" id="1_dock"]
+[ext_resource type="PackedScene" uid="uid://bbc00v3givrj0" path="res://Scenes/UI/Resource/Card.tscn" id="2_8dml2"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_jmju5"]
+font_size = 32
 
 [node name="DockController" type="Control" unique_id=1511064083]
 layout_mode = 3
@@ -34,6 +38,11 @@ custom_minimum_size = Vector2(96, 40)
 layout_mode = 2
 text = "退出"
 
+[node name="TitleLabel" type="Label" parent="TopBar/Margin/HBox" unique_id=1478101606]
+custom_minimum_size = Vector2(128, 0)
+layout_mode = 2
+label_settings = SubResource("LabelSettings_jmju5")
+
 [node name="Spacer" type="Control" parent="TopBar/Margin/HBox" unique_id=1134332462]
 layout_mode = 2
 size_flags_horizontal = 3
@@ -58,8 +67,7 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_top = 72.0
-offset_bottom = -72.0
+offset_top = 74.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/margin_left = 16
@@ -86,7 +94,7 @@ theme_override_constants/margin_bottom = 14
 layout_mode = 2
 theme_override_constants/separation = 10
 
-[node name="TitleLabel" type="Label" parent="Content/HBox/LeftPanel/Margin/VBox" unique_id=405545193]
+[node name="NameLabel" type="Label" parent="Content/HBox/LeftPanel/Margin/VBox" unique_id=405545193]
 layout_mode = 2
 theme_override_font_sizes/font_size = 26
 text = "信息"
@@ -102,6 +110,10 @@ custom_minimum_size = Vector2(500, 0)
 layout_mode = 2
 theme_override_font_sizes/font_size = 17
 autowrap_mode = 2
+
+[node name="Card" parent="Content/HBox/LeftPanel/Margin/VBox" unique_id=1968232421 instance=ExtResource("2_8dml2")]
+layout_mode = 2
+size_flags_vertical = 6
 
 [node name="PortraitArea" type="PanelContainer" parent="Content/HBox" unique_id=1607170813]
 layout_mode = 2
@@ -126,7 +138,7 @@ layout_mode = 2
 theme_override_constants/separation = 8
 
 [node name="PortraitTexture" type="TextureRect" parent="Content/HBox/PortraitArea/HBox/PortraitCenter/PortraitBox" unique_id=1726722527]
-custom_minimum_size = Vector2(520, 620)
+custom_minimum_size = Vector2(740, 740)
 layout_mode = 2
 expand_mode = 1
 stretch_mode = 5
@@ -143,32 +155,7 @@ layout_mode = 2
 size_flags_vertical = 4
 text = " ▶"
 
-[node name="BottomBar" type="PanelContainer" parent="." unique_id=975021539]
-layout_mode = 1
-anchors_preset = 12
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_top = -64.0
-grow_horizontal = 2
-grow_vertical = 0
-
-[node name="Margin" type="MarginContainer" parent="BottomBar" unique_id=878879346]
-layout_mode = 2
-theme_override_constants/margin_left = 14
-theme_override_constants/margin_top = 10
-theme_override_constants/margin_right = 14
-theme_override_constants/margin_bottom = 10
-
-[node name="HBox" type="HBoxContainer" parent="BottomBar/Margin" unique_id=186164326]
-layout_mode = 2
-
-[node name="StatusLabel" type="Label" parent="BottomBar/Margin/HBox" unique_id=1269930178]
-layout_mode = 2
-theme_override_font_sizes/font_size = 18
-text = "底部栏占位"
-
-[node name="AppreciationOverlay" type="ColorRect" parent="."]
+[node name="AppreciationOverlay" type="ColorRect" parent="." unique_id=1116637003]
 visible = false
 layout_mode = 1
 anchors_preset = 15
@@ -178,7 +165,7 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0, 0, 0, 0.92)
 
-[node name="Center" type="CenterContainer" parent="AppreciationOverlay"]
+[node name="Center" type="CenterContainer" parent="AppreciationOverlay" unique_id=707084301]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -186,23 +173,23 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="PortraitBox" type="VBoxContainer" parent="AppreciationOverlay/Center"]
+[node name="PortraitBox" type="VBoxContainer" parent="AppreciationOverlay/Center" unique_id=2124723224]
 layout_mode = 2
 theme_override_constants/separation = 10
 
-[node name="PortraitTexture" type="TextureRect" parent="AppreciationOverlay/Center/PortraitBox"]
+[node name="PortraitTexture" type="TextureRect" parent="AppreciationOverlay/Center/PortraitBox" unique_id=1678966338]
 custom_minimum_size = Vector2(760, 880)
 layout_mode = 2
 expand_mode = 1
 stretch_mode = 5
 
-[node name="PlaceholderLabel" type="Label" parent="AppreciationOverlay/Center/PortraitBox"]
+[node name="PlaceholderLabel" type="Label" parent="AppreciationOverlay/Center/PortraitBox" unique_id=1878322214]
 layout_mode = 2
 theme_override_font_sizes/font_size = 28
 text = "暂无立绘"
 horizontal_alignment = 1
 
-[node name="ReturnButton" type="Button" parent="AppreciationOverlay"]
+[node name="ReturnButton" type="Button" parent="AppreciationOverlay" unique_id=2100562909]
 layout_mode = 1
 offset_left = 16.0
 offset_top = 16.0
@@ -214,6 +201,6 @@ text = "退出鉴赏"
 [connection signal="pressed" from="TopBar/Margin/HBox/CodexButton" to="." method="_OnCodexPressed"]
 [connection signal="pressed" from="TopBar/Margin/HBox/CampButton" to="." method="_OnCampPressed"]
 [connection signal="pressed" from="TopBar/Margin/HBox/AppreciationButton" to="." method="_OnAppreciationPressed"]
-[connection signal="pressed" from="AppreciationOverlay/ReturnButton" to="." method="_OnAppreciationReturnPressed"]
 [connection signal="pressed" from="Content/HBox/PortraitArea/HBox/PrevButton" to="." method="_OnPrevPressed"]
 [connection signal="pressed" from="Content/HBox/PortraitArea/HBox/NextButton" to="." method="_OnNextPressed"]
+[connection signal="pressed" from="AppreciationOverlay/ReturnButton" to="." method="_OnAppreciationReturnPressed"]

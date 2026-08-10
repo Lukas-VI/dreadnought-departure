@@ -6,7 +6,6 @@
 [ext_resource type="Script" uid="uid://ex1bpn7yk4f1" path="res://Scripts/UI/Gameplay/PhaseActionMenu.cs" id="4_utuhh"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_t3eps"]
-font_size = 32
 
 [sub_resource type="LabelSettings" id="LabelSettings_vwq26"]
 font_size = 32
@@ -36,10 +35,9 @@ layout_mode = 1
 anchors_preset = 5
 anchor_left = 0.5
 anchor_right = 0.5
-offset_left = -280.0
-offset_top = 8.0
-offset_right = 280.0
-offset_bottom = 92.0
+offset_left = -100.0
+offset_right = 100.0
+offset_bottom = 84.0
 grow_horizontal = 2
 
 [node name="Box" type="VBoxContainer" parent="TopCenterPanel" unique_id=1811992302]
@@ -57,12 +55,11 @@ layout_mode = 1
 anchors_preset = 4
 anchor_top = 0.5
 anchor_bottom = 0.5
-offset_left = 16.0
-offset_top = -124.0
-offset_right = 144.0
-offset_bottom = 132.0
+offset_top = -128.0
+offset_right = 200.0
+offset_bottom = 128.0
 grow_vertical = 2
-theme_override_constants/margin_left = 8
+theme_override_constants/margin_left = 16
 theme_override_constants/margin_top = 8
 theme_override_constants/margin_right = 8
 theme_override_constants/margin_bottom = 8
@@ -74,9 +71,10 @@ theme_override_constants/separation = 8
 [node name="PlayerTitle" type="Label" parent="LeftPanel/Box" unique_id=1811992004]
 layout_mode = 2
 theme_override_font_sizes/font_size = 18
-text = "我方舰船"
+text = "编成"
 
 [node name="PlayerScroll" type="ScrollContainer" parent="LeftPanel/Box" unique_id=1811992005]
+custom_minimum_size = Vector2(0, 400)
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
@@ -94,15 +92,14 @@ anchor_left = 1.0
 anchor_top = 0.5
 anchor_right = 1.0
 anchor_bottom = 0.5
-offset_left = -168.0
-offset_top = -148.0
-offset_right = -40.0
-offset_bottom = 108.0
+offset_left = -200.0
+offset_top = -128.0
+offset_bottom = 128.0
 grow_horizontal = 0
 grow_vertical = 2
 theme_override_constants/margin_left = 8
 theme_override_constants/margin_top = 8
-theme_override_constants/margin_right = 8
+theme_override_constants/margin_right = 16
 theme_override_constants/margin_bottom = 8
 
 [node name="Box" type="VBoxContainer" parent="RightPanel" unique_id=1811992012]
@@ -112,9 +109,10 @@ theme_override_constants/separation = 8
 [node name="EnemyTitle" type="Label" parent="RightPanel/Box" unique_id=1811992013]
 layout_mode = 2
 theme_override_font_sizes/font_size = 18
-text = "敌方舰船"
+text = "敌"
 
 [node name="EnemyScroll" type="ScrollContainer" parent="RightPanel/Box" unique_id=1811992014]
+custom_minimum_size = Vector2(0, 400)
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
@@ -173,15 +171,6 @@ theme_override_constants/margin_top = 32
 [node name="VBoxContainer" type="VBoxContainer" parent="PhaseControlMargin" unique_id=1654392172]
 layout_mode = 2
 
-[node name="LableContainer" type="PanelContainer" parent="PhaseControlMargin/VBoxContainer" unique_id=876921666]
-custom_minimum_size = Vector2(384, 48)
-layout_mode = 2
-
-[node name="PhaseLabel" type="Label" parent="PhaseControlMargin/VBoxContainer/LableContainer" unique_id=292437397]
-layout_mode = 2
-size_flags_vertical = 1
-label_settings = SubResource("LabelSettings_vwq26")
-
 [node name="BtnPanel" type="PanelContainer" parent="PhaseControlMargin/VBoxContainer" unique_id=260824244]
 layout_mode = 2
 size_flags_horizontal = 10
@@ -192,6 +181,15 @@ layout_mode = 2
 size_flags_horizontal = 3
 text = "推进阶段 >>"
 icon = ExtResource("3_mtokn")
+
+[node name="LableContainer" type="PanelContainer" parent="PhaseControlMargin/VBoxContainer" unique_id=876921666]
+custom_minimum_size = Vector2(384, 48)
+layout_mode = 2
+
+[node name="PhaseLabel" type="Label" parent="PhaseControlMargin/VBoxContainer/LableContainer" unique_id=292437397]
+layout_mode = 2
+size_flags_vertical = 1
+label_settings = SubResource("LabelSettings_vwq26")
 
 [node name="ActionMenu" type="Control" parent="." unique_id=2112131439]
 anchors_preset = 0

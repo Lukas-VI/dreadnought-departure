@@ -1,0 +1,14 @@
+[gd_scene format=3 uid="uid://c13bk0txrvidi"]
+
+[ext_resource type="PackedScene" uid="uid://hmuesfl61guf" path="res://assets/Model/overlay/grid.blend" id="1_4fohh"]
+
+[node name="Grid" type="Node3D" unique_id=876917512]
+
+[node name="grid" parent="." unique_id=1444309201 instance=ExtResource("1_4fohh")]
+
+[node name="Label3D" type="Label3D" parent="." unique_id=1960073052]
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, 0, 0.07, 1.3)
+modulate = Color(0.7670312, 0.8916152, 1, 1)
+text = "0000"
+font_size = 64
+outline_size = 0

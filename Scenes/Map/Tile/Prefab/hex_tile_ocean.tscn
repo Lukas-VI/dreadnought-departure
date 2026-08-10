@@ -1,5 +1,0 @@
-[gd_scene format=3 uid="uid://dc8nvge070lfk"]
-
-[ext_resource type="PackedScene" uid="uid://dmw6svokdbmnb" path="res://Scenes/Map/Tile/hex_tile_3d.tscn" id="1_8olln"]
-
-[node name="HexTile3D" unique_id=253197572 instance=ExtResource("1_8olln")]

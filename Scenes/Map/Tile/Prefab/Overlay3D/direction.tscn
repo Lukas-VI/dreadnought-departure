@@ -1,0 +1,7 @@
+[gd_scene format=3 uid="uid://d3j5pxd2uqig6"]
+
+[ext_resource type="PackedScene" uid="uid://dpxwio0g1gpod" path="res://assets/Model/overlay/direction.blend" id="1_8ew85"]
+
+[node name="Direction" type="Node3D" unique_id=689402757]
+
+[node name="direction" parent="." unique_id=2140536664 instance=ExtResource("1_8ew85")]

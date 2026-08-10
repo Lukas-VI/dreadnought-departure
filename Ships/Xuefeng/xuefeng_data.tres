@@ -1,0 +1,40 @@
+[gd_resource type="Resource" script_class="ShipData" format=3 uid="uid://dn0cb33argalp"]
+
+[ext_resource type="Texture2D" uid="uid://cf41m1h8gm8xp" path="res://assets/Portrait/Xuefeng/Xuefeng.png" id="1_jlmol"]
+[ext_resource type="Script" uid="uid://dreq4a4on5nm3" path="res://Scripts/Data/Ship/ShipData.cs" id="1_xuefeng"]
+
+[resource]
+script = ExtResource("1_xuefeng")
+ShipName = "雪峰 (Xuefeng)"
+ShipClass = "DD"
+Rarity = "SSR"
+Camp = "(IJN)"
+Background = "“雪峰老师，我们记得您！”孩童们的呼唤默默地为她送行……⌈大战争⌋时代的硝烟，她如此称呼自己，虽然是多达40艘的超级舰队的唯一幸运生还者，她却从未以此为荣。在帝国迎来不可挽救的覆灭后，她选择了隐退，成为一名教师，望着她的学生们在战争结束后长大成人，成为帝国栋梁，借此洗礼那场漫长悲剧所带来的创伤……"
+Cost = 7
+Portrait = ExtResource("1_jlmol")
+PV = 7
+MaxHp = 7
+MoveRange = 4
+AttackPower = 12
+MaxSpeed = 6
+MainAmmo = 24
+HullLight = 2
+HullModerate = 4
+HullHeavy = 6
+HullSunk = 7
+SpeedIntact = 6
+SpeedLight = 6
+SpeedModerate = 4
+ForwardFire = 2
+SideFire = 5
+BackwardFire = 2
+GunCaliber = 12
+ArmorClose = 0
+ArmorMedium = 0
+ArmorFar = 0
+TorpedoType = "93式"
+TorpedoCenterTubes = 8
+HasSpareTorpedoes = true
+RadarType = "22号"
+SkillIds = PackedStringArray("radar", "lucky")
+metadata/_custom_type_script = "uid://dreq4a4on5nm3"

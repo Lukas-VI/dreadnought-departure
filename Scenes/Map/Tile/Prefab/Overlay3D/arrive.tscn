@@ -1,0 +1,7 @@
+[gd_scene format=3 uid="uid://bpj4merh81lc8"]
+
+[ext_resource type="PackedScene" uid="uid://bdcg620k0h8fd" path="res://assets/Model/overlay/arrive.blend" id="1_8wiep"]
+
+[node name="Arrive" type="Node3D" unique_id=797600071]
+
+[node name="arrive" parent="." unique_id=1098511282 instance=ExtResource("1_8wiep")]

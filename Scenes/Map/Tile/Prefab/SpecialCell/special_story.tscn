@@ -1,14 +1,18 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://eg48tng644ta"]
 
-[node name="SpecialStory" type="Control"]
+[node name="SpecialStory" type="Control" unique_id=803020488]
 custom_minimum_size = Vector2(120, 80)
+layout_mode = 3
+anchors_preset = 0
 
-[node name="ColorRect" type="ColorRect" parent="."]
+[node name="ColorRect" type="ColorRect" parent="." unique_id=1977578924]
+layout_mode = 0
 offset_right = 120.0
 offset_bottom = 80.0
 color = Color(0.95, 0.75, 0.2, 0.65)
 
-[node name="Label" type="Label" parent="."]
+[node name="Label" type="Label" parent="." unique_id=1560991740]
+layout_mode = 0
 offset_left = 10.0
 offset_top = 26.0
 offset_right = 110.0

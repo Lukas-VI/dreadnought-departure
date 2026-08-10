@@ -1,14 +1,18 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://c273c3oy2soan"]
 
-[node name="SpecialSupply" type="Control"]
+[node name="SpecialSupply" type="Control" unique_id=1857089170]
 custom_minimum_size = Vector2(120, 80)
+layout_mode = 3
+anchors_preset = 0
 
-[node name="ColorRect" type="ColorRect" parent="."]
+[node name="ColorRect" type="ColorRect" parent="." unique_id=1201383301]
+layout_mode = 0
 offset_right = 120.0
 offset_bottom = 80.0
 color = Color(0.25, 0.9, 0.4, 0.65)
 
-[node name="Label" type="Label" parent="."]
+[node name="Label" type="Label" parent="." unique_id=2087112721]
+layout_mode = 0
 offset_left = 10.0
 offset_top = 26.0
 offset_right = 110.0

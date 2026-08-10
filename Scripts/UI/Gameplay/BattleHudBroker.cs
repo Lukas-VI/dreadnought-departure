@@ -10,7 +10,7 @@ namespace DreadnoughtDeparture.Core;
 /// </summary>
 public partial class BattleHudBroker : Label
 {
-	private const int MaxLines = 5;
+	private const int MaxLines = 25;
 	private readonly List<string> _history = new();
 
 	/// <summary>显示一条日志文本。</summary>

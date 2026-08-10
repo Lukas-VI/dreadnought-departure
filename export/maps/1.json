@@ -231,18 +231,38 @@
     "3,2": 2,
     "4,2": 2,
     "5,1": 2,
-    "6,1": 2
+    "6,1": 2,
+    "-4,-2": 2,
+    "-5,-2": 2,
+    "-6,-2": 2,
+    "-7,-2": 2
   },
   "Generation": {
     "-1,-2": {
       "Side": 0,
       "SourceId": 6
     },
-    "0,1": {
+    "0,0": {
       "Side": 1,
       "SourceId": 4
     },
-    "-2,-1": {
+    "-2,-2": {
+      "Side": 0,
+      "SourceId": 6
+    },
+    "-3,-2": {
+      "Side": 0,
+      "SourceId": 6
+    },
+    "-4,-2": {
+      "Side": 0,
+      "SourceId": 6
+    },
+    "-5,-2": {
+      "Side": 0,
+      "SourceId": 6
+    },
+    "-6,-2": {
       "Side": 0,
       "SourceId": 6
     }
@@ -253,21 +273,64 @@
       {
         "ShipId": "frigate",
         "Direction": 2,
-        "Speed": 0
+        "Speed": 4
+      },
+      {
+        "ShipId": "frigate",
+        "Direction": 2,
+        "Speed": 4
       }
     ],
-    "0,1": [
+    "0,0": [
       {
-        "ShipId": "dreadnought",
+        "ShipId": "xuefeng",
+        "Direction": 0,
+        "Speed": 0
+      },
+      {
+        "ShipId": "frigate",
         "Direction": 0,
         "Speed": 0
       }
     ],
-    "-2,-1": [
+    "-2,-2": [
       {
         "ShipId": "dreadnought",
-        "Direction": 0,
-        "Speed": 0
+        "Direction": 2,
+        "Speed": 4
+      }
+    ],
+    "-3,-2": [
+      {
+        "ShipId": "dreadnought",
+        "Direction": 2,
+        "Speed": 4
+      },
+      {
+        "ShipId": "dreadnought",
+        "Direction": 2,
+        "Speed": 4
+      }
+    ],
+    "-4,-2": [
+      {
+        "ShipId": "cruiser",
+        "Direction": 2,
+        "Speed": 4
+      }
+    ],
+    "-5,-2": [
+      {
+        "ShipId": "cruiser",
+        "Direction": 2,
+        "Speed": 4
+      }
+    ],
+    "-6,-2": [
+      {
+        "ShipId": "cruiser",
+        "Direction": 2,
+        "Speed": 4
       }
     ]
   }

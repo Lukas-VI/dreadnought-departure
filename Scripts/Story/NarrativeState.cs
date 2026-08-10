@@ -83,9 +83,20 @@ public sealed class NarrativeState
 			? $"res://Data/Stories/{scriptId}.json"
 			: filePath;
 		if (!FileAccess.FileExists(path)) return false;
-		using var file = FileAccess.Open(path, FileAccess.ModeFlags.Read);
-		using var document = JsonDocument.Parse(file.GetAsText());
-		JsonElement root = document.RootElement;
+		JsonElement root;
+		try
+		{
+			using var file = FileAccess.Open(path, FileAccess.ModeFlags.Read);
+			if (file == null) return false;
+			string json = file.GetAsText();
+			if (string.IsNullOrWhiteSpace(json)) return false;
+			using var document = JsonDocument.Parse(json);
+			root = document.RootElement;
+		}
+		catch
+		{
+			return false;
+		}
 
 		ScriptId = scriptId;
 		ParseBackground(root, "background",

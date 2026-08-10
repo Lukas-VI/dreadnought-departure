@@ -198,30 +198,40 @@ public partial class StoryDirector : Node
 	private void LoadTriggerFile(string path)
 	{
 		if (!FileAccess.FileExists(path)) return;
-		using var file = FileAccess.Open(path, FileAccess.ModeFlags.Read);
-		using var document = JsonDocument.Parse(file.GetAsText());
-		JsonElement root = document.RootElement;
-		if (!root.TryGetProperty("triggers", out JsonElement triggers)) return;
-		foreach (JsonElement entry in triggers.EnumerateArray())
+		try
 		{
-			_triggers.Add(new TriggerRule
+			using var file = FileAccess.Open(path, FileAccess.ModeFlags.Read);
+			if (file == null) return;
+			string json = file.GetAsText();
+			if (string.IsNullOrWhiteSpace(json)) return;
+			using var document = JsonDocument.Parse(json);
+			JsonElement root = document.RootElement;
+			if (!root.TryGetProperty("triggers", out JsonElement triggers)) return;
+			foreach (JsonElement entry in triggers.EnumerateArray())
 			{
-				Event = entry.TryGetProperty("event", out JsonElement eventProp)
-					? eventProp.GetString() ?? ""
-					: "",
-				Key = entry.TryGetProperty("key", out JsonElement keyProp)
-					? keyProp.GetString() ?? ""
-					: "",
-				Map = entry.TryGetProperty("map", out JsonElement mapProp)
-					? mapProp.GetString() ?? ""
-					: "",
-				Checkpoint = entry.TryGetProperty("checkpoint", out JsonElement checkpointProp)
-					? checkpointProp.GetString() ?? ""
-					: "",
-				Script = entry.TryGetProperty("script", out JsonElement scriptProp)
-					? scriptProp.GetString() ?? ""
-					: "",
-			});
+				_triggers.Add(new TriggerRule
+				{
+					Event = entry.TryGetProperty("event", out JsonElement eventProp)
+						? eventProp.GetString() ?? ""
+						: "",
+					Key = entry.TryGetProperty("key", out JsonElement keyProp)
+						? keyProp.GetString() ?? ""
+						: "",
+					Map = entry.TryGetProperty("map", out JsonElement mapProp)
+						? mapProp.GetString() ?? ""
+						: "",
+					Checkpoint = entry.TryGetProperty("checkpoint", out JsonElement checkpointProp)
+						? checkpointProp.GetString() ?? ""
+						: "",
+					Script = entry.TryGetProperty("script", out JsonElement scriptProp)
+						? scriptProp.GetString() ?? ""
+						: "",
+				});
+			}
+		}
+		catch
+		{
+			// 触发文件损坏时跳过，不阻塞游戏启动。
 		}
 	}
 
@@ -231,12 +241,22 @@ public partial class StoryDirector : Node
 	private void LoadFlags()
 	{
 		if (!FileAccess.FileExists(FlagFilePath)) return;
-		using var file = FileAccess.Open(FlagFilePath, FileAccess.ModeFlags.Read);
-		using var document = JsonDocument.Parse(file.GetAsText());
-		JsonElement root = document.RootElement;
-		foreach (JsonProperty property in root.EnumerateObject())
+		try
 		{
-			_flags[property.Name] = property.Value.ValueKind == JsonValueKind.True;
+			using var file = FileAccess.Open(FlagFilePath, FileAccess.ModeFlags.Read);
+			if (file == null) return;
+			string json = file.GetAsText();
+			if (string.IsNullOrWhiteSpace(json)) return;
+			using var document = JsonDocument.Parse(json);
+			JsonElement root = document.RootElement;
+			foreach (JsonProperty property in root.EnumerateObject())
+			{
+				_flags[property.Name] = property.Value.ValueKind == JsonValueKind.True;
+			}
+		}
+		catch
+		{
+			_flags.Clear();
 		}
 	}
 

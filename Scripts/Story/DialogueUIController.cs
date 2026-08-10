@@ -1,4 +1,5 @@
 using Godot;
+using System;
 using System.Collections.Generic;
 
 namespace DreadnoughtDeparture.Story;
@@ -17,6 +18,14 @@ public partial class DialogueUIController : CanvasLayer
 	private PanelContainer _historyPanel;
 	private RichTextLabel _historyText;
 	private VBoxContainer _optionsBox;
+	private PanelContainer _debugPanel;
+	private Label _debugLabel;
+	private Button _debugBackButton;
+	private Button _debugNextButton;
+	private LineEdit _debugJumpEdit;
+	private Button _debugJumpButton;
+	private Button _debugSnapshotButton;
+	private Button _debugRestoreButton;
 	private readonly List<string> _historyLines = new();
 	private ulong _showAt;
 
@@ -31,23 +40,62 @@ public partial class DialogueUIController : CanvasLayer
 		_historyPanel = GetNode<PanelContainer>("Root/HistoryPanel");
 		_historyText = GetNode<RichTextLabel>("Root/HistoryPanel/HistoryText");
 		_optionsBox = GetNode<VBoxContainer>("Root/OptionsBox");
+		_debugPanel = GetNodeOrNull<PanelContainer>("Root/DebugPanel");
+		_debugLabel = GetNodeOrNull<Label>("Root/DebugPanel/Margin/VBox/DebugLabel");
+		_debugBackButton = GetNodeOrNull<Button>("Root/DebugPanel/Margin/VBox/Row1/BackButton");
+		_debugNextButton = GetNodeOrNull<Button>("Root/DebugPanel/Margin/VBox/Row1/NextButton");
+		_debugJumpEdit = GetNodeOrNull<LineEdit>("Root/DebugPanel/Margin/VBox/Row1/JumpEdit");
+		_debugJumpButton = GetNodeOrNull<Button>("Root/DebugPanel/Margin/VBox/Row1/JumpButton");
+		_debugSnapshotButton = GetNodeOrNull<Button>("Root/DebugPanel/Margin/VBox/Row2/SnapshotButton");
+		_debugRestoreButton = GetNodeOrNull<Button>("Root/DebugPanel/Margin/VBox/Row2/RestoreButton");
 		_root.GuiInput += OnRootInput;
 		_historyButton.Pressed += ToggleHistory;
+		if (_debugBackButton != null)
+		{
+			_debugBackButton.Pressed += () => StoryDirector.Instance?.DebugBack();
+		}
+		if (_debugNextButton != null)
+		{
+			_debugNextButton.Pressed += () => StoryDirector.Instance?.DebugNext();
+		}
+		if (_debugJumpButton != null)
+		{
+			_debugJumpButton.Pressed += OnJumpPressed;
+		}
+		if (_debugSnapshotButton != null)
+		{
+			_debugSnapshotButton.Pressed += () => StoryDirector.Instance?.SaveDebugSnapshot();
+		}
+		if (_debugRestoreButton != null)
+		{
+			_debugRestoreButton.Pressed += () => StoryDirector.Instance?.LoadDebugSnapshot();
+		}
 		HideUi();
 	}
 
 	private void OnRootInput(InputEvent @event)
 	{
-		if (@event is InputEventMouseButton mouse
-			&& mouse.Pressed
-			&& mouse.ButtonIndex == MouseButton.Left)
+		if (@event is not InputEventMouseButton mouse
+			|| !mouse.Pressed
+			|| mouse.ButtonIndex != MouseButton.Left)
 		{
-			if (Time.GetTicksMsec() - _showAt < 200)
-			{
-				return;
-			}
-			EmitSignal(SignalName.ContinuePressed);
+			return;
 		}
+		if (_debugPanel != null && _debugPanel.GetGlobalRect().HasPoint(mouse.Position))
+		{
+			return;
+		}
+		if (_historyPanel != null
+			&& _historyPanel.Visible
+			&& _historyPanel.GetGlobalRect().HasPoint(mouse.Position))
+		{
+			return;
+		}
+		if (Time.GetTicksMsec() - _showAt < 1500)
+		{
+			return;
+		}
+		EmitSignal(SignalName.ContinuePressed);
 	}
 
 	public void ShowSay(string speaker, string text)
@@ -57,10 +105,6 @@ public partial class DialogueUIController : CanvasLayer
 		_speakerLabel.Text = speaker;
 		_textLabel.Text = text;
 		_optionsBox.Visible = false;
-		if (!string.IsNullOrEmpty(text))
-		{
-			_historyLines.Add(string.IsNullOrEmpty(speaker) ? text : $"{speaker}：{text}");
-		}
 	}
 
 	public void ShowOptions(string prompt, IReadOnlyList<string> options)
@@ -90,6 +134,47 @@ public partial class DialogueUIController : CanvasLayer
 		_background.Color = Color.FromHtml(color);
 	}
 
+	public void SetHistory(IReadOnlyList<string> lines)
+	{
+		_historyLines.Clear();
+		if (lines != null)
+		{
+			_historyLines.AddRange(lines);
+		}
+		if (_historyPanel != null
+			&& _historyPanel.Visible
+			&& _historyText != null)
+		{
+			_historyText.Text = string.Join("\n", _historyLines);
+		}
+	}
+
+	public void ShowDebugState(NarrativeState state)
+	{
+		if (_debugPanel == null || state == null) return;
+		_debugPanel.Visible = true;
+		if (_debugLabel != null)
+		{
+			string status = state.Status switch
+			{
+				NarrativeStatus.Playing => "播放中",
+				NarrativeStatus.WaitingChoice => "等待选项",
+				NarrativeStatus.Completed => "已完成",
+				_ => "空闲",
+			};
+			_debugLabel.Text =
+				$"{state.ScriptId} · {state.Index + 1}/{state.StepCount} · {status}";
+		}
+		if (_debugBackButton != null)
+		{
+			_debugBackButton.Disabled = !state.CanBack;
+		}
+		if (_debugNextButton != null)
+		{
+			_debugNextButton.Disabled = !state.CanAdvance;
+		}
+	}
+
 	public void HideUi()
 	{
 		if (_root != null)
@@ -99,6 +184,20 @@ public partial class DialogueUIController : CanvasLayer
 			{
 				_historyPanel.Visible = false;
 			}
+			if (_debugPanel != null)
+			{
+				_debugPanel.Visible = false;
+			}
+		}
+	}
+
+	private void OnJumpPressed()
+	{
+		if (_debugJumpEdit == null) return;
+		string text = _debugJumpEdit.Text.Trim();
+		if (int.TryParse(text, out int index) && index >= 1)
+		{
+			StoryDirector.Instance?.DebugJump(index - 1);
 		}
 	}
 

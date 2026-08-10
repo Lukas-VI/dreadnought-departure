@@ -1,147 +1,197 @@
 using Godot;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text.Json;
 
 namespace DreadnoughtDeparture.Story;
 
-/// <summary>对话脚本驱动：读取 JSON 脚本并驱动节点化 DialogueUI。</summary>
+/// <summary>对话脚本驱动：以 NarrativeState 为状态机，只负责把状态推进到 UI。</summary>
 public partial class DialogueRunner : Node
 {
 	private DialogueUIController _ui;
-	private bool _playing;
+	private NarrativeState _state;
+	private bool _running;
+	private Timer _waitTimer;
+	private NarrativeStep _waitStep;
+
+	public NarrativeState State => _state;
 
 	public override void _Ready()
 	{
 		var scene = ResourceLoader.Load<PackedScene>("res://Scenes/UI/Dialogue/dialogue_ui.tscn");
-		if (scene != null)
+		if (scene == null) return;
+		_ui = scene.Instantiate<DialogueUIController>();
+		AddChild(_ui);
+		_ui.ContinuePressed += OnContinuePressed;
+		_ui.OptionSelected += OnOptionSelected;
+	}
+
+	public void Play(NarrativeState state)
+	{
+		if (_running || _ui == null || state == null || state.Status != NarrativeStatus.Playing)
 		{
-			_ui = scene.Instantiate<DialogueUIController>();
-			AddChild(_ui);
+			return;
 		}
+		_state = state;
+		_running = true;
+		RenderCurrent();
 	}
 
-	public void Play(string scriptId)
+	public bool DebugBack() => Mutate(() => _state?.Back());
+
+	public bool DebugNext() => Mutate(() => _state?.Advance());
+
+	public bool DebugJump(int index) => Mutate(() => _state?.Jump(index));
+
+	public void RestoreSnapshot(NarrativeSnapshot snapshot)
 	{
-		if (_playing || _ui == null) return;
-		_playing = true;
-		_ = RunScriptAsync(scriptId);
+		if (!_running || _state == null || snapshot == null) return;
+		_state.Restore(snapshot);
+		StopWaitTimer();
+		RenderCurrent();
 	}
 
-	private async System.Threading.Tasks.Task RunScriptAsync(string scriptId)
+	private bool Mutate(System.Action mutate)
 	{
-		string path = $"res://Data/Stories/{scriptId}.json";
-		if (!FileAccess.FileExists(path))
+		if (!_running || _state == null) return false;
+		StopWaitTimer();
+		mutate();
+		if (_state.Status == NarrativeStatus.Completed)
+		{
+			Finish();
+		}
+		else
+		{
+			RenderCurrent();
+		}
+		return true;
+	}
+
+	private void RenderCurrent()
+	{
+		if (!_running || _state == null) return;
+		if (_state.Status == NarrativeStatus.Completed)
 		{
 			Finish();
 			return;
 		}
-		using var file = FileAccess.Open(path, FileAccess.ModeFlags.Read);
-		using var document = JsonDocument.Parse(file.GetAsText());
-		JsonElement root = document.RootElement;
-
-		_ui.SetBackgroundColor(Str(root, "background"));
-		var steps = root.TryGetProperty("steps", out JsonElement stepsProp)
-			? stepsProp.EnumerateArray().ToList()
-			: new List<JsonElement>();
-
-		int index = 0;
-		while (_playing && index >= 0 && index < steps.Count)
+		NarrativeStep step = _state.Current;
+		if (step == null)
 		{
-			JsonElement step = steps[index];
-			string type = Str(step, "type");
-			if (type == "say")
-			{
-				await ShowSayAsync(Str(step, "speaker"), Str(step, "text"));
-				index++;
-			}
-			else if (type == "choice")
-			{
-				int next = await ShowChoiceAsync(Str(step, "text"), step);
-				index = next >= 0 ? next : index + 1;
-			}
-			else if (type == "wait")
-			{
-				float seconds = step.TryGetProperty("seconds", out JsonElement secondsProp)
-					? secondsProp.GetSingle()
-					: 1f;
-				await ToSignal(GetTree().CreateTimer(seconds), "timeout");
-				index++;
-			}
-			else if (type == "flag")
-			{
-				string key = Str(step, "key");
-				bool value = step.TryGetProperty("value", out JsonElement valueProp)
-					&& valueProp.ValueKind == JsonValueKind.True;
-				StoryDirector.Instance?.SetFlag(key, value);
-				index++;
-			}
-			else if (type == "background")
-			{
-				_ui.SetBackgroundColor(Str(step, "color"));
-				index++;
-			}
-			else
-			{
-				index++;
-			}
+			Finish();
+			return;
 		}
-
-		Finish();
-	}
-
-	private async System.Threading.Tasks.Task ShowSayAsync(string speaker, string text)
-	{
-		_ui.ShowSay(speaker, text);
-		await ToSignal(_ui, DialogueUIController.SignalName.ContinuePressed);
-	}
-
-	private async System.Threading.Tasks.Task<int> ShowChoiceAsync(string prompt, JsonElement step)
-	{
-		var texts = new List<string>();
-		if (step.TryGetProperty("options", out JsonElement options))
+		if (!string.IsNullOrEmpty(_state.Background))
 		{
-			foreach (JsonElement option in options.EnumerateArray())
-			{
-				texts.Add(Str(option, "text"));
-			}
+			_ui.SetBackgroundColor(_state.Background);
 		}
-		_ui.ShowOptions(prompt, texts);
-
-		int selected = -1;
-		void OnSelected(int index)
+		_ui.SetHistory(_state.History);
+		_ui.ShowDebugState(_state);
+		switch (step.Type)
 		{
-			selected = index;
-			int next = -1;
-			if (step.TryGetProperty("options", out JsonElement optionArray))
-			{
-				var optionsList = optionArray.EnumerateArray().ToList();
-				if (index >= 0 && index < optionsList.Count
-					&& optionsList[index].TryGetProperty("next", out JsonElement nextProp))
+			case "say":
+				_ui.ShowSay(step.Speaker, step.Text);
+				break;
+			case "choice":
+				var texts = new List<string>();
+				foreach (NarrativeOption option in step.Options)
 				{
-					next = nextProp.GetInt32();
+					texts.Add(option.Text);
 				}
-			}
-			_selectedNext = next;
+				_ui.ShowOptions(step.Text, texts);
+				break;
+			case "wait":
+				StartWaitTimer(step);
+				break;
+			case "flag":
+				StoryDirector.Instance?.SetFlag(step.Key, step.Value);
+				_state.Flags[step.Key] = step.Value;
+				AdvanceAndRender();
+				break;
+			case "background":
+				_ui.SetBackgroundColor(step.Background);
+				AdvanceAndRender();
+				break;
+			default:
+				AdvanceAndRender();
+				break;
 		}
-		_ui.OptionSelected += OnSelected;
-		while (selected < 0)
-		{
-			await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-		}
-		_ui.OptionSelected -= OnSelected;
-		return _selectedNext;
 	}
 
-	private int _selectedNext = -1;
+	private void AdvanceAndRender()
+	{
+		if (!_running || _state == null) return;
+		_state.Advance();
+		RenderCurrent();
+	}
+
+	private void OnContinuePressed()
+	{
+		if (!_running || _state == null) return;
+		NarrativeStep step = _state.Current;
+		if (step == null || step.Type != "say") return;
+		_state.RecordHistory(step);
+		_state.Advance();
+		RenderCurrent();
+	}
+
+	private void OnOptionSelected(int index)
+	{
+		if (!_running || _state == null) return;
+		NarrativeStep step = _state.Current;
+		if (step == null || step.Type != "choice") return;
+		if (index < 0 || index >= step.Options.Count) return;
+		_state.RecordHistory(step);
+		_state.SelectChoice(index);
+		RenderCurrent();
+	}
+
+	private void StartWaitTimer(NarrativeStep step)
+	{
+		StopWaitTimer();
+		_waitStep = step;
+		_waitTimer = new Timer
+		{
+			WaitTime = System.Math.Max(0f, step.Seconds),
+			OneShot = true,
+		};
+		AddChild(_waitTimer);
+		_waitTimer.Timeout += OnWaitTimeout;
+		_waitTimer.Start();
+	}
+
+	private void OnWaitTimeout()
+	{
+		Timer timer = _waitTimer;
+		_waitTimer = null;
+		NarrativeStep step = _waitStep;
+		_waitStep = null;
+		if (timer != null)
+		{
+			timer.Stop();
+			timer.QueueFree();
+		}
+		if (!_running || _state == null || !ReferenceEquals(_state.Current, step)) return;
+		_state.Advance();
+		RenderCurrent();
+	}
+
+	private void StopWaitTimer()
+	{
+		if (_waitTimer != null)
+		{
+			_waitTimer.Stop();
+			_waitTimer.QueueFree();
+			_waitTimer = null;
+		}
+		_waitStep = null;
+	}
 
 	private void Finish()
 	{
-		_playing = false;
+		if (!_running) return;
+		_running = false;
+		StopWaitTimer();
+		_state?.Complete();
 		_ui?.HideUi();
 		StoryDirector.Instance?.NotifyFinished();
 	}
-
-	private static string Str(JsonElement element, string property)
-		=> element.TryGetProperty(property, out JsonElement value) ? value.GetString() ?? "" : "";
 }

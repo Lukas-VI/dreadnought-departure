@@ -19,10 +19,13 @@ public partial class StoryDirector : Node
 	private readonly List<TriggerRule> _triggers = new();
 	private readonly HashSet<string> _played = new();
 	private readonly Dictionary<string, bool> _flags = new();
+	private readonly NarrativeCatalog _catalog = new();
 	private DialogueRunner _runner;
 	private string _playingScript = "";
 	private string _currentMapName = "";
 	private string _pendingCheckpoint = "";
+	public NarrativeState CurrentState { get; private set; } = new();
+	public NarrativeCatalog Catalog => _catalog;
 	private System.Threading.Tasks.TaskCompletionSource<bool> _finishTcs =
 		new(System.Threading.Tasks.TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -44,6 +47,7 @@ public partial class StoryDirector : Node
 		Instance = this;
 		_runner = new DialogueRunner();
 		AddChild(_runner);
+		_catalog.Scan();
 		_currentMapName = GetNodeOrNull<LevelDataManager>("../LevelDataManager")?.CurrentMapName ?? "";
 		LoadFlags();
 		LoadTriggers();
@@ -73,8 +77,66 @@ public partial class StoryDirector : Node
 		_pendingCheckpoint = checkpoint;
 		_finishTcs = new System.Threading.Tasks.TaskCompletionSource<bool>(
 			System.Threading.Tasks.TaskCreationOptions.RunContinuationsAsynchronously);
+		StoryNode node = _catalog.Find(scriptId);
+		string filePath = node != null && !string.IsNullOrEmpty(node.Script)
+			? $"res://Data/Stories/{node.Script}.json"
+			: $"res://Data/Stories/{scriptId}.json";
+		CurrentState = new NarrativeState();
+		if (!CurrentState.Load(scriptId, filePath))
+		{
+			NotifyFinished();
+			return;
+		}
 		EventBus.Instance?.EmitSignal("StoryPlaybackStarted");
-		_runner.Play(scriptId);
+		_runner.Play(CurrentState);
+	}
+
+	public NarrativeSnapshot CaptureState() => CurrentState?.Capture();
+
+	public void RestoreState(NarrativeSnapshot snapshot)
+	{
+		CurrentState?.Restore(snapshot);
+		if (_runner != null && snapshot != null)
+		{
+			_runner.RestoreSnapshot(snapshot);
+		}
+	}
+
+	public void DebugBack() => _runner?.DebugBack();
+
+	public void DebugNext() => _runner?.DebugNext();
+
+	public void DebugJump(int index) => _runner?.DebugJump(index);
+
+	public void SaveDebugSnapshot()
+	{
+		NarrativeSnapshot snapshot = CurrentState?.Capture();
+		if (snapshot == null) return;
+		using var file = FileAccess.Open(SnapshotFilePath, FileAccess.ModeFlags.Write);
+		if (file == null) return;
+		file.StoreString(JsonSerializer.Serialize(snapshot));
+		EventBus.Instance?.EmitLog($"剧情快照已保存：{snapshot.ScriptId} @ {snapshot.Index}");
+	}
+
+	public void LoadDebugSnapshot()
+	{
+		if (!FileAccess.FileExists(SnapshotFilePath)) return;
+		using var file = FileAccess.Open(SnapshotFilePath, FileAccess.ModeFlags.Read);
+		if (file == null) return;
+		try
+		{
+			NarrativeSnapshot snapshot =
+				JsonSerializer.Deserialize<NarrativeSnapshot>(file.GetAsText());
+			RestoreState(snapshot);
+			if (snapshot != null)
+			{
+				EventBus.Instance?.EmitLog($"剧情快照已恢复：{snapshot.ScriptId} @ {snapshot.Index}");
+			}
+		}
+		catch
+		{
+			EventBus.Instance?.EmitLog("剧情快照恢复失败");
+		}
 	}
 
 	public void Trigger(string eventName, string key = "")
@@ -163,6 +225,7 @@ public partial class StoryDirector : Node
 	}
 
 	private const string FlagFilePath = "user://story_flags.json";
+	private const string SnapshotFilePath = "user://narrative_snapshot.json";
 
 	private void LoadFlags()
 	{

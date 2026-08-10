@@ -4,6 +4,10 @@
 
 对话脚本放在 `res://Data/Stories/<script_id>.json`：
 
+`script_id` 可以是嵌套路径，例如 `campaign/01/00-01/start`，对应
+`Data/Stories/campaign/01/00-01/start.json`。运行时允许把剧本按章节、事件等目录整理，
+避免全部平铺在 `Data/Stories` 根目录。
+
 ```json
 {
   "background": "#0b0f17",
@@ -54,6 +58,48 @@
 `checkpoint` 是全局剧情检查点，写入 `user://story_flags.json`。检查点已播放后，即使换关卡也不会重复触发；没有 `checkpoint` 的规则只在当前会话内播放一次。
 `StoryDirector.SetFlag / GetFlag` 可用于更细的剧情条件。
 
+## 树形剧情索引
+
+`Data/Stories/index.json` 是可选的树形索引，用于给剧本提供稳定的逻辑 id、
+标题与事件元数据，也便于编辑器/调试界面浏览：
+
+```json
+{
+  "title": "第一章",
+  "children": [
+    { "title": "进入章节", "script": "chapter_01_enter" },
+    {
+      "title": "01-01 剧情",
+      "children": [
+        { "title": "开场", "script": "00_01_start" },
+        { "title": "转向教程", "script": "00_01_turn", "event": "special_cell", "key": "1" }
+      ]
+    }
+  ]
+}
+```
+
+- `id`：可选，不填时使用 `script`；子节点 id 会拼上父节点前缀，形成树形路径。
+- `script`：相对 `Data/Stories` 的脚本路径（不含 `.json`）。
+- `event` / `key`：可选触发器元数据，供关卡编辑器与剧情浏览器使用。
+- `children`：嵌套子节点。
+
+没有 `index.json` 时，`NarrativeCatalog` 会递归扫描 `Data/Stories` 自动建树，
+跳过 `index.json` 与 `global.json`。根目录 `Story/` 是原稿草稿目录（已 gitignore），
+不参与运行时剧情解析。
+
+## NarrativeState 状态机
+
+播放中的每一步都由 `NarrativeState` 持有：
+
+- `ScriptId / Index / Status / Steps`：当前脚本、步骤下标、状态与全部步骤。
+- `History`：已播放台词履历，`Flags`：剧情 flag。
+- `Advance() / Back() / Jump(index) / SelectChoice(index)`：前进、回退、跳转、选选项。
+- `Capture() / Restore(snapshot)`：保存/恢复完整快照，可用于调试、存档与演示。
+
+`DialogueRunner` 只负责把 `NarrativeState` 渲染到 UI，推进、回退、恢复都直接操作状态机，
+因此回溯后 UI、履历与 flag 会一致刷新。
+
 ## 对话 UI
 
 对话界面是节点化场景 `Scenes/UI/Dialogue/dialogue_ui.tscn`：
@@ -63,6 +109,15 @@
 - 底部对话框、说话人、正文、继续按钮、选项区均为独立节点
 
 `DialogueRunner` 只负责读取 JSON 脚本并驱动 UI，不再在代码里拼 UI。
+
+播放时右上角出现调试面板：
+
+- 上一步 / 下一步：在状态机内回退或前进，立即重新渲染当前步骤。
+- 跳转：输入步骤下标直接跳转。
+- 保存快照 / 恢复快照：写入或读取 `user://narrative_snapshot.json`。
+
+调试按钮调用 `StoryDirector.CaptureState() / RestoreState() / DebugBack() /
+DebugNext() / DebugJump(index)`。
 
 ## 特殊格类型约定
 
@@ -81,7 +136,7 @@
 可通过 `SpecialCellCatalog.Name / ScenePath / ColorFor(specialId)` 读取名称、场景路径与颜色。
 
 战场内使用 `Scenes/Map/Tile/Prefab/Overlay3D/Special/` 下的 3D overlay 场景显示特殊格；
-后续导入 Blender 模型后直接替换这些 `.tscn` 即可，`GridOverlayController.BuildSpecialCellOverlays()`
+已导入 Blender 模型为 `.tscn` ，`GridOverlayController.BuildSpecialCellOverlays()`
 会自动按地图 `Special` 表实例化。
 
 ## 接口入口

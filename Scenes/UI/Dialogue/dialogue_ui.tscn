@@ -67,7 +67,6 @@ custom_minimum_size = Vector2(1080, 140)
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
 autowrap_mode = 3
-mouse_filter = 2
 
 [node name="OptionsBox" type="VBoxContainer" parent="Root" unique_id=1151143894]
 visible = false
@@ -85,7 +84,7 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 10
 
-[node name="HistoryPanel" type="PanelContainer" parent="Root"]
+[node name="HistoryPanel" type="PanelContainer" parent="Root" unique_id=444769624]
 visible = false
 layout_mode = 1
 anchors_preset = 8
@@ -100,8 +99,71 @@ offset_bottom = 260.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="HistoryText" type="RichTextLabel" parent="Root/HistoryPanel"]
+[node name="HistoryText" type="RichTextLabel" parent="Root/HistoryPanel" unique_id=1996103585]
 layout_mode = 2
-bbcode_enabled = false
 scroll_following = true
-theme_override_font_sizes/font_size = 20
+
+[node name="DebugPanel" type="PanelContainer" parent="Root" unique_id=1882557341]
+visible = false
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -620.0
+offset_top = 16.0
+offset_right = -16.0
+offset_bottom = 152.0
+grow_horizontal = 0
+
+[node name="Margin" type="MarginContainer" parent="Root/DebugPanel" unique_id=1088218838]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 8
+
+[node name="VBox" type="VBoxContainer" parent="Root/DebugPanel/Margin" unique_id=1037929819]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="DebugLabel" type="Label" parent="Root/DebugPanel/Margin/VBox" unique_id=1938087007]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+
+[node name="Row1" type="HBoxContainer" parent="Root/DebugPanel/Margin/VBox" unique_id=1794223179]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="BackButton" type="Button" parent="Root/DebugPanel/Margin/VBox/Row1" unique_id=1725843483]
+custom_minimum_size = Vector2(96, 36)
+layout_mode = 2
+text = "上一步"
+
+[node name="NextButton" type="Button" parent="Root/DebugPanel/Margin/VBox/Row1" unique_id=1726151799]
+custom_minimum_size = Vector2(96, 36)
+layout_mode = 2
+text = "下一步"
+
+[node name="JumpEdit" type="LineEdit" parent="Root/DebugPanel/Margin/VBox/Row1" unique_id=1053557004]
+custom_minimum_size = Vector2(88, 36)
+layout_mode = 2
+placeholder_text = "1 起"
+
+[node name="JumpButton" type="Button" parent="Root/DebugPanel/Margin/VBox/Row1" unique_id=1863253801]
+custom_minimum_size = Vector2(72, 36)
+layout_mode = 2
+text = "跳转"
+
+[node name="Row2" type="HBoxContainer" parent="Root/DebugPanel/Margin/VBox" unique_id=1157261717]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="SnapshotButton" type="Button" parent="Root/DebugPanel/Margin/VBox/Row2" unique_id=1390229522]
+custom_minimum_size = Vector2(120, 36)
+layout_mode = 2
+text = "保存快照"
+
+[node name="RestoreButton" type="Button" parent="Root/DebugPanel/Margin/VBox/Row2" unique_id=619597913]
+custom_minimum_size = Vector2(120, 36)
+layout_mode = 2
+text = "恢复快照"

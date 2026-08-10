@@ -18,13 +18,14 @@ public partial class DialogueUIController : CanvasLayer
 	private RichTextLabel _historyText;
 	private VBoxContainer _optionsBox;
 	private readonly List<string> _historyLines = new();
+	private ulong _showAt;
 
 	public override void _Ready()
 	{
 		Layer = 100;
 		_root = GetNode<Control>("Root");
 		_background = GetNode<ColorRect>("Root/Background");
-		_speakerLabel = GetNode<Label>("Root/DialogPanel/Margin/VBox/SpeakerLabel");
+		_speakerLabel = GetNode<Label>("Root/DialogPanel/Margin/VBox/HBoxContainer/SpeakerLabel");
 		_textLabel = GetNode<Label>("Root/DialogPanel/Margin/VBox/TextLabel");
 		_historyButton = GetNode<Button>("Root/DialogPanel/Margin/VBox/HBoxContainer/HistoryButton");
 		_historyPanel = GetNode<PanelContainer>("Root/HistoryPanel");
@@ -41,6 +42,10 @@ public partial class DialogueUIController : CanvasLayer
 			&& mouse.Pressed
 			&& mouse.ButtonIndex == MouseButton.Left)
 		{
+			if (Time.GetTicksMsec() - _showAt < 200)
+			{
+				return;
+			}
 			EmitSignal(SignalName.ContinuePressed);
 		}
 	}
@@ -48,6 +53,7 @@ public partial class DialogueUIController : CanvasLayer
 	public void ShowSay(string speaker, string text)
 	{
 		_root.Visible = true;
+		_showAt = Time.GetTicksMsec();
 		_speakerLabel.Text = speaker;
 		_textLabel.Text = text;
 		_optionsBox.Visible = false;
@@ -60,6 +66,7 @@ public partial class DialogueUIController : CanvasLayer
 	public void ShowOptions(string prompt, IReadOnlyList<string> options)
 	{
 		_root.Visible = true;
+		_showAt = Time.GetTicksMsec();
 		_speakerLabel.Text = "";
 		_textLabel.Text = prompt;
 		_optionsBox.Visible = true;

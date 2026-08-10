@@ -435,7 +435,24 @@ public partial class PlayerController : Node, IUnitController
 		int movePhase = _director.CurrentMovePhase > 0 ? _director.CurrentMovePhase : 1;
 		bool oddTurn = _director.TurnNumber % 2 == 1;
 		int steps = SpeedTable.MoveForPhase(speed, movePhase, oddTurn);
-		var path = MoveRulesEvaluator.BuildMovePath(ship.HexCoords, dir, steps);
+		var others = (_myUnits ?? new List<ShipComponent>())
+			.Concat(_enemyUnits ?? new List<ShipComponent>())
+			.Where(candidate => GodotObject.IsInstanceValid(candidate)
+				&& !ReferenceEquals(candidate, ship)
+				&& candidate.CurrentHp > 0)
+			.ToList();
+		var path = MoveRulesEvaluator.ResolvePreviewPath(
+			ship.HexCoords,
+			dir,
+			steps,
+			hex =>
+			{
+				if (_data?.IsIsland(hex) ?? false) return true;
+				var occupants = others.Where(candidate => candidate.HexCoords == hex).ToList();
+				if (occupants.Count == 0) return false;
+				if (occupants.Any(candidate => candidate.BattleSide != ship.BattleSide)) return true;
+				return occupants.Count >= 2;
+			});
 		if (path.Count == 0) return;
 		Vector2I target = path[^1].Hex;
 		bus.EmitSignal("MoveTargetHighlighted", target, (int)dir);

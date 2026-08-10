@@ -43,6 +43,19 @@ public static class MoveRulesEvaluator
 		return path;
 	}
 
+	/// <summary>按实际阻挡条件解析预览路径：遇到不可进入格即停，不跨格。</summary>
+	public static List<MovementStep> ResolvePreviewPath(Vector2I start, HexDirection direction,
+		int steps, System.Func<Vector2I, bool> isBlocked)
+	{
+		var result = new List<MovementStep>();
+		foreach (MovementStep step in BuildMovePath(start, direction, steps))
+		{
+			if (isBlocked(step.Hex)) break;
+			result.Add(step);
+		}
+		return result;
+	}
+
 	/// <summary>返回从 from 到 to 最接近的六向航向（用于射界/转向判定）。</summary>
 	public static HexDirection DirectionTo(Vector2I from, Vector2I to)
 	{

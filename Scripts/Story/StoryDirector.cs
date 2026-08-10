@@ -1,4 +1,5 @@
 using Godot;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
@@ -13,6 +14,7 @@ namespace DreadnoughtDeparture.Story;
 public partial class StoryDirector : Node
 {
 	public static StoryDirector Instance { get; private set; }
+	public event Action Finished;
 
 	private readonly List<TriggerRule> _triggers = new();
 	private readonly HashSet<string> _played = new();
@@ -21,6 +23,12 @@ public partial class StoryDirector : Node
 	private string _playingScript = "";
 	private string _currentMapName = "";
 	private string _pendingCheckpoint = "";
+	private System.Threading.Tasks.TaskCompletionSource<bool> _finishTcs =
+		new(System.Threading.Tasks.TaskCreationOptions.RunContinuationsAsynchronously);
+
+	public bool IsPlaying => _playingScript.Length > 0;
+
+	public System.Threading.Tasks.Task WhenStoryFinishedAsync() => _finishTcs.Task;
 
 	private sealed class TriggerRule
 	{
@@ -63,6 +71,9 @@ public partial class StoryDirector : Node
 		_playingScript = scriptId;
 		_played.Add(scriptId);
 		_pendingCheckpoint = checkpoint;
+		_finishTcs = new System.Threading.Tasks.TaskCompletionSource<bool>(
+			System.Threading.Tasks.TaskCreationOptions.RunContinuationsAsynchronously);
+		EventBus.Instance?.EmitSignal("StoryPlaybackStarted");
 		_runner.Play(scriptId);
 	}
 
@@ -88,6 +99,9 @@ public partial class StoryDirector : Node
 		}
 		_pendingCheckpoint = "";
 		_playingScript = "";
+		EventBus.Instance?.EmitSignal("StoryPlaybackEnded");
+		Finished?.Invoke();
+		_finishTcs.TrySetResult(true);
 	}
 
 	public void SetFlag(string key, bool value)

@@ -36,6 +36,8 @@ public partial class EventBus : Node
 	[Signal] public delegate void StoryTriggerRequestedEventHandler(string scriptId);
 	[Signal] public delegate void PlayerActionPerformedEventHandler(string actionId);
 	[Signal] public delegate void SpecialCellEnteredEventHandler(Vector2I hex, int specialId);
+	[Signal] public delegate void StoryPlaybackStartedEventHandler();
+	[Signal] public delegate void StoryPlaybackEndedEventHandler();
 
 	// -- 相机焦点（全局运镜接口，剧情/演绎可直接使用）--
 	[Signal] public delegate void CameraFocusRequestedEventHandler(Vector3 worldPos, float distance, float pitchDegrees);

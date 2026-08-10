@@ -27,14 +27,14 @@ public partial class ChapterSelectController : Control
 		var story = new StoryDirector();
 		AddChild(story);
 
-		_chapterAxis = GetNode<HBoxContainer>("Center/Panel/Margin/Box/ChapterScroll/ChapterAxis");
-		_statusLabel = GetNode<Label>("Center/Panel/Margin/Box/StatusLabel");
-		var scrollBackground = GetNodeOrNull<TextureRect>("Center/Panel/Margin/Box/ScrollBackground");
+		_chapterAxis = GetNode<HBoxContainer>("Margin/Panel/Box/ChapterScroll/ChapterAxis");
+		_statusLabel = GetNode<Label>("Margin/Panel/Box/StatusLabel");
+		var scrollBackground = GetNodeOrNull<TextureRect>("Margin/Panel/Box/ScrollBackground");
 		if (scrollBackground != null && ScrollBackgroundTexture != null)
 		{
 			scrollBackground.Texture = ScrollBackgroundTexture;
 		}
-		GetNode<Button>("TopBar/BackButton").Pressed += () =>
+		GetNode<Button>("TopMarginContainer/TopBar/BackButton").Pressed += () =>
 			GetTree().ChangeSceneToFile(MainMenuPath);
 
 		ScanChapters();
@@ -108,13 +108,17 @@ public partial class ChapterSelectController : Control
 		_statusLabel.Text = $"已记忆章节：第 {selected} 章";
 	}
 
-	private void EnterChapter(string chapter)
+	private async void EnterChapter(string chapter)
 	{
 		LevelSelectController.PendingChapter = chapter;
 		var config = new ConfigFile();
 		config.SetValue("operation", "chapter", chapter);
 		config.Save(StateFilePath);
 		StoryDirector.Instance?.Trigger("chapter_enter", chapter);
+		if (StoryDirector.Instance?.IsPlaying == true)
+		{
+			await StoryDirector.Instance.WhenStoryFinishedAsync();
+		}
 		GetTree().ChangeSceneToFile(LevelSelectPath);
 	}
 }

@@ -88,12 +88,16 @@ public partial class LevelSelectController : Control
 			: $"第 {PendingChapter} 章：共 {_levels.Count} 关";
 	}
 
-	private void OpenLevel(int level, string fileName)
+	private async void OpenLevel(int level, string fileName)
 	{
 		LevelDataManager.RuntimeMapRequest = fileName;
 		LevelDataManager.ActiveCampaignMap = fileName;
 		string levelId = $"{PendingChapter}-{level:00}";
 		StoryDirector.Instance?.Trigger("level_enter", levelId);
+		if (StoryDirector.Instance?.IsPlaying == true)
+		{
+			await StoryDirector.Instance.WhenStoryFinishedAsync();
+		}
 		GetTree().ChangeSceneToFile(BattleScenePath);
 	}
 }

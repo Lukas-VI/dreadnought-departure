@@ -74,6 +74,8 @@ public partial class GameplayDirector : Node
 	private bool _remotePhaseActive;
 	private bool _remoteMyTurn;
 	private bool _remotePaused;
+	private bool _storyPlaying;
+	private bool _storyPausedTimerForPlayer = true;
 	private long _remoteTimerEndAt;
 	private int _remoteTimerTotal;
 	private Button _advanceButton;
@@ -123,6 +125,8 @@ public partial class GameplayDirector : Node
 			_playerActionCounts.TryGetValue(actionId, out int count);
 			_playerActionCounts[actionId] = count + 1;
 		};
+		bus.StoryPlaybackStarted += OnStoryPlaybackStarted;
+		bus.StoryPlaybackEnded += OnStoryPlaybackEnded;
 		if (PvpFlowState.PvpBattle)
 		{
 			_remotePvp = true;
@@ -158,6 +162,23 @@ public partial class GameplayDirector : Node
 		else
 		{
 			bus.EmitLog("PvP 连接断开，正在自动重连...");
+		}
+	}
+
+	private void OnStoryPlaybackStarted()
+	{
+		_storyPlaying = true;
+		_storyPausedTimerForPlayer = _timerForPlayer;
+		CancelPhaseTimer();
+	}
+
+	private void OnStoryPlaybackEnded()
+	{
+		_storyPlaying = false;
+		if (_remotePvp || _battleEnded || _enemyActing) return;
+		if (IsPlayerActionPhase(_currentPhase))
+		{
+			StartPhaseTimer(_storyPausedTimerForPlayer);
 		}
 	}
 

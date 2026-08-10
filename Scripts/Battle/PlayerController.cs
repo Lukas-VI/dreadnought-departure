@@ -430,12 +430,12 @@ public partial class PlayerController : Node, IUnitController
 		if (_map == null || _director == null) return;
 		var bus = GetNode<EventBus>("../EventBus");
 		bus.EmitSignal("OverlayClearRequested");
+		int movePhase = _director.CurrentMovePhase;
+		if (movePhase <= 0) return;
 		int speed = ship.PendingSpeed >= 0 ? ship.PendingSpeed : ship.CurrentSpeed;
 		HexDirection dir = ship.PendingDirection ?? ship.Direction;
-		int movePhase = _director.CurrentMovePhase > 0 ? _director.CurrentMovePhase : 1;
 		bool oddTurn = _director.TurnNumber % 2 == 1;
 		int steps = SpeedTable.MoveForPhase(speed, movePhase, oddTurn);
-		GD.Print($"[PREVIEW] {ship.ShipName} phase={movePhase} speed={speed} steps={steps}");
 		var others = (_myUnits ?? new List<ShipComponent>())
 			.Concat(_enemyUnits ?? new List<ShipComponent>())
 			.Where(candidate => GodotObject.IsInstanceValid(candidate)

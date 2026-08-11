@@ -18,12 +18,14 @@ public partial class StoryDirector : Node
 
 	private readonly List<TriggerRule> _triggers = new();
 	private readonly HashSet<string> _played = new();
+	private readonly HashSet<string> _unlocked = new();
 	private readonly Dictionary<string, bool> _flags = new();
 	private readonly NarrativeCatalog _catalog = new();
 	private DialogueRunner _runner;
 	private string _playingScript = "";
 	private string _currentMapName = "";
 	private string _pendingCheckpoint = "";
+	private bool _unlockOnFinish;
 	public NarrativeState CurrentState { get; private set; } = new();
 	public NarrativeCatalog Catalog => _catalog;
 	private System.Threading.Tasks.TaskCompletionSource<bool> _finishTcs =
@@ -52,6 +54,7 @@ public partial class StoryDirector : Node
 		StorySettings.Load();
 		LoadFlags();
 		LoadTriggers();
+		LoadUnlocked();
 		var bus = GetNodeOrNull<EventBus>("../EventBus");
 		if (bus != null)
 		{
@@ -88,6 +91,7 @@ public partial class StoryDirector : Node
 			NotifyFinished();
 			return;
 		}
+		_unlockOnFinish = true;
 		SafeEventBus()?.EmitSignal("StoryPlaybackStarted");
 		_runner.Play(CurrentState);
 	}
@@ -156,6 +160,12 @@ public partial class StoryDirector : Node
 
 	public void NotifyFinished()
 	{
+		if (_unlockOnFinish && _playingScript.Length > 0)
+		{
+			_unlocked.Add(_playingScript);
+			SaveUnlocked();
+		}
+		_unlockOnFinish = false;
 		if (_pendingCheckpoint.Length > 0)
 		{
 			SetFlag(_pendingCheckpoint, true);
@@ -165,6 +175,27 @@ public partial class StoryDirector : Node
 		SafeEventBus()?.EmitSignal("StoryPlaybackEnded");
 		Finished?.Invoke();
 		_finishTcs.TrySetResult(true);
+	}
+
+	public List<StoryNode> GetUnlockedStories()
+	{
+		var stories = new List<StoryNode>();
+		foreach (StoryNode node in _catalog.Flatten())
+		{
+			if (string.IsNullOrEmpty(node.Script)) continue;
+			if (_unlocked.Contains(node.Script) || _unlocked.Contains(node.Id))
+			{
+				stories.Add(node);
+			}
+		}
+		return stories;
+	}
+
+	public void UnlockStory(string scriptId)
+	{
+		if (string.IsNullOrEmpty(scriptId)) return;
+		_unlocked.Add(scriptId);
+		SaveUnlocked();
 	}
 
 	private static EventBus SafeEventBus()
@@ -243,6 +274,56 @@ public partial class StoryDirector : Node
 
 	private const string FlagFilePath = "user://story_flags.json";
 	private const string SnapshotFilePath = "user://narrative_snapshot.json";
+	private const string UnlockedFilePath = "user://story_unlocked.json";
+
+	private void LoadUnlocked()
+	{
+		if (FileAccess.FileExists(UnlockedFilePath))
+		{
+			try
+			{
+				using var file = FileAccess.Open(UnlockedFilePath, FileAccess.ModeFlags.Read);
+				if (file != null)
+				{
+					string json = file.GetAsText();
+					if (!string.IsNullOrWhiteSpace(json))
+					{
+						using var document = JsonDocument.Parse(json);
+						if (document.RootElement.ValueKind == JsonValueKind.Array)
+						{
+							foreach (JsonElement element in document.RootElement.EnumerateArray())
+							{
+								string id = element.GetString() ?? "";
+								if (!string.IsNullOrEmpty(id))
+								{
+									_unlocked.Add(id);
+								}
+							}
+						}
+					}
+				}
+			}
+			catch
+			{
+				_unlocked.Clear();
+			}
+		}
+		foreach (TriggerRule rule in _triggers)
+		{
+			if (!string.IsNullOrEmpty(rule.Checkpoint) && GetFlag(rule.Checkpoint))
+			{
+				_unlocked.Add(rule.Script);
+			}
+		}
+		SaveUnlocked();
+	}
+
+	private void SaveUnlocked()
+	{
+		using var file = FileAccess.Open(UnlockedFilePath, FileAccess.ModeFlags.Write);
+		if (file == null) return;
+		file.StoreString(JsonSerializer.Serialize(_unlocked));
+	}
 
 	private void LoadFlags()
 	{

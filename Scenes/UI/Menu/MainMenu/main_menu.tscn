@@ -68,7 +68,7 @@ text = "网游中心"
 custom_minimum_size = Vector2(300, 60)
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
-text = "剧情示例"
+text = "剧情回放"
 
 [node name="BtnOperation" type="Button" parent="CenterContainer/VBoxContainer" unique_id=1446092047]
 custom_minimum_size = Vector2(300, 60)

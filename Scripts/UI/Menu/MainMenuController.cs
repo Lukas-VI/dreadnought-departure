@@ -15,6 +15,7 @@ public partial class MainMenuController : Control
 	[Export] public string PvpLoginMenuPath = "res://Scenes/UI/Network/login_menu.tscn";
 	[Export] public string NetworkCenterScenePath = "res://Scenes/UI/Network/network_center.tscn";
 	[Export] public string OperationChapterPath = "res://Scenes/UI/Menu/Operation/chapter_select.tscn";
+	[Export] public string StoryReplayPath = "res://Scenes/UI/Menu/StoryReplay/story_replay.tscn";
 
 	public override void _Ready()
 	{
@@ -49,8 +50,8 @@ public partial class MainMenuController : Control
 	/// <summary> 网游中心：个人资料、背包、抽卡、商店、邮件。 </summary>
 	public void _OnNetworkCenterPressed() => GetTree().ChangeSceneToFile(NetworkCenterScenePath);
 
-	/// <summary> 剧情示例：演示主界面玩家操作可触发演绎。 </summary>
-	public void _OnStoryPressed() => StoryDirector.Instance?.Play("tutorial");
+	/// <summary> 剧情回放：重新观看所有已解锁剧情。 </summary>
+	public void _OnStoryPressed() => GetTree().ChangeSceneToFile(StoryReplayPath);
 
 	/// <summary> 作战入口：章节选择。 </summary>
 	public void _OnOperationPressed() => GetTree().ChangeSceneToFile(OperationChapterPath);

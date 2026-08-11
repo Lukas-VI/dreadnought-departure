@@ -190,6 +190,9 @@ DebugNext() / DebugJump(index)`。
 
 ## 接口入口
 
-- 主菜单“剧情示例”按钮直接播放 `tutorial/demo`
+- 主菜单“剧情回放”进入已解锁剧情列表，点击任意脚本可重新观看
 - 战斗内由 `StoryDirector` 监听 `EventBus` 自动触发
 - 任意代码可调用 `StoryDirector.Instance?.Play("script_id")`
+
+播放完成的脚本会写入 `user://story_unlocked.json`；已有 checkpoint 的历史进度会自动迁移为已解锁。
+`StoryDirector.GetUnlockedStories()` 返回当前可回放的剧情树节点。

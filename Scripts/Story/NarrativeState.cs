@@ -83,7 +83,6 @@ public sealed class NarrativeState
 			? $"res://Data/Stories/{scriptId}.json"
 			: filePath;
 		if (!FileAccess.FileExists(path)) return false;
-		JsonElement root;
 		try
 		{
 			using var file = FileAccess.Open(path, FileAccess.ModeFlags.Read);
@@ -91,13 +90,16 @@ public sealed class NarrativeState
 			string json = file.GetAsText();
 			if (string.IsNullOrWhiteSpace(json)) return false;
 			using var document = JsonDocument.Parse(json);
-			root = document.RootElement;
+			return ParseDocument(scriptId, document.RootElement);
 		}
 		catch
 		{
 			return false;
 		}
+	}
 
+	private bool ParseDocument(string scriptId, JsonElement root)
+	{
 		ScriptId = scriptId;
 		ParseBackground(root, "background",
 			out string background, out float backgroundAlpha,

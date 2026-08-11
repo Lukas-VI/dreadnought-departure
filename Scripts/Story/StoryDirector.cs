@@ -88,7 +88,7 @@ public partial class StoryDirector : Node
 			NotifyFinished();
 			return;
 		}
-		EventBus.Instance?.EmitSignal("StoryPlaybackStarted");
+		SafeEventBus()?.EmitSignal("StoryPlaybackStarted");
 		_runner.Play(CurrentState);
 	}
 
@@ -116,7 +116,7 @@ public partial class StoryDirector : Node
 		using var file = FileAccess.Open(SnapshotFilePath, FileAccess.ModeFlags.Write);
 		if (file == null) return;
 		file.StoreString(JsonSerializer.Serialize(snapshot));
-		EventBus.Instance?.EmitLog($"剧情快照已保存：{snapshot.ScriptId} @ {snapshot.Index}");
+		SafeEventBus()?.EmitLog($"剧情快照已保存：{snapshot.ScriptId} @ {snapshot.Index}");
 	}
 
 	public void LoadDebugSnapshot()
@@ -131,12 +131,12 @@ public partial class StoryDirector : Node
 			RestoreState(snapshot);
 			if (snapshot != null)
 			{
-				EventBus.Instance?.EmitLog($"剧情快照已恢复：{snapshot.ScriptId} @ {snapshot.Index}");
+				SafeEventBus()?.EmitLog($"剧情快照已恢复：{snapshot.ScriptId} @ {snapshot.Index}");
 			}
 		}
 		catch
 		{
-			EventBus.Instance?.EmitLog("剧情快照恢复失败");
+			SafeEventBus()?.EmitLog("剧情快照恢复失败");
 		}
 	}
 
@@ -162,9 +162,15 @@ public partial class StoryDirector : Node
 		}
 		_pendingCheckpoint = "";
 		_playingScript = "";
-		EventBus.Instance?.EmitSignal("StoryPlaybackEnded");
+		SafeEventBus()?.EmitSignal("StoryPlaybackEnded");
 		Finished?.Invoke();
 		_finishTcs.TrySetResult(true);
+	}
+
+	private static EventBus SafeEventBus()
+	{
+		EventBus bus = EventBus.Instance;
+		return GodotObject.IsInstanceValid(bus) ? bus : null;
 	}
 
 	public void SetFlag(string key, bool value)

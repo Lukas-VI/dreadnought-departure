@@ -234,6 +234,13 @@ public partial class StoryDirector : Node
 
 	private void LoadTriggerFile(string path)
 	{
+		var rules = new List<TriggerRule>();
+		ReadTriggerFile(path, rules);
+		_triggers.AddRange(rules);
+	}
+
+	private void ReadTriggerFile(string path, List<TriggerRule> rules)
+	{
 		if (!FileAccess.FileExists(path)) return;
 		try
 		{
@@ -246,7 +253,7 @@ public partial class StoryDirector : Node
 			if (!root.TryGetProperty("triggers", out JsonElement triggers)) return;
 			foreach (JsonElement entry in triggers.EnumerateArray())
 			{
-				_triggers.Add(new TriggerRule
+				rules.Add(new TriggerRule
 				{
 					Event = entry.TryGetProperty("event", out JsonElement eventProp)
 						? eventProp.GetString() ?? ""
@@ -308,6 +315,12 @@ public partial class StoryDirector : Node
 				_unlocked.Clear();
 			}
 		}
+		MigrateUnlockedFromCheckpoints();
+		SaveUnlocked();
+	}
+
+	private void MigrateUnlockedFromCheckpoints()
+	{
 		foreach (TriggerRule rule in _triggers)
 		{
 			if (!string.IsNullOrEmpty(rule.Checkpoint) && GetFlag(rule.Checkpoint))
@@ -315,7 +328,22 @@ public partial class StoryDirector : Node
 				_unlocked.Add(rule.Script);
 			}
 		}
-		SaveUnlocked();
+		const string mapDir = "res://Data/Stories/maps";
+		using var dir = DirAccess.Open(mapDir);
+		if (dir == null) return;
+		foreach (string file in dir.GetFiles())
+		{
+			if (!file.EndsWith(".json", StringComparison.OrdinalIgnoreCase)) continue;
+			var rules = new List<TriggerRule>();
+			ReadTriggerFile($"{mapDir}/{file}", rules);
+			foreach (TriggerRule rule in rules)
+			{
+				if (!string.IsNullOrEmpty(rule.Checkpoint) && GetFlag(rule.Checkpoint))
+				{
+					_unlocked.Add(rule.Script);
+				}
+			}
+		}
 	}
 
 	private void SaveUnlocked()

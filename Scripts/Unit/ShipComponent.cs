@@ -55,8 +55,17 @@ public partial class ShipComponent : Node3D
 	public ShipComponent PendingAttackTarget;
 	public int PendingAttackDistance;
 	public bool PendingRadarUsed;
+	/// <summary>鱼雷待命：0 无，-1 左舷，1 右舷。推进阶段才发射。</summary>
+	public int PendingTorpedoSide;
 	/// <summary>雷达技能是否在本阶段显式激活（由技能按钮写入，仅当回合有效）。</summary>
 	public bool PendingRadarActive;
+	/// <summary>鱼雷管剩余数量（左/中/右）与备用鱼雷次数。</summary>
+	public int TorpedoLeftRemaining;
+	public int TorpedoCenterRemaining;
+	public int TorpedoRightRemaining;
+	public int TorpedoReloadsRemaining;
+	public bool TorpedoFiredThisTurn;
+	public bool TorpedoFiredLastTurn;
 	/// <summary>所属单纵阵首舰；null 表示不在阵中（运行时标记，移动结算按此分组）。</summary>
 	public ShipComponent FormationLead;
 	/// <summary>在单纵阵中的链内序号：0 为首舰，后续舰依次递增。</summary>
@@ -124,6 +133,7 @@ public partial class ShipComponent : Node3D
 		PendingAttackDistance = 0;
 		PendingRadarUsed = false;
 		PendingRadarActive = false;
+		PendingTorpedoSide = 0;
 	}
 
 	// 子类覆写这个方法，不用再写一遍 AddToGroup / 找 Label3D
@@ -223,7 +233,54 @@ public partial class ShipComponent : Node3D
 		AttackRange = data.AttackRange;
 		AttackPower = data.AttackPower;
 		MainAmmo = data.MainAmmo;
+		TorpedoLeftRemaining = data.TorpedoLeftTubes;
+		TorpedoCenterRemaining = data.TorpedoCenterTubes;
+		TorpedoRightRemaining = data.TorpedoRightTubes;
+		TorpedoReloadsRemaining = data.HasSpareTorpedoes ? 1 : 0;
 		UpdateUi();
+	}
+
+	public int TorpedoesAvailableOnSide(int side)
+		=> side < 0
+			? TorpedoLeftRemaining + TorpedoCenterRemaining
+			: TorpedoRightRemaining + TorpedoCenterRemaining;
+
+	public int TotalTorpedoesRemaining
+		=> TorpedoLeftRemaining + TorpedoCenterRemaining + TorpedoRightRemaining;
+
+	/// <summary>全数发射该侧鱼雷（左舷/右舷各自消耗同侧管 + 中央管），返回发射数量。</summary>
+	public int ConsumeTorpedoSalvo(int side)
+	{
+		int count;
+		if (side < 0)
+		{
+			count = TorpedoLeftRemaining + TorpedoCenterRemaining;
+			TorpedoLeftRemaining = 0;
+			TorpedoCenterRemaining = 0;
+		}
+		else
+		{
+			count = TorpedoRightRemaining + TorpedoCenterRemaining;
+			TorpedoRightRemaining = 0;
+			TorpedoCenterRemaining = 0;
+		}
+		TorpedoFiredThisTurn = true;
+		return count;
+	}
+
+	public bool CanReloadTorpedoes
+		=> Data != null
+		&& Data.HasSpareTorpedoes
+		&& TorpedoReloadsRemaining > 0
+		&& TotalTorpedoesRemaining < Data.TotalTorpedoTubes;
+
+	public void ReloadTorpedoes()
+	{
+		if (Data == null || !CanReloadTorpedoes) return;
+		TorpedoLeftRemaining = Data.TorpedoLeftTubes;
+		TorpedoCenterRemaining = Data.TorpedoCenterTubes;
+		TorpedoRightRemaining = Data.TorpedoRightTubes;
+		TorpedoReloadsRemaining--;
 	}
 
 /// <summary>应用初设时调用：设置 InitialDirection/InitialSpeed 并同步到运行时属性。</summary>

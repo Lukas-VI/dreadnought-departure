@@ -169,6 +169,7 @@ public partial class PlayerController : Node, IUnitController
 		bool canTurn = phase is BattlePhase.SpeedAdjust or BattlePhase.MovePhase1
 			or BattlePhase.MovePhase2 or BattlePhase.MovePhase3;
 		bool canAttack = phase == BattlePhase.Gunfire;
+		bool canTorpedo = phase == BattlePhase.Torpedo;
 
 		if (actionId == "attack" && _selected.MainAmmo <= 0)
 		{ RejectAction("❌ 主炮弹药耗尽！"); return; }
@@ -176,6 +177,14 @@ public partial class PlayerController : Node, IUnitController
 		{ RejectAction("❌ 当前阶段不可转向"); return; }
 		if (actionId == "attack" && !canAttack)
 		{ RejectAction("❌ 当前阶段不可射击"); return; }
+		if ((actionId == "torpedo_left" || actionId == "torpedo_right") && !canTorpedo)
+		{ RejectAction("❌ 当前阶段不可雷击"); return; }
+
+		if (actionId == "torpedo_left" || actionId == "torpedo_right")
+		{
+			ExecuteTorpedoPending(actionId == "torpedo_left" ? -1 : 1);
+			return;
+		}
 
 		_pendingAction = actionId;
 
@@ -191,6 +200,46 @@ public partial class PlayerController : Node, IUnitController
 		{
 			ExecuteInstantAction(actionId);
 		}
+	}
+
+	private void ExecuteTorpedoPending(int side)
+	{
+		ShipComponent ship = _selected;
+		if (ship == null) return;
+		if (!TorpedoRulesEvaluator.CanLaunch(ship, side))
+		{
+			RejectAction("❌ 无法雷击：无鱼雷管、已中破/大破、本回合已雷击或该侧已无鱼雷");
+			return;
+		}
+		if (_director == null) return;
+		bool second = _director.IsPlayerSecondTurn;
+		int cost = CommandRulesEvaluator.TorpedoCPCost(ship, second);
+		if (_director.CurrentCP < cost)
+		{
+			RejectAction($"❌ 雷击需要 {cost} CP，剩余 {_director.CurrentCP}");
+			return;
+		}
+		int range = ship.Data?.TorpedoRange ?? 4;
+		bool radarActive = ship.Data != null
+			&& !string.IsNullOrEmpty(ship.Data.RadarType)
+			&& ship.DamageState is DamageState.Intact or DamageState.Light;
+		bool hasTarget = _enemyUnits != null && _enemyUnits.Any(target =>
+			GodotObject.IsInstanceValid(target)
+			&& target.CurrentHp > 0
+			&& BattleRulesEvaluator.GetHexDistance(ship.HexCoords, target.HexCoords) <= range
+			&& VisionRulesEvaluator.CanEngage(ship, target, _data,
+				radarActive));
+		if (!hasTarget)
+		{
+			RejectAction("❌ 射程/视野内没有可雷击的敌舰");
+			return;
+		}
+
+		ship.PendingTorpedoSide = side;
+		string sideName = side < 0 ? "左舷" : "右舷";
+		GetNode<EventBus>("../EventBus").EmitSignal("LogMessage",
+			$"💣 {ship.ShipName} {sideName}雷击待命（{cost} CP，推进后发射）");
+		EndAction();
 	}
 
 	/// <summary>执行航速增减：检查变速限幅与 CP 消耗，更新 ship.CurrentSpeed，并按新航速推算到达格运镜。</summary>

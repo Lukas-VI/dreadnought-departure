@@ -70,6 +70,8 @@ public partial class ShipData : Resource
 	[Export] public bool HasSpareTorpedoes = false;
 	[Export] public int TorpedoTubes = 0;
 	[Export] public int TorpedoDamage = 30;
+	[Export] public int TorpedoRange = 4;
+	[Export] public int TorpedoSpeed = 6;
 
 	[Export] public string RadarType = "";
 	[Export] public int TurnCost = 1;
@@ -109,4 +111,10 @@ public partial class ShipData : Resource
 	}
 
 	public int TotalTorpedoTubes => TorpedoLeftTubes + TorpedoCenterTubes + TorpedoRightTubes;
+
+	/// <summary>左舷雷击可用管数 = 左舷管 + 中央管；右舷同理。</summary>
+	public int TorpedoTubesForSide(int side)
+		=> side < 0
+			? TorpedoLeftTubes + TorpedoCenterTubes
+			: TorpedoRightTubes + TorpedoCenterTubes;
 }

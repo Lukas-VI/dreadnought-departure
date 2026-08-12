@@ -32,4 +32,7 @@ ArmorFar = 0
 TorpedoType = "93式"
 TorpedoCenterTubes = 8
 HasSpareTorpedoes = true
+TorpedoDamage = 30
+TorpedoRange = 6
+TorpedoSpeed = 6
 metadata/_custom_type_script = "uid://dreq4a4on5nm3"

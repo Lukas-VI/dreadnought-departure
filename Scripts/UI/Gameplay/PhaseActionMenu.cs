@@ -45,7 +45,7 @@ public partial class PhaseActionMenu : Control
 
 		foreach (string id in actions)
 		{
-			int cost = ActionCost(ship, id);
+			int cost = ActionCost(ship, id, director);
 			bool enabled = IsActionEnabled(ship, phase, id, director);
 			bool highlighted = IsPendingAction(ship, id);
 			string formationLabel = FormationEffectLabel(ship, friendly, id);
@@ -113,15 +113,21 @@ public partial class PhaseActionMenu : Control
 				if (ship.Data?.SkillIds != null)
 					list.AddRange(ship.Data.SkillIds);
 				break;
+			case BattlePhase.Torpedo:
+				list.Add("torpedo_left");
+				list.Add("torpedo_right");
+				break;
 		}
 		list.Add("skip");
 		return list;
 	}
 
-	private static int ActionCost(ShipComponent ship, string id) => id switch
+	private static int ActionCost(ShipComponent ship, string id, GameplayDirector director) => id switch
 	{
 		"speed_up" or "speed_down" or "turn_left" or "turn_right" => 1,
 		"attack" => CommandRulesEvaluator.FireCPCost(ship),
+		"torpedo_left" or "torpedo_right" =>
+			CommandRulesEvaluator.TorpedoCPCost(ship, director?.IsPlayerSecondTurn == true),
 		"radar" => 0,
 		_ => 0
 	};
@@ -172,7 +178,7 @@ public partial class PhaseActionMenu : Control
 	{
 		if (id == "skip") return true;
 		int cp = director?.CurrentCP ?? 0;
-		int cost = ActionCost(ship, id);
+		int cost = ActionCost(ship, id, director);
 		if (cp < cost) return false;
 		return id switch
 		{
@@ -184,6 +190,10 @@ public partial class PhaseActionMenu : Control
 				or BattlePhase.MovePhase1 or BattlePhase.MovePhase2 or BattlePhase.MovePhase3,
 			"attack" => phase == BattlePhase.Gunfire && ship.MainAmmo > 0
 				&& ship.DamageState != DamageState.Heavy && ship.DamageState != DamageState.Sunk,
+			"torpedo_left" => phase == BattlePhase.Torpedo
+				&& TorpedoRulesEvaluator.CanLaunch(ship, -1),
+			"torpedo_right" => phase == BattlePhase.Torpedo
+				&& TorpedoRulesEvaluator.CanLaunch(ship, 1),
 			"radar" => phase == BattlePhase.Gunfire && CanUseRadar(ship),
 			_ => true
 		};
@@ -196,6 +206,8 @@ public partial class PhaseActionMenu : Control
 		"turn_left" => ship.PendingDirection == HexDirectionUtility.TurnLeft(ship.Direction),
 		"turn_right" => ship.PendingDirection == HexDirectionUtility.TurnRight(ship.Direction),
 		"attack" => ship.PendingAttackTarget != null,
+		"torpedo_left" => ship.PendingTorpedoSide == -1,
+		"torpedo_right" => ship.PendingTorpedoSide == 1,
 		"radar" => ship.PendingRadarActive,
 		_ => false
 	};
@@ -230,6 +242,8 @@ public partial class PhaseActionMenu : Control
 		"turn_left" => "左转",
 		"turn_right" => "右转",
 		"attack" => "炮击",
+		"torpedo_left" => "左舷雷击",
+		"torpedo_right" => "右舷雷击",
 		"radar" => "雷达",
 		"skip" => "待命",
 		_ => id

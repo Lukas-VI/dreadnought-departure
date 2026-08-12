@@ -35,6 +35,7 @@ public partial class GameplayDirector : Node
 	private UnitSpawner _unitSpawner;
 	private GridOverlayController _overlay;
 	private BattleFeedbackController _feedback;
+	private TorpedoController _torpedoController;
 	private PlayerController _player;
 	private AIController _ai;
 	private BattleHudBroker _hud;
@@ -80,6 +81,7 @@ public partial class GameplayDirector : Node
 	private int _remoteTimerTotal;
 	private Button _advanceButton;
 	private readonly Dictionary<string, ShipComponent> _remoteShips = new();
+	private readonly Dictionary<string, TorpedoComponent> _remoteTorpedoes = new();
 	private readonly Dictionary<string, Tween> _remoteTweens = new();
 	private readonly Dictionary<ShipComponent, FormationTrail> _formationTrails = new();
 	private readonly HashSet<Vector2I> _playerReachedHexes = new();
@@ -111,6 +113,8 @@ public partial class GameplayDirector : Node
 		_overlay = GetNode<GridOverlayController>("GridOverlayController");
 		_feedback = new BattleFeedbackController();
 		AddChild(_feedback);
+		_torpedoController = new TorpedoController();
+		AddChild(_torpedoController);
 		_player = GetNode<PlayerController>("PlayerController");
 		_ai = GetNodeOrNull<AIController>("AIController");
 		_hud = GetNodeOrNull<BattleHudBroker>("CanvasLayer/BattleUI/InfoLabel");
@@ -440,6 +444,18 @@ public partial class GameplayDirector : Node
 			int mainAmmo = ship.TryGetProperty("mainAmmo", out JsonElement mainAmmoProp)
 				? mainAmmoProp.GetInt32()
 				: -1;
+			int torpedoLeft = ship.TryGetProperty("torpedoLeftRemaining", out JsonElement torpedoLeftProp)
+				? torpedoLeftProp.GetInt32()
+				: -1;
+			int torpedoCenter = ship.TryGetProperty("torpedoCenterRemaining", out JsonElement torpedoCenterProp)
+				? torpedoCenterProp.GetInt32()
+				: -1;
+			int torpedoRight = ship.TryGetProperty("torpedoRightRemaining", out JsonElement torpedoRightProp)
+				? torpedoRightProp.GetInt32()
+				: -1;
+			int torpedoReloads = ship.TryGetProperty("torpedoReloadsRemaining", out JsonElement reloadProp)
+				? reloadProp.GetInt32()
+				: -1;
 			int stackIndex = ship.TryGetProperty("stackIndex", out JsonElement stackIndexProp)
 				? stackIndexProp.GetInt32()
 				: 0;
@@ -465,6 +481,11 @@ public partial class GameplayDirector : Node
 				component = prefab.Instantiate<ShipComponent>();
 				_unitSpawner.AddChild(component);
 				component.SetMeta("serverShipId", id);
+				ShipCatalog.Entry entry = ShipCatalog.Get(shipId);
+				if (entry?.Data != null)
+				{
+					component.ApplyData(entry.Data);
+				}
 				_remoteShips[id] = component;
 				isNew = true;
 			}
@@ -494,6 +515,16 @@ public partial class GameplayDirector : Node
 			{
 				component.MainAmmo = mainAmmo;
 			}
+			if (torpedoLeft >= 0) component.TorpedoLeftRemaining = torpedoLeft;
+			if (torpedoCenter >= 0) component.TorpedoCenterRemaining = torpedoCenter;
+			if (torpedoRight >= 0) component.TorpedoRightRemaining = torpedoRight;
+			if (torpedoReloads >= 0) component.TorpedoReloadsRemaining = torpedoReloads;
+			component.TorpedoFiredThisTurn =
+				ship.TryGetProperty("torpedoFiredThisTurn", out JsonElement firedProp)
+					&& firedProp.ValueKind == JsonValueKind.True;
+			component.TorpedoFiredLastTurn =
+				ship.TryGetProperty("torpedoFiredLastTurn", out JsonElement firedLastProp)
+					&& firedLastProp.ValueKind == JsonValueKind.True;
 			LevelDataManager.BattlefieldUnits[coords] = component;
 			pending.Add((id, component, coords, isNew, stackIndex, stackTotal));
 		}
@@ -596,6 +627,10 @@ public partial class GameplayDirector : Node
 		_enemyShips = _remoteShips.Values
 			.Where(ship => ship.BattleSide == GenerationSide.Enemy)
 			.ToList();
+		if (state.TryGetProperty("torpedoes", out JsonElement torpedoes))
+		{
+			SyncRemoteTorpedoes(torpedoes);
+		}
 		if (state.TryGetProperty("playerCommand", out JsonElement playerCommandProp))
 		{
 			PlayerCommandValue = playerCommandProp.GetInt32();
@@ -677,7 +712,7 @@ public partial class GameplayDirector : Node
 		{
 			_remotePhaseActive = true;
 			_remoteMyTurn = true;
-			if (_currentPhase is BattlePhase.ReconLighting or BattlePhase.Torpedo)
+			if (_currentPhase == BattlePhase.ReconLighting)
 			{
 				if (!_remoteCommandsSent)
 				{
@@ -723,6 +758,88 @@ public partial class GameplayDirector : Node
 				$"回合 {turn} · {phase}");
 		}
 		RefreshAdvanceButton();
+	}
+
+	private void SyncRemoteTorpedoes(JsonElement torpedoes)
+	{
+		if (_torpedoController == null || _mapGenerator == null) return;
+		var seen = new HashSet<string>();
+		foreach (JsonElement entry in torpedoes.EnumerateArray())
+		{
+			string id = entry.TryGetProperty("id", out JsonElement idProp)
+				? idProp.GetString() ?? ""
+				: "";
+			if (string.IsNullOrEmpty(id)) continue;
+			JsonElement hex = entry.TryGetProperty("hex", out JsonElement hexProp)
+				? hexProp
+				: default;
+			if (hex.ValueKind != JsonValueKind.Array || hex.GetArrayLength() < 2) continue;
+			int side = entry.TryGetProperty("side", out JsonElement sideProp)
+				? sideProp.GetInt32()
+				: 0;
+			int direction = entry.TryGetProperty("direction", out JsonElement dirProp)
+				? dirProp.GetInt32()
+				: 0;
+			int speed = entry.TryGetProperty("speed", out JsonElement speedProp)
+				? speedProp.GetInt32()
+				: 6;
+			int range = entry.TryGetProperty("remainingRange", out JsonElement rangeProp)
+				? rangeProp.GetInt32()
+				: 4;
+			int count = entry.TryGetProperty("count", out JsonElement countProp)
+				? countProp.GetInt32()
+				: 1;
+			int hitMode = entry.TryGetProperty("hitMode", out JsonElement modeProp)
+				? modeProp.GetInt32()
+				: 7;
+			int damage = entry.TryGetProperty("torpedoDamage", out JsonElement damageProp)
+				? damageProp.GetInt32()
+				: 30;
+			string type = entry.TryGetProperty("torpedoType", out JsonElement typeProp)
+				? typeProp.GetString() ?? ""
+				: "鱼雷";
+			Vector2I coords = new Vector2I(hex[0].GetInt32(), hex[1].GetInt32());
+			seen.Add(id);
+
+			if (!_remoteTorpedoes.TryGetValue(id, out TorpedoComponent torpedo))
+			{
+				torpedo = _torpedoController.SpawnTorpedo(
+					id, side, coords, (HexDirection)(direction % 6),
+					speed, range, count, hitMode, damage, type, null, _mapGenerator);
+				if (torpedo == null) continue;
+				_remoteTorpedoes[id] = torpedo;
+			}
+			else
+			{
+				if (torpedo.Hex != coords)
+				{
+					torpedo.AnimateMoveTo(_mapGenerator, coords, 0.3f);
+				}
+				torpedo.Direction = (HexDirection)(direction % 6);
+				torpedo.RemainingRange = range;
+				torpedo.RangeSpent = entry.TryGetProperty("rangeSpent", out JsonElement spentProp)
+					? spentProp.GetInt32()
+					: torpedo.RangeSpent;
+				torpedo.Count = count;
+				torpedo.ApplyVisual();
+			}
+		}
+
+		var stale = new List<string>();
+		foreach (string id in _remoteTorpedoes.Keys)
+		{
+			if (!seen.Contains(id))
+			{
+				stale.Add(id);
+			}
+		}
+		foreach (string id in stale)
+		{
+			if (_remoteTorpedoes.Remove(id, out TorpedoComponent torpedo))
+			{
+				_torpedoController.RemoveTorpedo(torpedo);
+			}
+		}
 	}
 
 	private void RefreshAdvanceButton()
@@ -980,6 +1097,17 @@ public partial class GameplayDirector : Node
 			foreach (var ship in _playerShips.Concat(_enemyShips))
 				if (IsShipAlive(ship))
 				{
+					ship.TorpedoFiredLastTurn = ship.TorpedoFiredThisTurn;
+					ship.TorpedoFiredThisTurn = false;
+					if (ship.CurrentSpeed <= 2
+						&& !ship.TurnedThisPhase
+						&& !ship.TorpedoFiredLastTurn
+						&& ship.CanReloadTorpedoes)
+					{
+						ship.ReloadTorpedoes();
+						GetNode<EventBus>("EventBus").EmitSignal("LogMessage",
+							$"♻ {ship.ShipName} 低速未转向且未开火，完成备用鱼雷装填");
+					}
 					ship.TurnedThisPhase = false;
 					ship.UpdateUi();
 				}
@@ -1056,6 +1184,10 @@ public partial class GameplayDirector : Node
 					bus.EmitLog($"{ship.ShipName} 炮击未执行（CP 或条件不足）");
 				}
 			}
+			else if (intent.Action == "torpedo" && intent.TorpedoSide != 0)
+			{
+				LaunchTorpedo(ship, intent.TorpedoSide);
+			}
 		}
 
 		foreach (var ship in _playerShips)
@@ -1069,6 +1201,7 @@ public partial class GameplayDirector : Node
 
 	private void StartPhaseTimer(bool forPlayer)
 	{
+		if (_storyPlaying) return;
 		CancelPhaseTimer();
 		if (_dataManager?.PhaseSecondsPerShip == null) return;
 		int phase = (int)_currentPhase;
@@ -1083,6 +1216,53 @@ public partial class GameplayDirector : Node
 		_timerForPlayer = forPlayer;
 		_timerEmitAccumulator = 0f;
 		EmitPhaseTimerUpdated();
+	}
+
+	/// <summary>发射一枚鱼雷齐射：校验 CP/资格、消耗鱼雷并生成占位实体。</summary>
+	public bool LaunchTorpedo(ShipComponent ship, int side, bool enemySide = false)
+	{
+		var bus = GetNode<EventBus>("EventBus");
+		if (ship == null || !TorpedoRulesEvaluator.CanLaunch(ship, side))
+		{
+			bus.EmitLog($"{ship?.ShipName} 雷击未执行（无鱼雷管、状态不允许或本回合已雷击）");
+			return false;
+		}
+		bool second = enemySide ? !IsPlayerSecondTurn : IsPlayerSecondTurn;
+		int cost = CommandRulesEvaluator.TorpedoCPCost(ship, second);
+		bool consumed = enemySide ? TryConsumeEnemyCP(cost) : TryConsumeCP(cost);
+		if (!consumed)
+		{
+			bus.EmitLog($"{ship.ShipName} 雷击被拒绝（需要 {cost} CP）");
+			return false;
+		}
+
+		int count = ship.ConsumeTorpedoSalvo(side);
+		if (count <= 0)
+		{
+			bus.EmitLog($"{ship.ShipName} 该侧没有剩余鱼雷");
+			return false;
+		}
+		int hitMode = enemySide
+			? _dataManager?.TorpedoModeEnemy ?? 4
+			: _dataManager?.TorpedoModePlayer ?? 7;
+		TorpedoComponent torpedo = _torpedoController.SpawnTorpedo(
+			$"t_{ship.ShipName}_{GD.Randi()}",
+			(int)ship.BattleSide,
+			ship.HexCoords,
+			TorpedoRulesEvaluator.LaunchDirection(ship, side),
+			ship.Data?.TorpedoSpeed ?? 6,
+			ship.Data?.TorpedoRange ?? 4,
+			count,
+			hitMode,
+			ship.Data?.TorpedoDamage ?? 30,
+			ship.Data?.TorpedoType ?? "",
+			ship,
+			_mapGenerator);
+		if (torpedo != null)
+		{
+			bus.EmitLog($"💣 {ship.ShipName} 向{(side < 0 ? "左舷" : "右舷")}发射 {count} 发鱼雷（{cost} CP）");
+		}
+		return torpedo != null;
 	}
 
 	private void CancelPhaseTimer()
@@ -1126,6 +1306,7 @@ public partial class GameplayDirector : Node
 		BattlePhase.MovePhase2 => true,
 		BattlePhase.MovePhase3 => true,
 		BattlePhase.Gunfire => true,
+		BattlePhase.Torpedo => true,
 		_ => false
 	};
 
@@ -1340,6 +1521,8 @@ public partial class GameplayDirector : Node
 			await ToSignal(GetTree().CreateTimer(longest + 0.1f), "timeout");
 		RefreshStackOffsets();
 		RefreshDirectionOverlays();
+		await _torpedoController.MoveTorpedoesAsync(_mapGenerator, _dataManager,
+			phase, oddTurn, _playerShips.Concat(_enemyShips).ToList());
 		foreach (var ship in _playerShips.Concat(_enemyShips))
 			if (IsShipAlive(ship)
 				&& _dataManager?.SpecialTiles.TryGetValue(ship.HexCoords, out int specialId) == true)
@@ -1581,6 +1764,7 @@ public partial class GameplayDirector : Node
 
 	public BattlePhase CurrentPhase => _currentPhase;
 	public int TurnNumber => _turnNumber;
+	public bool IsPlayerSecondTurn => _dataManager?.InitiativeOwner == "enemy";
 	public int CurrentMovePhase => _currentPhase switch
 	{
 		BattlePhase.MovePhase1 => 1, BattlePhase.MovePhase2 => 2, BattlePhase.MovePhase3 => 3,

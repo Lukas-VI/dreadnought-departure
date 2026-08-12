@@ -171,8 +171,11 @@ public partial class BattleUIController : Control
 	private static string FormatShipRow(ShipComponent ship)
 	{
 		if (ship == null) return "未选中";
+		string torpedo = ship.Data != null && ship.Data.TotalTorpedoTubes > 0
+			? $"  雷 {ship.TotalTorpedoesRemaining}/{ship.Data.TotalTorpedoTubes}"
+			: "";
 		return $"{ship.ShipName}\n HP {ship.CurrentHp}/{ship.MaxHp}  {ship.DamageState}  " +
-			$"速 {ship.CurrentSpeed}/{ship.MaxSpeedForCurrentState}";
+			$"速 {ship.CurrentSpeed}/{ship.MaxSpeedForCurrentState}{torpedo}";
 	}
 
 	/// <summary>收到 actionId 后，若为 _show_menu 则按当前阶段弹出底部操作菜单。</summary>

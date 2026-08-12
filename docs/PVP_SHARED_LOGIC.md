@@ -15,7 +15,7 @@
 | 第三移动 | `MovePhase3` | `move3` |
 | 视野/照明 | 仅夜战进入 `ReconLighting` | 夜战进入 `recon`，双方自动提交待命 | 已对齐（无交互，自动待命） |
 | 炮击 | `Gunfire` | `gunnery` |
-| 鱼雷 | 仅开关启用时进入 `Torpedo` | 开关启用进入 `torpedo`，双方自动提交待命 | 已对齐（玩法后推） |
+| 鱼雷 | 仅开关启用时进入 `Torpedo` | 开关启用进入 `torpedo`，服务端按左右舷雷击指令权威结算 | 已对齐（简化玩法已接入） |
 | 回合结算 | `EndTurn` | `settlement` |
 
 单机流转：`SpeedAdjust → MovePhase1/2/3 →（夜战 ReconLighting）→ Gunfire →（鱼雷开关 Torpedo）→ EndTurn → SpeedAdjust`。
@@ -75,7 +75,7 @@ PvP 服务端当前实际流转：`speed → move1 → move2 → move3 →（夜
 ## 5. 仍需收敛的差异
 
 - 视野交互：夜战 `recon` 已进入但双方自动待命；雷达/照明弹等交互玩法尚未实现。
-- 鱼雷交互：`torpedo` 已按地图开关进入但双方自动待命；发射/移动/命中/装填玩法仍后推。
+- 鱼雷交互：`torpedo` 已按地图开关进入；客户端提交 `torpedo` 指令（左右舷 + 全数雷击），服务端发射、后续移动阶段移动并命中结算，鱼雷实体随 `battle.state` 广播。
 - 完整冲撞表：双方目前都使用简化冲撞占位（1D10≤2 + 简易 A3 损伤），完整 A3 表待补。
 
 ## 6. 结论
@@ -92,3 +92,11 @@ PvP 服务端当前实际流转：`speed → move1 → move2 → move3 →（夜
 - 阶段收敛：`recon`/`torpedo` 按地图配置进入并由客户端自动待命；单纵阵整组变速/转向只扣 1 CP。
 - 断线收敛：单方断线服务端挂起对局并停止计时，重连后自动恢复；双方超时未回自动删除房间与战斗。
 - 更早已收敛：单纵阵服务端轨迹重放、堆叠同步、服务器授时、ShipData 共用、共享 `CommandIntentBuilder`。
+
+## 8. 鱼雷专项进展
+
+- `ShipData` 导出鱼雷管/伤害/射程/航速/备用鱼雷；服务端载入并初始化每艘船的剩余鱼雷。
+- 客户端 `CommandIntentBuilder` 新增 `torpedo` 指令（`side=-1/1`）；PvP 鱼雷阶段改为可交互，不再自动待命。
+- 服务端 `battleState.js` 新增鱼雷实体：发射扣 CP、减少鱼雷管、按 A2 表在移动阶段移动、同格命中裁定并扣血、离图/耗尽消失，`publicState` 广播 `torpedoes`。
+- 客户端 `GameplayDirector.SyncRemoteTorpedoes` 根据服务端状态创建/移动/移除鱼雷占位实体，与离线共用 `TorpedoController` / `torpedo.tscn`。
+- 备用鱼雷：低速且未转向、上一回合未发射的舰船在新回合自动装填一次（离线与 PvP 一致）。

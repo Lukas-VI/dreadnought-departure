@@ -1,0 +1,25 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://Scripts/Battle/TorpedoComponent.cs" id="1_torpedo"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_torpedo"]
+size = Vector3(0.6, 0.35, 1.7)
+
+[sub_resource type="StandardMaterial3D" id="Material_torpedo"]
+albedo_color = Color(0.95, 0.25, 0.2, 1)
+roughness = 0.35
+metallic = 0.4
+
+[node name="Torpedo" type="Node3D"]
+script = ExtResource("1_torpedo")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+mesh = SubResource("BoxMesh_torpedo")
+surface_material_override/0 = SubResource("Material_torpedo")
+
+[node name="Label3D" type="Label3D" parent="."]
+position = Vector3(0, 0.7, 0)
+font_size = 48
+outline_size = 8
+modulate = Color(1, 0.85, 0.5, 1)
+text = "雷"

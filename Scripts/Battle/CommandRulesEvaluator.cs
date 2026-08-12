@@ -35,6 +35,10 @@ public static class CommandRulesEvaluator
 	/// <summary>表 A4：大型舰射击 2 CP，中型/小型舰射击 1 CP。</summary>
 	public static int FireCPCost(ShipComponent ship) => TierOf(ship) == ShipTier.Large ? 2 : 1;
 
+	/// <summary>表 A4 雷击：先手方单艘 1 CP，后手方 2 CP；编队折扣暂按单艘结算。</summary>
+	public static int TorpedoCPCost(ShipComponent ship, bool secondPlayer)
+		=> secondPlayer ? 2 : 1;
+
 	/// <summary>
 	/// 按规则书 4.3 计算当前指挥值：
 	/// 大型舰小破 -1，中破/大破/沉没 -2（不叠加）；

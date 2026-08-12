@@ -97,6 +97,14 @@ public static class ShipCatalog
 				armorMedium = entry.Data.ArmorMedium,
 				armorFar = entry.Data.ArmorFar,
 				radarType = entry.Data.RadarType,
+				torpedoType = entry.Data.TorpedoType,
+				torpedoLeftTubes = entry.Data.TorpedoLeftTubes,
+				torpedoCenterTubes = entry.Data.TorpedoCenterTubes,
+				torpedoRightTubes = entry.Data.TorpedoRightTubes,
+				torpedoDamage = entry.Data.TorpedoDamage,
+				torpedoRange = entry.Data.TorpedoRange,
+				torpedoSpeed = entry.Data.TorpedoSpeed,
+				hasSpareTorpedoes = entry.Data.HasSpareTorpedoes,
 			});
 		}
 		return JsonSerializer.Serialize(list);

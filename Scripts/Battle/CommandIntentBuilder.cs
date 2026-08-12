@@ -10,7 +10,8 @@ public sealed record ShipCommandIntent(
 	string Action,
 	int? TargetSpeed,
 	HexDirection? TargetDirection,
-	ShipComponent Target)
+	ShipComponent Target,
+	int TorpedoSide = 0)
 {
 	/// <summary>转成服务端 battle.command 的 wire 对象；单机结算直接读字段。</summary>
 	public object ToWire()
@@ -29,6 +30,14 @@ public sealed record ShipCommandIntent(
 					radarUsed = Ship.PendingRadarUsed,
 				};
 			}
+		}
+		else if (Action == "torpedo")
+		{
+			detail = new
+			{
+				side = TorpedoSide,
+				count = Ship.TorpedoesAvailableOnSide(TorpedoSide),
+			};
 		}
 		return new { id = ServerShipId, action = Action, detail };
 	}
@@ -84,6 +93,10 @@ public static class CommandIntentBuilder
 			{
 				action = "fire";
 			}
+			else if (phase == BattlePhase.Torpedo && ship.PendingTorpedoSide != 0)
+			{
+				action = "torpedo";
+			}
 
 			list.Add(new ShipCommandIntent(
 				ship,
@@ -91,7 +104,8 @@ public static class CommandIntentBuilder
 				action,
 				ship.PendingSpeed >= 0 ? ship.PendingSpeed : null,
 				ship.PendingDirection,
-				ship.PendingAttackTarget));
+				ship.PendingAttackTarget,
+				ship.PendingTorpedoSide));
 		}
 		return list;
 	}

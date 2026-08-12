@@ -25,6 +25,24 @@ public partial class AIController : Node, IUnitController
 		foreach (var ship in myUnits)
 		{
 			if (!GodotObject.IsInstanceValid(ship) || ship.CurrentHp <= 0) continue;
+			if (phase == BattlePhase.Torpedo)
+			{
+				if (ship.Data == null || ship.Data.TotalTorpedoTubes <= 0) continue;
+				var torpedoTarget = aliveEnemies
+					.Where(e => VisionRulesEvaluator.CanEngage(ship, e, data,
+						ship.Data != null
+						&& !string.IsNullOrEmpty(ship.Data.RadarType)
+						&& ship.DamageState is DamageState.Intact or DamageState.Light))
+					.OrderBy(e => BattleRulesEvaluator.GetHexDistance(ship.HexCoords, e.HexCoords))
+					.FirstOrDefault();
+				if (torpedoTarget == null) continue;
+				int side = ChooseTorpedoSide(ship, torpedoTarget);
+				if (director != null && director.LaunchTorpedo(ship, side, true))
+				{
+					await ToSignal(GetTree().CreateTimer(0.35f), "timeout");
+				}
+				continue;
+			}
 			if (phase == BattlePhase.Gunfire)
 			{
 				// AI 在炮击阶段自动启用雷达技能（玩家侧通过技能按钮显式开启）。
@@ -83,6 +101,18 @@ public partial class AIController : Node, IUnitController
 		int old = ship.CurrentSpeed;
 		ship.CurrentSpeed = wish;
 		Log(null, $"{ship.ShipName} 航速 {old} → {wish}");
+	}
+
+	private static int ChooseTorpedoSide(ShipComponent ship, ShipComponent target)
+	{
+		HexDirection best = MoveRulesEvaluator.DirectionTo(ship.HexCoords, target.HexCoords);
+		int diff = ((int)best - (int)ship.Direction + 6) % 6;
+		int side = diff <= 3 ? 1 : -1;
+		if (ship.TorpedoesAvailableOnSide(side) <= 0)
+		{
+			side = -side;
+		}
+		return side;
 	}
 
 	private void TurnTowardTarget(ShipComponent ship, ShipComponent target, GameplayDirector director)

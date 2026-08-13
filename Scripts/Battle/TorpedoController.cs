@@ -22,13 +22,15 @@ public partial class TorpedoController : Node3D
 
 	public TorpedoComponent SpawnTorpedo(string id, int side, Vector2I hex,
 		HexDirection direction, int speed, int range, int count, int hitMode,
-		int damage, string type, ShipComponent launcher, MapGenerator map)
+		int damage, string type, ShipComponent launcher, int fanSide,
+		int fanBranch, MapGenerator map)
 	{
 		if (_prefab == null || map == null) return null;
 		TorpedoComponent torpedo = _prefab.Instantiate<TorpedoComponent>();
 		AddChild(torpedo);
 		torpedo.Setup(id, side, hex, direction, speed, range, count, hitMode,
-			damage, string.IsNullOrEmpty(type) ? "鱼雷" : type, launcher);
+			damage, string.IsNullOrEmpty(type) ? "鱼雷" : type, launcher,
+			fanSide, fanBranch);
 		Vector3 world = map.HexToWorld(hex.X, hex.Y);
 		torpedo.Position = new Vector3(world.X, 0.18f, world.Z);
 		_torpedoes.Add(torpedo);
@@ -61,9 +63,36 @@ public partial class TorpedoController : Node3D
 			var path = new List<Vector2I>();
 			Vector2I cursor = torpedo.Hex;
 			bool remove = false;
+			ShipComponent nearest = FindNearestEnemy(ships, torpedo);
 			for (int i = 0; i < steps; i++)
 			{
-				cursor += HexDirectionUtility.Offset(torpedo.Direction);
+				int branch = torpedo.FanBranch;
+				if (nearest != null)
+				{
+					branch = TorpedoRulesEvaluator.ChooseBranch(
+						cursor, torpedo.Direction, torpedo.FanSide,
+						nearest.HexCoords, torpedo.FanBranch);
+				}
+				var candidates = TorpedoRulesEvaluator.CandidateOffsets(
+					torpedo.Direction, torpedo.FanSide);
+				Vector2I next = cursor + candidates[branch];
+				if (data.IsIsland(next) || !data.TerrainSources.ContainsKey(next))
+				{
+					int other = 1 - branch;
+					Vector2I alt = cursor + candidates[other];
+					if (!data.IsIsland(alt) && data.TerrainSources.ContainsKey(alt))
+					{
+						branch = other;
+						next = alt;
+					}
+					else
+					{
+						remove = true;
+						break;
+					}
+				}
+				torpedo.FanBranch = branch;
+				cursor = next;
 				if (data.IsIsland(cursor) || !data.TerrainSources.ContainsKey(cursor))
 				{
 					remove = true;
@@ -145,6 +174,25 @@ public partial class TorpedoController : Node3D
 			}
 		}
 		return null;
+	}
+
+	private static ShipComponent FindNearestEnemy(IReadOnlyList<ShipComponent> ships,
+		TorpedoComponent torpedo)
+	{
+		ShipComponent nearest = null;
+		int best = int.MaxValue;
+		foreach (ShipComponent ship in ships)
+		{
+			if (ship == null || !GodotObject.IsInstanceValid(ship) || ship.CurrentHp <= 0) continue;
+			if (ship.BattleSide == (GenerationSide)torpedo.Side) continue;
+			int dist = BattleRulesEvaluator.GetHexDistance(torpedo.Hex, ship.HexCoords);
+			if (dist < best)
+			{
+				best = dist;
+				nearest = ship;
+			}
+		}
+		return nearest;
 	}
 
 	public void Clear()

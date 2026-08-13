@@ -97,6 +97,8 @@ public partial class LevelDataManager : Node
 	public string VictoryJson { get; private set; } = "";
 	/// <summary>鱼雷阶段是否启用；当前鱼雷玩法未实现，默认关闭。</summary>
 	public bool TorpedoPhaseEnabled { get; private set; }
+	/// <summary>炮击阶段是否启用；默认开启。</summary>
+	public bool GunfirePhaseEnabled { get; private set; } = true;
 	/// <summary>各阶段每船限时（秒）：速度/三移动/视野/炮击/鱼雷/结算。</summary>
 	public int[] PhaseSecondsPerShip { get; private set; } = { 5, 5, 5, 5, 5, 10, 10, 0 };
 	public int PhaseExtraSeconds { get; private set; } = 5;
@@ -289,7 +291,8 @@ public partial class LevelDataManager : Node
 	public void NewMap(string name, HexOrientation orientation = HexOrientation.EWHorizontal,
 		int playerCommand = 5, int enemyCommand = 4, int playerCP = 8, int enemyCP = 8,
 		int initiativeValue = 5, string initiativeOwner = "player", int vision = 6, int maxTurns = 18,
-		int[] phaseSecondsPerShip = null, int phaseExtraSeconds = 5, bool torpedoPhaseEnabled = false)
+		int[] phaseSecondsPerShip = null, int phaseExtraSeconds = 5, bool torpedoPhaseEnabled = false,
+		bool gunfirePhaseEnabled = true)
 	{
 		CurrentMapName = string.IsNullOrWhiteSpace(name) ? "untitled" : name.Trim();
 		MapType = "day";
@@ -308,6 +311,7 @@ public partial class LevelDataManager : Node
 			: new[] { 5, 5, 5, 5, 5, 10, 10, 0 };
 		PhaseExtraSeconds = phaseExtraSeconds;
 		TorpedoPhaseEnabled = torpedoPhaseEnabled;
+		GunfirePhaseEnabled = gunfirePhaseEnabled;
 		_currentJsonPath = $"{DefaultExportFolder}/{CurrentMapName}.json";
 		ClearAll();
 	}
@@ -327,7 +331,8 @@ public partial class LevelDataManager : Node
 	public void ApplyScenarioSettings(
 		int playerCommand, int enemyCommand, int playerCP, int enemyCP,
 		int initiativeValue, string initiativeOwner, int vision, int maxTurns,
-		int[] phaseSecondsPerShip, int phaseExtraSeconds, bool torpedoPhaseEnabled)
+		int[] phaseSecondsPerShip, int phaseExtraSeconds, bool torpedoPhaseEnabled,
+		bool gunfirePhaseEnabled)
 	{
 		PlayerCommand = playerCommand;
 		EnemyCommand = enemyCommand;
@@ -342,6 +347,7 @@ public partial class LevelDataManager : Node
 			: new[] { 5, 5, 5, 5, 5, 10, 10, 0 };
 		PhaseExtraSeconds = phaseExtraSeconds;
 		TorpedoPhaseEnabled = torpedoPhaseEnabled;
+		GunfirePhaseEnabled = gunfirePhaseEnabled;
 	}
 
 	/// <summary>保存当前画布到导出文件夹，返回是否成功。</summary>
@@ -403,6 +409,7 @@ public partial class LevelDataManager : Node
 		public int MaxTurns { get; set; } = 18;
 		public JsonNode Victory { get; set; }
 		public bool TorpedoPhaseEnabled { get; set; }
+		public bool GunfirePhaseEnabled { get; set; } = true;
 		public int[] PhaseSecondsPerShip { get; set; } = { 5, 5, 5, 5, 5, 10, 10, 0 };
 		public int PhaseExtraSeconds { get; set; } = 5;
 		public int Version { get; set; } = 3;
@@ -449,6 +456,7 @@ public partial class LevelDataManager : Node
 			MaxTurns = MaxTurns,
 			Victory = string.IsNullOrEmpty(VictoryJson) ? null : JsonNode.Parse(VictoryJson),
 			TorpedoPhaseEnabled = TorpedoPhaseEnabled,
+			GunfirePhaseEnabled = GunfirePhaseEnabled,
 			PhaseSecondsPerShip = (int[])PhaseSecondsPerShip.Clone(),
 			PhaseExtraSeconds = PhaseExtraSeconds
 		};
@@ -567,6 +575,9 @@ public partial class LevelDataManager : Node
 			: "";
 		TorpedoPhaseEnabled = root.TryGetProperty("TorpedoPhaseEnabled", out JsonElement torpedoEnabled)
 			&& torpedoEnabled.ValueKind == JsonValueKind.True;
+		GunfirePhaseEnabled = root.TryGetProperty("GunfirePhaseEnabled", out JsonElement gunfireEnabled)
+			? gunfireEnabled.ValueKind == JsonValueKind.True
+			: true;
 		PhaseSecondsPerShip = root.TryGetProperty("PhaseSecondsPerShip", out JsonElement phaseSeconds)
 			? ReadIntArray(phaseSeconds)
 			: new[] { 5, 5, 5, 5, 5, 10, 10, 0 };

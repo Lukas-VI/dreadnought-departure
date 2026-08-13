@@ -57,6 +57,8 @@ public partial class ShipComponent : Node3D
 	public bool PendingRadarUsed;
 	/// <summary>鱼雷待命：0 无，-1 左舷，1 右舷。推进阶段才发射。</summary>
 	public int PendingTorpedoSide;
+	/// <summary>鱼雷扇面分支：0 向主航向侧格，1 向斜侧格；发射时由玩家选定。</summary>
+	public int PendingTorpedoBranch;
 	/// <summary>雷达技能是否在本阶段显式激活（由技能按钮写入，仅当回合有效）。</summary>
 	public bool PendingRadarActive;
 	/// <summary>鱼雷管剩余数量（左/中/右）与备用鱼雷次数。</summary>
@@ -125,15 +127,19 @@ public partial class ShipComponent : Node3D
 	public int MaxSpeedForCurrentState => Data?.MaxSpeedForState(DamageState) ?? MaxSpeed;
 
 	/// <summary>清空待命指令（推进阶段开始时或重选船时调用）。</summary>
-	public void ClearPendingCommands()
+	public void ClearPendingCommands(bool keepPendingDirection = false)
 	{
 		PendingSpeed = -1;
-		PendingDirection = null;
+		if (!keepPendingDirection)
+		{
+			PendingDirection = null;
+		}
 		PendingAttackTarget = null;
 		PendingAttackDistance = 0;
 		PendingRadarUsed = false;
 		PendingRadarActive = false;
 		PendingTorpedoSide = 0;
+		PendingTorpedoBranch = 0;
 	}
 
 	// 子类覆写这个方法，不用再写一遍 AddToGroup / 找 Label3D

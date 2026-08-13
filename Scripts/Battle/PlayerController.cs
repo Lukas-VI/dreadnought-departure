@@ -177,12 +177,13 @@ public partial class PlayerController : Node, IUnitController
 		{ RejectAction("❌ 当前阶段不可转向"); return; }
 		if (actionId == "attack" && !canAttack)
 		{ RejectAction("❌ 当前阶段不可射击"); return; }
-		if ((actionId == "torpedo_left" || actionId == "torpedo_right") && !canTorpedo)
+		bool isTorpedo = TryParseTorpedoAction(actionId, out int torpedoSide, out int torpedoBranch);
+		if (isTorpedo && !canTorpedo)
 		{ RejectAction("❌ 当前阶段不可雷击"); return; }
 
-		if (actionId == "torpedo_left" || actionId == "torpedo_right")
+		if (isTorpedo)
 		{
-			ExecuteTorpedoPending(actionId == "torpedo_left" ? -1 : 1);
+			ExecuteTorpedoPending(torpedoSide, torpedoBranch);
 			return;
 		}
 
@@ -202,7 +203,7 @@ public partial class PlayerController : Node, IUnitController
 		}
 	}
 
-	private void ExecuteTorpedoPending(int side)
+	private void ExecuteTorpedoPending(int side, int branch)
 	{
 		ShipComponent ship = _selected;
 		if (ship == null) return;
@@ -236,10 +237,24 @@ public partial class PlayerController : Node, IUnitController
 		}
 
 		ship.PendingTorpedoSide = side;
-		string sideName = side < 0 ? "左舷" : "右舷";
+		ship.PendingTorpedoBranch = branch;
+		string sideText = side < 0 ? "左舷" : "右舷";
+		string branchText = branch == 0 ? "正" : "斜";
+		string sideName = $"{sideText}·{branchText}";
 		GetNode<EventBus>("../EventBus").EmitSignal("LogMessage",
 			$"💣 {ship.ShipName} {sideName}雷击待命（{cost} CP，推进后发射）");
 		EndAction();
+	}
+
+	private static bool TryParseTorpedoAction(string actionId, out int side, out int branch)
+	{
+		side = 0;
+		branch = 0;
+		if (actionId == "torpedo_left_0") { side = -1; branch = 0; return true; }
+		if (actionId == "torpedo_left_1") { side = -1; branch = 1; return true; }
+		if (actionId == "torpedo_right_0") { side = 1; branch = 0; return true; }
+		if (actionId == "torpedo_right_1") { side = 1; branch = 1; return true; }
+		return false;
 	}
 
 	/// <summary>执行航速增减：检查变速限幅与 CP 消耗，更新 ship.CurrentSpeed，并按新航速推算到达格运镜。</summary>
@@ -482,7 +497,8 @@ public partial class PlayerController : Node, IUnitController
 		int movePhase = _director.CurrentMovePhase;
 		if (movePhase <= 0) return;
 		int speed = ship.PendingSpeed >= 0 ? ship.PendingSpeed : ship.CurrentSpeed;
-		HexDirection dir = ship.PendingDirection ?? ship.Direction;
+		// 移动阶段转向在移动完成后才生效，预览按原航向推算到达格。
+		HexDirection dir = ship.Direction;
 		bool oddTurn = _director.TurnNumber % 2 == 1;
 		int steps = SpeedTable.MoveForPhase(speed, movePhase, oddTurn);
 		var others = (_myUnits ?? new List<ShipComponent>())

@@ -37,7 +37,9 @@ public partial class AIController : Node, IUnitController
 					.FirstOrDefault();
 				if (torpedoTarget == null) continue;
 				int side = ChooseTorpedoSide(ship, torpedoTarget);
-				if (director != null && director.LaunchTorpedo(ship, side, true))
+				int branch = TorpedoRulesEvaluator.ChooseBranch(
+					ship.HexCoords, ship.Direction, side, torpedoTarget.HexCoords, 0);
+				if (director != null && director.LaunchTorpedo(ship, side, true, branch))
 				{
 					await ToSignal(GetTree().CreateTimer(0.35f), "timeout");
 				}
@@ -82,7 +84,7 @@ public partial class AIController : Node, IUnitController
 
 			if (phase is BattlePhase.SpeedAdjust or BattlePhase.MovePhase1
 				or BattlePhase.MovePhase2 or BattlePhase.MovePhase3 or BattlePhase.Gunfire)
-				TurnTowardTarget(ship, target, director);
+				TurnTowardTarget(ship, target, director, phase);
 		}
 
 		onComplete?.Invoke();
@@ -115,7 +117,8 @@ public partial class AIController : Node, IUnitController
 		return side;
 	}
 
-	private void TurnTowardTarget(ShipComponent ship, ShipComponent target, GameplayDirector director)
+	private void TurnTowardTarget(ShipComponent ship, ShipComponent target,
+		GameplayDirector director, BattlePhase phase)
 	{
 		if (MoveRulesEvaluator.IsInForwardArc(ship.HexCoords, target.HexCoords, ship.Direction)) return;
 
@@ -127,8 +130,16 @@ public partial class AIController : Node, IUnitController
 		HexDirection next = diff <= 3
 			? HexDirectionUtility.TurnRight(ship.Direction)
 			: HexDirectionUtility.TurnLeft(ship.Direction);
-		ship.AnimateTurnTo(next);
-		Log(null, $"{ship.ShipName} 转向 → {ship.Direction}");
+		if (phase == BattlePhase.SpeedAdjust || phase == BattlePhase.Gunfire)
+		{
+			ship.AnimateTurnTo(next);
+			Log(null, $"{ship.ShipName} 转向 → {ship.Direction}");
+		}
+		else
+		{
+			ship.PendingDirection = next;
+			Log(null, $"{ship.ShipName} 转向待命 → {next}（先移动后转向）");
+		}
 	}
 
 	private static void Log(BattleHudBroker hud, string message)

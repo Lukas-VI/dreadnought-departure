@@ -45,6 +45,7 @@ public partial class MapSelectMenuController : Control
 	private SpinBox[] _phaseSecondsSpins;
 	private SpinBox _phaseExtraSpin;
 	private CheckBox _torpedoEnabledCheck;
+	private CheckBox _gunfireEnabledCheck;
 
 	public override void _Ready()
 	{
@@ -170,6 +171,8 @@ public partial class MapSelectMenuController : Control
 		phaseBox.AddChild(_phaseExtraSpin);
 		_torpedoEnabledCheck = new CheckBox { Text = "启用鱼雷阶段" };
 		phaseBox.AddChild(_torpedoEnabledCheck);
+		_gunfireEnabledCheck = new CheckBox { Text = "启用炮击阶段", ButtonPressed = true };
+		phaseBox.AddChild(_gunfireEnabledCheck);
 		_mapTypeOption = new OptionButton();
 		_mapTypeOption.AddItem("地图类型：昼战", 0);
 		_mapTypeOption.AddItem("地图类型：夜战", 1);
@@ -275,6 +278,7 @@ public partial class MapSelectMenuController : Control
 		for (int i = 0; i < phaseSeconds.Length; i++) phaseSeconds[i] = (int)_phaseSecondsSpins[i].Value;
 		int phaseExtra = (int)_phaseExtraSpin.Value;
 		bool torpedoEnabled = _torpedoEnabledCheck.ButtonPressed;
+		bool gunfireEnabled = _gunfireEnabledCheck.ButtonPressed;
 		string mapType = _mapTypeOption.Selected == 1 ? "night" : "day";
 		string initiativeOwner = _initiativeOwnerOption.Selected == 1 ? "enemy" : "player";
 		int torpedoModePlayer = (int)_torpedoModePlayerSpin.Value;
@@ -285,6 +289,7 @@ public partial class MapSelectMenuController : Control
 			$"\"InitiativeValue\":{ini},\"InitiativeOwner\":\"{initiativeOwner}\",\"BasicVision\":{vis}," +
 			$"\"TorpedoModePlayer\":{torpedoModePlayer},\"TorpedoModeEnemy\":{torpedoModeEnemy},\"MaxTurns\":{turns}," +
 			$"\"TorpedoPhaseEnabled\":{(torpedoEnabled ? "true" : "false")}," +
+			$"\"GunfirePhaseEnabled\":{(gunfireEnabled ? "true" : "false")}," +
 			$"\"PhaseSecondsPerShip\":[{string.Join(",", phaseSeconds)}],\"PhaseExtraSeconds\":{phaseExtra}," +
 			$"\"Terrain\":{{}},\"Generation\":{{}},\"Special\":{{}},\"Ships\":{{}}}}");
 		RefreshList();

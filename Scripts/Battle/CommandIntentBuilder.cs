@@ -11,7 +11,8 @@ public sealed record ShipCommandIntent(
 	int? TargetSpeed,
 	HexDirection? TargetDirection,
 	ShipComponent Target,
-	int TorpedoSide = 0)
+	int TorpedoSide = 0,
+	int TorpedoBranch = 0)
 {
 	/// <summary>转成服务端 battle.command 的 wire 对象；单机结算直接读字段。</summary>
 	public object ToWire()
@@ -36,6 +37,7 @@ public sealed record ShipCommandIntent(
 			detail = new
 			{
 				side = TorpedoSide,
+				branch = TorpedoBranch,
 				count = Ship.TorpedoesAvailableOnSide(TorpedoSide),
 			};
 		}
@@ -105,7 +107,8 @@ public static class CommandIntentBuilder
 				ship.PendingSpeed >= 0 ? ship.PendingSpeed : null,
 				ship.PendingDirection,
 				ship.PendingAttackTarget,
-				ship.PendingTorpedoSide));
+				ship.PendingTorpedoSide,
+				ship.PendingTorpedoBranch));
 		}
 		return list;
 	}

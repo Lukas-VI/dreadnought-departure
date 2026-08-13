@@ -18,6 +18,8 @@ public partial class TorpedoComponent : Node3D
 	public int TorpedoDamage = 30;
 	public string TorpedoType = "";
 	public ShipComponent Launcher;
+	public int FanSide = -1;
+	public int FanBranch;
 
 	private Label3D _label;
 
@@ -29,7 +31,7 @@ public partial class TorpedoComponent : Node3D
 
 	public void Setup(string id, int side, Vector2I hex, HexDirection direction,
 		int speed, int range, int count, int hitMode, int damage,
-		string type, ShipComponent launcher)
+		string type, ShipComponent launcher, int fanSide, int fanBranch)
 	{
 		TorpedoId = id;
 		Side = side;
@@ -42,6 +44,8 @@ public partial class TorpedoComponent : Node3D
 		TorpedoDamage = Mathf.Max(1, damage);
 		TorpedoType = type;
 		Launcher = launcher;
+		FanSide = fanSide;
+		FanBranch = fanBranch;
 		ApplyVisual();
 	}
 

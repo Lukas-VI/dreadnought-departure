@@ -53,6 +53,7 @@ public partial class EditorUIController : Control
 	private SpinBox[] _phaseSecondsSpins;
 	private SpinBox _phaseExtraSpin;
 	private CheckBox _torpedoEnabledCheck;
+	private CheckBox _gunfireEnabledCheck;
 	private bool _editingScenario;
 	private ConfirmationDialog _deleteDialog;
 	private FileDialog _importDialog;
@@ -122,6 +123,7 @@ public partial class EditorUIController : Control
 				$"NewDialog/NewPanel/NewBox/PhaseScroll/PhaseBox/PhaseRow{i}/Phase{i}Spin");
 		_phaseExtraSpin = GetNode<SpinBox>("NewDialog/NewPanel/NewBox/PhaseScroll/PhaseBox/PhaseExtraSpin");
 		_torpedoEnabledCheck = GetNode<CheckBox>("NewDialog/NewPanel/NewBox/PhaseScroll/PhaseBox/TorpedoEnabledCheck");
+		_gunfireEnabledCheck = GetNode<CheckBox>("NewDialog/NewPanel/NewBox/PhaseScroll/PhaseBox/GunfireEnabledCheck");
 		_deleteDialog = GetNode<ConfirmationDialog>("DeleteDialog");
 		_importDialog = GetNode<FileDialog>("ImportDialog");
 
@@ -295,6 +297,7 @@ public partial class EditorUIController : Control
 			_phaseSecondsSpins[i].Value = defaults[i];
 		_phaseExtraSpin.Value = 5;
 		_torpedoEnabledCheck.ButtonPressed = false;
+		_gunfireEnabledCheck.ButtonPressed = true;
 	}
 
 	private void PrefillScenarioInputs()
@@ -316,6 +319,7 @@ public partial class EditorUIController : Control
 				: 5;
 		_phaseExtraSpin.Value = _data.PhaseExtraSeconds;
 		_torpedoEnabledCheck.ButtonPressed = _data.TorpedoPhaseEnabled;
+		_gunfireEnabledCheck.ButtonPressed = _data.GunfirePhaseEnabled;
 	}
 
 	private void ConfirmNewCanvas()
@@ -327,6 +331,7 @@ public partial class EditorUIController : Control
 		int[] phaseSeconds = Array.ConvertAll(_phaseSecondsSpins, s => (int)s.Value);
 		int phaseExtra = (int)_phaseExtraSpin.Value;
 		bool torpedoEnabled = _torpedoEnabledCheck.ButtonPressed;
+		bool gunfireEnabled = _gunfireEnabledCheck.ButtonPressed;
 
 		if (_editingScenario)
 		{
@@ -341,7 +346,8 @@ public partial class EditorUIController : Control
 				(int)_maxTurnsSpin.Value,
 				phaseSeconds,
 				phaseExtra,
-				torpedoEnabled);
+				torpedoEnabled,
+				gunfireEnabled);
 			_data.SetMapType(mapType);
 			_data.SetTorpedoModes(torpedoModePlayer, torpedoModeEnemy);
 			ShowStatus($"关卡设置已更新 {_data.CurrentMapName}");
@@ -366,7 +372,8 @@ public partial class EditorUIController : Control
 				(int)_maxTurnsSpin.Value,
 				phaseSeconds,
 				phaseExtra,
-				torpedoEnabled);
+				torpedoEnabled,
+				gunfireEnabled);
 			_data.SetMapType(mapType);
 			_data.SetTorpedoModes(torpedoModePlayer, torpedoModeEnemy);
 			_canvas.ClearCanvas();

@@ -519,6 +519,11 @@ suffix = " 阶段额外秒数"
 layout_mode = 2
 text = "启用鱼雷阶段"
 
+[node name="GunfireEnabledCheck" type="CheckBox" parent="NewDialog/NewPanel/NewBox/PhaseScroll/PhaseBox"]
+layout_mode = 2
+button_pressed = true
+text = "启用炮击阶段"
+
 [node name="ScenarioMapType" type="OptionButton" parent="NewDialog/NewPanel/NewBox/PhaseScroll/PhaseBox" unique_id=670430264]
 layout_mode = 2
 selected = 0

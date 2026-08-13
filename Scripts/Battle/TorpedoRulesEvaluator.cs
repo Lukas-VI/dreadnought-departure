@@ -1,5 +1,6 @@
 using Godot;
 using System;
+using System.Collections.Generic;
 
 namespace DreadnoughtDeparture.Core;
 
@@ -20,10 +21,35 @@ public static class TorpedoRulesEvaluator
 		return ship.TorpedoesAvailableOnSide(side) > 0;
 	}
 
-	public static HexDirection LaunchDirection(ShipComponent ship, int side)
-		=> side < 0
-			? HexDirectionUtility.TurnLeft(ship.Direction)
-			: HexDirectionUtility.TurnRight(ship.Direction);
+	/// <summary>鱼雷向顶点侧运动：主航向格 + 斜侧格两个候选。</summary>
+	public static List<Vector2I> CandidateOffsets(HexDirection primary, int side)
+	{
+		HexDirection sideDir = side < 0
+			? HexDirectionUtility.TurnLeft(primary)
+			: HexDirectionUtility.TurnRight(primary);
+		return new List<Vector2I>
+		{
+			HexDirectionUtility.Offset(primary),
+			HexDirectionUtility.Offset(sideDir),
+		};
+	}
+
+	public static Vector2I OffsetForBranch(HexDirection primary, int side, int branch)
+	{
+		var candidates = CandidateOffsets(primary, side);
+		return candidates[branch == 0 ? 0 : 1];
+	}
+
+	/// <summary>贪心选择更接近目标的扇面分支；距离相同时保持当前分支。</summary>
+	public static int ChooseBranch(Vector2I from, HexDirection primary, int side,
+		Vector2I target, int currentBranch)
+	{
+		var candidates = CandidateOffsets(primary, side);
+		int d0 = BattleRulesEvaluator.GetHexDistance(from + candidates[0], target);
+		int d1 = BattleRulesEvaluator.GetHexDistance(from + candidates[1], target);
+		if (d0 == d1) return currentBranch;
+		return d0 < d1 ? 0 : 1;
+	}
 
 	/// <summary>占位 C3：基础命中模式随鱼雷航行距离衰减，低速目标更容易命中。</summary>
 	public static int HitThreshold(int mode, int distanceHex, int targetSpeed)

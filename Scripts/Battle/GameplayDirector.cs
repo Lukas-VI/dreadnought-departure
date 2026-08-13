@@ -798,6 +798,12 @@ public partial class GameplayDirector : Node
 			string type = entry.TryGetProperty("torpedoType", out JsonElement typeProp)
 				? typeProp.GetString() ?? ""
 				: "鱼雷";
+			int fanSide = entry.TryGetProperty("fanSide", out JsonElement fanSideProp)
+				? fanSideProp.GetInt32()
+				: -1;
+			int fanBranch = entry.TryGetProperty("fanBranch", out JsonElement fanBranchProp)
+				? fanBranchProp.GetInt32()
+				: 0;
 			Vector2I coords = new Vector2I(hex[0].GetInt32(), hex[1].GetInt32());
 			seen.Add(id);
 
@@ -805,7 +811,8 @@ public partial class GameplayDirector : Node
 			{
 				torpedo = _torpedoController.SpawnTorpedo(
 					id, side, coords, (HexDirection)(direction % 6),
-					speed, range, count, hitMode, damage, type, null, _mapGenerator);
+					speed, range, count, hitMode, damage, type, null,
+					fanSide, fanBranch, _mapGenerator);
 				if (torpedo == null) continue;
 				_remoteTorpedoes[id] = torpedo;
 			}
@@ -821,6 +828,8 @@ public partial class GameplayDirector : Node
 					? spentProp.GetInt32()
 					: torpedo.RangeSpent;
 				torpedo.Count = count;
+				torpedo.FanSide = fanSide;
+				torpedo.FanBranch = fanBranch;
 				torpedo.ApplyVisual();
 			}
 		}
@@ -1068,15 +1077,22 @@ public partial class GameplayDirector : Node
 		// 照明阶段仅在夜战地图启用；白天从 MovePhase3 直接跳到 Gunfire。
 		bool isNight = _dataManager?.IsNightBattle ?? false;
 		bool skipLighting = _currentPhase == BattlePhase.MovePhase3 && !isNight;
-		bool skipTorpedo = _currentPhase == BattlePhase.Gunfire && !_dataManager.TorpedoPhaseEnabled;
+		bool skipTorpedo = !_dataManager.TorpedoPhaseEnabled
+			&& _currentPhase is BattlePhase.Gunfire or BattlePhase.MovePhase3 or BattlePhase.ReconLighting;
+		bool skipGunfire = _currentPhase is BattlePhase.MovePhase3 or BattlePhase.ReconLighting
+			&& !_dataManager.GunfirePhaseEnabled;
 
 		_currentPhase = _currentPhase switch
 		{
 			BattlePhase.SpeedAdjust   => BattlePhase.MovePhase1,
 			BattlePhase.MovePhase1    => BattlePhase.MovePhase2,
 			BattlePhase.MovePhase2    => BattlePhase.MovePhase3,
-			BattlePhase.MovePhase3    => skipLighting ? BattlePhase.Gunfire : BattlePhase.ReconLighting,
-			BattlePhase.ReconLighting => BattlePhase.Gunfire,
+			BattlePhase.MovePhase3    => skipLighting
+				? (skipGunfire ? (skipTorpedo ? BattlePhase.EndTurn : BattlePhase.Torpedo) : BattlePhase.Gunfire)
+				: BattlePhase.ReconLighting,
+			BattlePhase.ReconLighting => skipGunfire
+				? (skipTorpedo ? BattlePhase.EndTurn : BattlePhase.Torpedo)
+				: BattlePhase.Gunfire,
 			BattlePhase.Gunfire       => skipTorpedo ? BattlePhase.EndTurn : BattlePhase.Torpedo,
 			BattlePhase.Torpedo       => BattlePhase.EndTurn,
 			BattlePhase.EndTurn       => BattlePhase.SpeedAdjust,
@@ -1085,6 +1101,8 @@ public partial class GameplayDirector : Node
 
 		if (skipLighting)
 			GetNode<EventBus>("EventBus").EmitSignal("LogMessage", "白天地图，跳过视野/照明阶段");
+		if (skipGunfire)
+			GetNode<EventBus>("EventBus").EmitSignal("LogMessage", "炮击阶段未启用，跳过");
 		if (skipTorpedo)
 			GetNode<EventBus>("EventBus").EmitSignal("LogMessage", "鱼雷阶段未启用，跳过");
 
@@ -1161,8 +1179,16 @@ public partial class GameplayDirector : Node
 			{
 				if (intent.TargetDirection.HasValue)
 				{
-					ship.AnimateTurnTo(intent.TargetDirection.Value);
-					bus.EmitLog($"{ship.ShipName} 转向待命生效 → {ship.Direction}");
+					if (_currentPhase == BattlePhase.SpeedAdjust)
+					{
+						ship.AnimateTurnTo(intent.TargetDirection.Value);
+						bus.EmitLog($"{ship.ShipName} 转向待命生效 → {ship.Direction}");
+					}
+					else
+					{
+						// 移动阶段先沿原航向行进，阶段结束时再执行转向。
+						bus.EmitLog($"{ship.ShipName} 转向待命（先行进后转向 → {intent.TargetDirection.Value}）");
+					}
 				}
 			}
 			else if (intent.Action == "fire" &&
@@ -1186,15 +1212,17 @@ public partial class GameplayDirector : Node
 			}
 			else if (intent.Action == "torpedo" && intent.TorpedoSide != 0)
 			{
-				LaunchTorpedo(ship, intent.TorpedoSide);
+				LaunchTorpedo(ship, intent.TorpedoSide, false, intent.TorpedoBranch);
 			}
 		}
 
+		bool deferTurn = _currentPhase is BattlePhase.MovePhase1
+			or BattlePhase.MovePhase2 or BattlePhase.MovePhase3;
 		foreach (var ship in _playerShips)
 		{
 			if (IsShipAlive(ship))
 			{
-				ship.ClearPendingCommands();
+				ship.ClearPendingCommands(deferTurn);
 			}
 		}
 	}
@@ -1219,7 +1247,8 @@ public partial class GameplayDirector : Node
 	}
 
 	/// <summary>发射一枚鱼雷齐射：校验 CP/资格、消耗鱼雷并生成占位实体。</summary>
-	public bool LaunchTorpedo(ShipComponent ship, int side, bool enemySide = false)
+	public bool LaunchTorpedo(ShipComponent ship, int side, bool enemySide = false,
+		int branch = 0)
 	{
 		var bus = GetNode<EventBus>("EventBus");
 		if (ship == null || !TorpedoRulesEvaluator.CanLaunch(ship, side))
@@ -1249,7 +1278,7 @@ public partial class GameplayDirector : Node
 			$"t_{ship.ShipName}_{GD.Randi()}",
 			(int)ship.BattleSide,
 			ship.HexCoords,
-			TorpedoRulesEvaluator.LaunchDirection(ship, side),
+			ship.Direction,
 			ship.Data?.TorpedoSpeed ?? 6,
 			ship.Data?.TorpedoRange ?? 4,
 			count,
@@ -1257,10 +1286,13 @@ public partial class GameplayDirector : Node
 			ship.Data?.TorpedoDamage ?? 30,
 			ship.Data?.TorpedoType ?? "",
 			ship,
+			side,
+			branch,
 			_mapGenerator);
 		if (torpedo != null)
 		{
-			bus.EmitLog($"💣 {ship.ShipName} 向{(side < 0 ? "左舷" : "右舷")}发射 {count} 发鱼雷（{cost} CP）");
+			bus.EmitLog($"💣 {ship.ShipName} 向{(side < 0 ? "左舷" : "右舷")}" +
+				$"{(branch == 0 ? "·正" : "·斜")}发射 {count} 发鱼雷（{cost} CP）");
 		}
 		return torpedo != null;
 	}
@@ -1519,6 +1551,7 @@ public partial class GameplayDirector : Node
 
 		if (longest > 0f)
 			await ToSignal(GetTree().CreateTimer(longest + 0.1f), "timeout");
+		ApplyPendingTurnsAfterMovement();
 		RefreshStackOffsets();
 		RefreshDirectionOverlays();
 		await _torpedoController.MoveTorpedoesAsync(_mapGenerator, _dataManager,
@@ -1537,6 +1570,20 @@ public partial class GameplayDirector : Node
 				}
 				bus.EmitSignal("SpecialCellEntered", ship.HexCoords, specialId);
 			}
+	}
+
+	/// <summary>移动阶段结束后执行待命转向：先沿原航向移动，再转向。</summary>
+	private void ApplyPendingTurnsAfterMovement()
+	{
+		foreach (var ship in _playerShips.Concat(_enemyShips))
+		{
+			if (IsShipAlive(ship) && ship.PendingDirection.HasValue)
+			{
+				HexDirection target = ship.PendingDirection.Value;
+				ship.AnimateTurnTo(target);
+				ship.PendingDirection = null;
+			}
+		}
 	}
 
 	private float AnimateStraightShip(ShipComponent ship, int phase, bool oddTurn, EventBus bus,
@@ -1577,10 +1624,11 @@ public partial class GameplayDirector : Node
 
 		FormationTrail trail = GetOrBuildFormationTrail(lead, chain);
 		int leadIndex = trail.Cells.Count - 1;
-		// 首舰转向在推进阶段已生效；即使本阶段不移动，也要更新当前格的轨迹航向。
+		// 先走再转：首舰本阶段先沿原航向移动，结束时转向；轨迹格立即记录转向后的航向。
+		HexDirection leadAfterTurn = lead.PendingDirection ?? lead.Direction;
 		for (int i = 0; i < trail.Cells.Count; i++)
 			if (trail.Cells[i] == lead.HexCoords)
-				trail.Headings[i] = lead.Direction;
+				trail.Headings[i] = leadAfterTurn;
 		if (steps <= 0) return 0f;
 
 		for (int i = 0; i < steps; i++)

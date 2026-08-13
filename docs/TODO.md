@@ -152,10 +152,10 @@
 ## 技术债：上帝类拆解
 
 - [ ] **GameplayDirector 拆解（已提上日程）**：当前 1500+ 行同时负责阶段管线、移动/转向、炮击/鱼雷结算、PvP 同步、胜负判定与相机编排，先按职责拆出：
-  - `BattlePhaseMachine`：阶段流转、限时与敌我回合调度
-  - `MoveSettlementService`：逐格移动、阻挡、单纵阵轨迹与先走再转
-  - `CombatSettlementService`：炮击/鱼雷命中、PendingDamage 与结算演绎
-  - `PvpSyncService`：远程状态解析、鱼雷/舰船实体同步
-  - `VictoryJudgeService`：胜负条件、PV 评分与结果通知
+  - [x] `BattlePhaseMachine`：阶段流转、跳过照明/炮击/鱼雷判定（已拆出）
+  - [x] `VictoryJudge`：自定义条件/全灭/回合上限纯决策（已拆出）
+  - [ ] `MoveSettlementService`：逐格移动、阻挡、单纵阵轨迹与先走再转
+  - [ ] `CombatSettlementService`：炮击/鱼雷命中、PendingDamage 与结算演绎
+  - [ ] `PvpSyncService`：远程状态解析、鱼雷/舰船实体同步
 - [ ] 拆解时保持单机/PvP 共用 `CommandIntentBuilder` 与 `TorpedoRulesEvaluator`，不以两套系统为代价换“代码更短”。
 - [ ] 拆解完成后补 headless 冒烟：阶段推进、炮击开关、鱼雷扇面移动、PvP 状态广播。

@@ -69,6 +69,25 @@ public static class VictoryRulesEvaluator
 		}
 	}
 
+	/// <summary>只有 Victory JSON 是合法对象且确实声明了条件时，才算“使用自定义胜利条件”。</summary>
+	public static bool IsConfigured(string victoryJson)
+	{
+		if (string.IsNullOrWhiteSpace(victoryJson)) return false;
+		try
+		{
+			using var document = JsonDocument.Parse(victoryJson);
+			JsonElement root = document.RootElement;
+			if (root.ValueKind != JsonValueKind.Object) return false;
+			return root.TryGetProperty("conditions", out _)
+				|| root.TryGetProperty("defeatConditions", out _)
+				|| root.TryGetProperty("turnLimit", out _);
+		}
+		catch
+		{
+			return false;
+		}
+	}
+
 	private static VictoryResult EvaluateRoot(JsonElement root, VictorySnapshot snapshot)
 	{
 		if (root.ValueKind != JsonValueKind.Object)

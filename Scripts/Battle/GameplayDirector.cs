@@ -99,12 +99,6 @@ public partial class GameplayDirector : Node
 		public readonly List<ShipComponent> Members = new();
 	}
 
-	private static readonly string[] PhaseLabels =
-	{
-		"1 速度", "2 ▶ 第一移动", "3 ▶▶ 第二移动", "4 ▶▶▶ 第三移动",
-		"5 视野", "6 火炮", "7 鱼雷", "8 结算"
-	};
-
 	public override void _Ready()
 	{
 		_dataManager = GetNode<LevelDataManager>("LevelDataManager");
@@ -917,7 +911,7 @@ public partial class GameplayDirector : Node
 		EmitPhaseChanged();
 		EmitCommandStateUpdated();
 		GetNode<EventBus>("EventBus").EmitSignal("LogMessage",
-			$"—— 第 {_turnNumber} 回合 —— {PhaseLabels[(int)_currentPhase]}");
+			$"—— 第 {_turnNumber} 回合 —— {BattlePhaseMachine.PhaseLabels[(int)_currentPhase]}");
 		StoryDirector.Instance?.SetMapName(_dataManager.CurrentMapName);
 		GetNode<EventBus>("EventBus").EmitSignal("BattleStarted");
 
@@ -982,7 +976,7 @@ public partial class GameplayDirector : Node
 			return;
 		}
 
-		bus.EmitLog($"敌方行动：{PhaseLabels[(int)_currentPhase]}");
+		bus.EmitLog($"敌方行动：{BattlePhaseMachine.PhaseLabels[(int)_currentPhase]}");
 		FocusOnEnemyTurn(aliveEnemies);
 		_ai.TakeTurn(aliveEnemies, alivePlayers, _mapGenerator, _overlay, _hud,
 			_currentPhase, OnEnemySideFinished);
@@ -1074,36 +1068,18 @@ public partial class GameplayDirector : Node
 	{
 		GetNode<EventBus>("EventBus").EmitSignal("OverlayClearRequested");
 
-		// 照明阶段仅在夜战地图启用；白天从 MovePhase3 直接跳到 Gunfire。
-		bool isNight = _dataManager?.IsNightBattle ?? false;
-		bool skipLighting = _currentPhase == BattlePhase.MovePhase3 && !isNight;
-		bool skipTorpedo = !_dataManager.TorpedoPhaseEnabled
-			&& _currentPhase is BattlePhase.Gunfire or BattlePhase.MovePhase3 or BattlePhase.ReconLighting;
-		bool skipGunfire = _currentPhase is BattlePhase.MovePhase3 or BattlePhase.ReconLighting
-			&& !_dataManager.GunfirePhaseEnabled;
+		BattlePhaseMachine.Transition transition = BattlePhaseMachine.Plan(
+			_currentPhase,
+			_dataManager?.IsNightBattle ?? false,
+			_dataManager.GunfirePhaseEnabled,
+			_dataManager.TorpedoPhaseEnabled);
+		_currentPhase = transition.Next;
 
-		_currentPhase = _currentPhase switch
-		{
-			BattlePhase.SpeedAdjust   => BattlePhase.MovePhase1,
-			BattlePhase.MovePhase1    => BattlePhase.MovePhase2,
-			BattlePhase.MovePhase2    => BattlePhase.MovePhase3,
-			BattlePhase.MovePhase3    => skipLighting
-				? (skipGunfire ? (skipTorpedo ? BattlePhase.EndTurn : BattlePhase.Torpedo) : BattlePhase.Gunfire)
-				: BattlePhase.ReconLighting,
-			BattlePhase.ReconLighting => skipGunfire
-				? (skipTorpedo ? BattlePhase.EndTurn : BattlePhase.Torpedo)
-				: BattlePhase.Gunfire,
-			BattlePhase.Gunfire       => skipTorpedo ? BattlePhase.EndTurn : BattlePhase.Torpedo,
-			BattlePhase.Torpedo       => BattlePhase.EndTurn,
-			BattlePhase.EndTurn       => BattlePhase.SpeedAdjust,
-			_                         => BattlePhase.SpeedAdjust,
-		};
-
-		if (skipLighting)
+		if (transition.SkipLighting)
 			GetNode<EventBus>("EventBus").EmitSignal("LogMessage", "白天地图，跳过视野/照明阶段");
-		if (skipGunfire)
+		if (transition.SkipGunfire)
 			GetNode<EventBus>("EventBus").EmitSignal("LogMessage", "炮击阶段未启用，跳过");
-		if (skipTorpedo)
+		if (transition.SkipTorpedo)
 			GetNode<EventBus>("EventBus").EmitSignal("LogMessage", "鱼雷阶段未启用，跳过");
 
 		if (_currentPhase == BattlePhase.SpeedAdjust)
@@ -1142,7 +1118,7 @@ public partial class GameplayDirector : Node
 		EmitPhaseChanged();
 		EmitCommandStateUpdated();
 		GetNode<EventBus>("EventBus").EmitSignal("LogMessage",
-			$"➡ {PhaseLabels[(int)_currentPhase]}");
+			$"➡ {BattlePhaseMachine.PhaseLabels[(int)_currentPhase]}");
 
 		// 可玩家交互的阶段自动启动
 		if (IsPlayerActionPhase(_currentPhase))
@@ -1825,62 +1801,27 @@ public partial class GameplayDirector : Node
 	private bool CheckBattleEnd()
 	{
 		VictoryRulesEvaluator.VictoryResult customResult = EvaluateVictoryConditions();
-		if (customResult != VictoryRulesEvaluator.VictoryResult.None)
+		bool customConfigured = VictoryRulesEvaluator.IsConfigured(_dataManager?.VictoryJson);
+		VictoryJudge.Verdict verdict = VictoryJudge.Judge(
+			customResult,
+			customConfigured,
+			_playerShips.Count(IsShipAlive),
+			_enemyShips.Count(IsShipAlive),
+			_turnNumber,
+			_dataManager?.MaxTurns ?? 18,
+			PlayerScore,
+			EnemyScore,
+			_currentPhase == BattlePhase.EndTurn);
+		if (verdict.Outcome == VictoryRulesEvaluator.VictoryResult.None)
 		{
-			_battleEnded = true;
-			string customResultText = customResult == VictoryRulesEvaluator.VictoryResult.PlayerWin
-				? "胜利"
-				: customResult == VictoryRulesEvaluator.VictoryResult.EnemyWin
-					? "失败"
-					: "平局";
-			string customDetail = $"关卡目标达成判定：{customResultText}";
-			var customBus = GetNode<EventBus>("EventBus");
-			customBus.EmitLog($"🏁 {customResultText}：{customDetail}");
-			customBus.EmitSignal("BattleEnded", customResultText, customDetail);
-			if (customResult == VictoryRulesEvaluator.VictoryResult.PlayerWin)
-			{
-				NotifyLevelComplete();
-			}
-			return true;
-		}
-
-		if (!string.IsNullOrEmpty(_dataManager?.VictoryJson))
-		{
-			return false;
-		}
-
-		int playerCount = _playerShips.Count(IsShipAlive);
-		int enemyCount = _enemyShips.Count(IsShipAlive);
-		if (playerCount > 0 && enemyCount > 0)
-		{
-			if (_currentPhase == BattlePhase.EndTurn && _turnNumber >= _dataManager.MaxTurns)
-			{
-				_battleEnded = true;
-				string scoreResult = PlayerScore > EnemyScore ? "胜利"
-					: PlayerScore < EnemyScore ? "失败" : "平局";
-				string scoreDetail = $"回合数已到，PV 我方 {PlayerScore} / 敌方 {EnemyScore}";
-				var scoreBus = GetNode<EventBus>("EventBus");
-				scoreBus.EmitLog($"🏁 {scoreResult}：{scoreDetail}");
-				scoreBus.EmitSignal("BattleEnded", scoreResult, scoreDetail);
-				if (scoreResult == "胜利")
-				{
-					NotifyLevelComplete();
-				}
-				return true;
-			}
 			return false;
 		}
 
 		_battleEnded = true;
-		bool playerWon = playerCount > 0;
-		string result = playerWon ? "胜利" : "失败";
-		string detail = playerWon
-			? $"敌方舰队已全灭（PV 我方 {PlayerScore} / 敌方 {EnemyScore}）"
-			: $"我方舰队已全灭（PV 我方 {PlayerScore} / 敌方 {EnemyScore}）";
 		var bus = GetNode<EventBus>("EventBus");
-		bus.EmitLog($"🏁 {result}：{detail}");
-		bus.EmitSignal("BattleEnded", result, detail);
-		if (playerWon)
+		bus.EmitLog($"🏁 {verdict.Result}：{verdict.Detail}");
+		bus.EmitSignal("BattleEnded", verdict.Result, verdict.Detail);
+		if (verdict.Outcome == VictoryRulesEvaluator.VictoryResult.PlayerWin)
 		{
 			NotifyLevelComplete();
 		}
@@ -1944,7 +1885,7 @@ public partial class GameplayDirector : Node
 
 	private void EmitPhaseChanged() =>
 		GetNode<EventBus>("EventBus").EmitSignal("PhaseChanged",
-			PhaseLabels[(int)_currentPhase], (int)_currentPhase, _turnNumber);
+			BattlePhaseMachine.PhaseLabels[(int)_currentPhase], (int)_currentPhase, _turnNumber);
 
 	private void EmitCommandStateUpdated() =>
 		GetNode<EventBus>("EventBus").EmitSignal("CommandStateUpdated",

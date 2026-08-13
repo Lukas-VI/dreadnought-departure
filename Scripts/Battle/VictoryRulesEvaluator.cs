@@ -58,16 +58,19 @@ public static class VictoryRulesEvaluator
 		{
 			return VictoryResult.None;
 		}
-		JsonElement root;
 		try
 		{
 			using var document = JsonDocument.Parse(victoryJson);
-			root = document.RootElement;
+			return EvaluateRoot(document.RootElement, snapshot);
 		}
 		catch
 		{
 			return VictoryResult.None;
 		}
+	}
+
+	private static VictoryResult EvaluateRoot(JsonElement root, VictorySnapshot snapshot)
+	{
 		if (root.ValueKind != JsonValueKind.Object)
 		{
 			return VictoryResult.None;

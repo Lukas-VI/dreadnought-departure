@@ -45,14 +45,15 @@ public partial class GameplayDirector : Node
 	private int _turnNumber;
 
 	// —— CP ——
-	public int CurrentCP { get; private set; } = 8;
-	public int MaxCP { get; private set; } = 12;
-	public int EnemyCurrentCP { get; private set; } = 8;
-	public int EnemyMaxCP { get; private set; } = 12;
-	public int PlayerCommandValue { get; private set; } = 5;
-	public int EnemyCommandValue { get; private set; } = 4;
-	public int PlayerScore { get; private set; }
-	public int EnemyScore { get; private set; }
+	private readonly BattleEconomyState _economy = new();
+	public int CurrentCP { get => _economy.CurrentCP; set => _economy.CurrentCP = value; }
+	public int MaxCP { get => _economy.MaxCP; set => _economy.MaxCP = value; }
+	public int EnemyCurrentCP { get => _economy.EnemyCurrentCP; set => _economy.EnemyCurrentCP = value; }
+	public int EnemyMaxCP { get => _economy.EnemyMaxCP; set => _economy.EnemyMaxCP = value; }
+	public int PlayerCommandValue { get => _economy.PlayerCommandValue; set => _economy.PlayerCommandValue = value; }
+	public int EnemyCommandValue { get => _economy.EnemyCommandValue; set => _economy.EnemyCommandValue = value; }
+	public int PlayerScore { get => _economy.PlayerScore; set => _economy.PlayerScore = value; }
+	public int EnemyScore { get => _economy.EnemyScore; set => _economy.EnemyScore = value; }
 
 	// —— 单位缓存 ——
 	private List<ShipComponent> _playerShips = new();
@@ -83,21 +84,13 @@ public partial class GameplayDirector : Node
 	private readonly Dictionary<string, ShipComponent> _remoteShips = new();
 	private readonly Dictionary<string, TorpedoComponent> _remoteTorpedoes = new();
 	private readonly Dictionary<string, Tween> _remoteTweens = new();
-	private readonly Dictionary<ShipComponent, FormationTrail> _formationTrails = new();
+	private readonly MoveSettlementService _moveSettlement = new();
 	private readonly HashSet<Vector2I> _playerReachedHexes = new();
 	private readonly HashSet<Vector2I> _enemyReachedHexes = new();
 	private readonly Dictionary<string, int> _playerActionCounts = new();
 	private readonly HashSet<ShipComponent> _countedSunk = new();
 	private int _enemySunkCount;
 	private int _playerSunkCount;
-
-	/// <summary>单纵阵首舰历史轨迹：Cells[i] 对应到达后的航向 Headings[i]。</summary>
-	private sealed class FormationTrail
-	{
-		public readonly List<Vector2I> Cells = new();
-		public readonly List<HexDirection> Headings = new();
-		public readonly List<ShipComponent> Members = new();
-	}
 
 	public override void _Ready()
 	{
@@ -112,6 +105,11 @@ public partial class GameplayDirector : Node
 		_player = GetNode<PlayerController>("PlayerController");
 		_ai = GetNodeOrNull<AIController>("AIController");
 		_hud = GetNodeOrNull<BattleHudBroker>("CanvasLayer/BattleUI/InfoLabel");
+		_moveSettlement.Map = _mapGenerator;
+		_moveSettlement.Data = _dataManager;
+		_moveSettlement.IsAlive = IsShipAlive;
+		_moveSettlement.RefreshCommandValues = RefreshCommandValues;
+		_economy.Changed += EmitCommandStateUpdated;
 
 		var bus = GetNode<EventBus>("EventBus");
 		var storyDirector = new StoryDirector();
@@ -1320,57 +1318,31 @@ public partial class GameplayDirector : Node
 
 	/// <summary>尝试消耗我方 CP。成功则返回 true 并刷新 HUD。</summary>
 	public bool TryConsumeCP(int amount)
-	{
-		if (CurrentCP < amount) return false;
-		CurrentCP -= amount;
-		EmitCommandStateUpdated();
-		return true;
-	}
+		=> _economy.TryConsumePlayer(amount);
 
 	/// <summary>增加我方 CP（不超过上限）。</summary>
 	public void AddCP(int amount)
-	{
-		CurrentCP = Math.Min(CurrentCP + amount, MaxCP);
-		EmitCommandStateUpdated();
-	}
+		=> _economy.AddPlayer(amount);
 
 	/// <summary>尝试消耗敌方 CP。成功则返回 true 并刷新 HUD。</summary>
 	public bool TryConsumeEnemyCP(int amount)
-	{
-		if (EnemyCurrentCP < amount) return false;
-		EnemyCurrentCP -= amount;
-		EmitCommandStateUpdated();
-		return true;
-	}
+		=> _economy.TryConsumeEnemy(amount);
 
 	/// <summary>增加敌方 CP（不超过上限）。</summary>
 	public void AddEnemyCP(int amount)
-	{
-		EnemyCurrentCP = Math.Min(EnemyCurrentCP + amount, EnemyMaxCP);
-		EmitCommandStateUpdated();
-	}
+		=> _economy.AddEnemy(amount);
 
 	/// <summary>按舰船损伤重算双方指挥值、CP 上限与 PV 得分。</summary>
 	public void RefreshCommandValues()
-	{
-		PlayerCommandValue = CommandRulesEvaluator.CommandValue(
-			_playerShips, _dataManager?.PlayerCommand ?? 5);
-		EnemyCommandValue = CommandRulesEvaluator.CommandValue(
-			_enemyShips, _dataManager?.EnemyCommand ?? 4);
-		MaxCP = Math.Max(1, PlayerCommandValue * 2);
-		EnemyMaxCP = Math.Max(1, EnemyCommandValue * 2);
-		CurrentCP = Math.Min(CurrentCP, MaxCP);
-		EnemyCurrentCP = Math.Min(EnemyCurrentCP, EnemyMaxCP);
-		RefreshScores();
-		EmitCommandStateUpdated();
-	}
+		=> _economy.Refresh(
+			_playerShips,
+			_enemyShips,
+			_dataManager?.PlayerCommand ?? 5,
+			_dataManager?.EnemyCommand ?? 4);
 
 	/// <summary>按对方舰船当前损伤状态计算 PV 得分。</summary>
 	public void RefreshScores()
-	{
-		PlayerScore = VictoryRulesEvaluator.FleetScore(_enemyShips);
-		EnemyScore = VictoryRulesEvaluator.FleetScore(_playerShips);
-	}
+		=> _economy.RefreshScores(_playerShips, _enemyShips);
 
 	private async void DoEndTurnSettlement()
 	{
@@ -1380,21 +1352,12 @@ public partial class GameplayDirector : Node
 		try
 		{
 			bus.EmitSignal("LogMessage", "回合结算：判定检定……");
-			var checks = new List<string>();
-			foreach (var ship in _playerShips.Concat(_enemyShips))
-			{
-				if (!GodotObject.IsInstanceValid(ship) || ship.PendingShotChecks.Count == 0) continue;
-				checks.AddRange(ship.PendingShotChecks);
-			}
+			var allShips = _playerShips.Concat(_enemyShips).ToList();
+			var checks = CombatSettlementService.CollectChecks(allShips);
 			if (checks.Count > 0)
 				bus.EmitSignal("LogMessage", string.Join("\n", checks));
 
-			var hitEvents = _playerShips.Concat(_enemyShips)
-				.SelectMany(ship => ship.PendingHitEvents)
-				.Where(ev => ev != null
-					&& GodotObject.IsInstanceValid(ev.Attacker)
-					&& GodotObject.IsInstanceValid(ev.Target))
-				.ToList();
+			var hitEvents = CombatSettlementService.CollectHitEvents(allShips);
 			var playerAttacks = hitEvents
 				.Where(ev => ev.Attacker.BattleSide == GenerationSide.Player)
 				.ToList();
@@ -1402,29 +1365,21 @@ public partial class GameplayDirector : Node
 				.Where(ev => ev.Attacker.BattleSide == GenerationSide.Enemy)
 				.ToList();
 			GD.Print($"结算演绎：我方 {playerAttacks.Count} 条 / 敌方 {enemyAttacks.Count} 条");
-			bool playerFirst = _dataManager?.InitiativeOwner != "enemy";
-			var replayOrder = playerFirst
-				? playerAttacks.Concat(enemyAttacks)
-				: enemyAttacks.Concat(playerAttacks);
+			var replayOrder = CombatSettlementService.BuildReplayOrder(
+				allShips, _dataManager?.InitiativeOwner ?? "player");
 
-			foreach (var ship in _playerShips.Concat(_enemyShips))
-				if (GodotObject.IsInstanceValid(ship) && ship.PendingDamage > 0)
-					ship.ApplyPendingDamage();
-			foreach (var ship in _playerShips.Concat(_enemyShips))
-				if (GodotObject.IsInstanceValid(ship)
-					&& ship.DamageState == DamageState.Sunk
-					&& _countedSunk.Add(ship))
+			CombatSettlementService.ApplyPendingDamage(allShips, _countedSunk, ship =>
+			{
+				if (ship.BattleSide == GenerationSide.Player)
 				{
-					if (ship.BattleSide == GenerationSide.Player)
-					{
-						_playerSunkCount++;
-					}
-					else
-					{
-						_enemySunkCount++;
-					}
+					_playerSunkCount++;
 				}
-			RefreshStackOffsets();
+				else
+				{
+					_enemySunkCount++;
+				}
+			});
+			_moveSettlement.RefreshStackOffsets(_playerShips, _enemyShips);
 			RefreshCommandValues();
 
 			foreach (var ev in replayOrder)
@@ -1437,12 +1392,7 @@ public partial class GameplayDirector : Node
 				await ToSignal(GetTree().CreateTimer(0.65f), "timeout");
 			}
 
-			foreach (var ship in _playerShips.Concat(_enemyShips))
-				if (GodotObject.IsInstanceValid(ship))
-				{
-					ship.PendingShotChecks.Clear();
-					ship.PendingHitEvents.Clear();
-				}
+			CombatSettlementService.ClearPending(allShips);
 
 			if (!CheckBattleEnd())
 				await ToSignal(GetTree(), "process_frame");
@@ -1465,51 +1415,13 @@ public partial class GameplayDirector : Node
 	/// <summary>移动阶段自动执行该阶段位移：按 SpeedTable 推算格数，用 Tween 播放位移动画。</summary>
 	private async System.Threading.Tasks.Task AnimateMovePhase(int phase)
 	{
-		float longest = 0f;
 		var bus = GetNode<EventBus>("EventBus");
-		var occupiedShips = new Dictionary<Vector2I, List<ShipComponent>>();
-		foreach (var ship in _playerShips.Concat(_enemyShips))
-			if (IsShipAlive(ship))
-				AddStackOccupant(occupiedShips, ship.HexCoords, ship);
-
+		var allShips = _playerShips.Concat(_enemyShips).ToList();
+		var occupiedShips = _moveSettlement.PrepareOccupied(allShips);
 		bool oddTurn = _turnNumber % 2 == 1;
-		var ordered = new List<ShipComponent>();
-		var chains = new List<List<ShipComponent>>();
-		var processed = new HashSet<ShipComponent>();
-		foreach (var side in new[] { GenerationSide.Player, GenerationSide.Enemy })
-		{
-			var sideShips = _playerShips.Concat(_enemyShips)
-				.Where(s => IsShipAlive(s) && s.BattleSide == side)
-				.ToList();
-			foreach (var ship in sideShips)
-			{
-				if (processed.Contains(ship)) continue;
-				if (ship.FormationLead != null && ReferenceEquals(ship.FormationLead, ship))
-				{
-					var chain = sideShips.Where(s => ReferenceEquals(s.FormationLead, ship))
-						.OrderBy(s => s.FormationIndex)
-						.ToList();
-					if (chain.Count < 2)
-					{
-						ordered.Add(ship);
-						processed.Add(ship);
-						continue;
-					}
-					chains.Add(chain);
-					foreach (var s in chain)
-					{
-						processed.Add(s);
-						ordered.Add(s);
-					}
-				}
-				else
-				{
-					ordered.Add(ship);
-					processed.Add(ship);
-				}
-			}
-		}
+		var (ordered, chains) = _moveSettlement.OrderShips(allShips);
 
+		float longest = 0f;
 		for (int i = 0; i < ordered.Count; i++)
 		{
 			var ship = ordered[i];
@@ -1517,22 +1429,22 @@ public partial class GameplayDirector : Node
 			if (chain != null)
 			{
 				longest = Mathf.Max(longest,
-					AnimateFormationChain(chain, phase, oddTurn, bus, occupiedShips));
+					_moveSettlement.AnimateFormationChain(chain, phase, oddTurn, bus, occupiedShips));
 				i += chain.Count - 1;
 				continue;
 			}
 			longest = Mathf.Max(longest,
-				AnimateStraightShip(ship, phase, oddTurn, bus, occupiedShips));
+				_moveSettlement.AnimateStraightShip(ship, phase, oddTurn, bus, occupiedShips));
 		}
 
 		if (longest > 0f)
 			await ToSignal(GetTree().CreateTimer(longest + 0.1f), "timeout");
-		ApplyPendingTurnsAfterMovement();
-		RefreshStackOffsets();
+		_moveSettlement.ApplyPendingTurns(allShips);
+		_moveSettlement.RefreshStackOffsets(_playerShips, _enemyShips);
 		RefreshDirectionOverlays();
 		await _torpedoController.MoveTorpedoesAsync(_mapGenerator, _dataManager,
-			phase, oddTurn, _playerShips.Concat(_enemyShips).ToList());
-		foreach (var ship in _playerShips.Concat(_enemyShips))
+			phase, oddTurn, allShips);
+		foreach (var ship in allShips)
 			if (IsShipAlive(ship)
 				&& _dataManager?.SpecialTiles.TryGetValue(ship.HexCoords, out int specialId) == true)
 			{
@@ -1548,200 +1460,6 @@ public partial class GameplayDirector : Node
 			}
 	}
 
-	/// <summary>移动阶段结束后执行待命转向：先沿原航向移动，再转向。</summary>
-	private void ApplyPendingTurnsAfterMovement()
-	{
-		foreach (var ship in _playerShips.Concat(_enemyShips))
-		{
-			if (IsShipAlive(ship) && ship.PendingDirection.HasValue)
-			{
-				HexDirection target = ship.PendingDirection.Value;
-				ship.AnimateTurnTo(target);
-				ship.PendingDirection = null;
-			}
-		}
-	}
-
-	private float AnimateStraightShip(ShipComponent ship, int phase, bool oddTurn, EventBus bus,
-		Dictionary<Vector2I, List<ShipComponent>> occupiedShips)
-	{
-		int requestedSteps = MoveRulesEvaluator.MovementForPhase(ship.CurrentSpeed, phase, oddTurn);
-		var path = MoveRulesEvaluator.BuildMovePath(ship.HexCoords, ship.Direction, requestedSteps);
-		var moved = ResolveMovePath(ship, path, bus, occupiedShips);
-		if (moved.Count <= 0) return 0f;
-
-		Vector2I target = moved[^1].Hex;
-		RemoveStackOccupant(occupiedShips, ship.HexCoords, ship);
-		AddStackOccupant(occupiedShips, target, ship);
-		if (!IsShipAlive(ship))
-		{
-			ship.HexCoords = target;
-			return 0f;
-		}
-
-		float perStep = 0.2f + 0.35f / Math.Max(1, moved.Count);
-		ship.AnimateMovePath(
-			_mapGenerator,
-			moved.Select(step => step.Hex).ToList(),
-			perStep,
-			moved.Select(step => step.Heading).ToList());
-		return perStep * moved.Count;
-	}
-
-	/// <summary>单纵阵按首舰轨迹推进：后船逐格消费首舰历史轨迹，到达每个转向格时立即转向。</summary>
-	private float AnimateFormationChain(List<ShipComponent> chain, int phase, bool oddTurn, EventBus bus,
-		Dictionary<Vector2I, List<ShipComponent>> occupiedShips)
-	{
-		ShipComponent lead = chain[0];
-		int requestedSteps = MoveRulesEvaluator.MovementForPhase(lead.CurrentSpeed, phase, oddTurn);
-		var plannedPath = MoveRulesEvaluator.BuildMovePath(lead.HexCoords, lead.Direction, requestedSteps);
-		var moved = ResolveMovePath(lead, plannedPath, bus, occupiedShips);
-		int steps = moved.Count;
-
-		FormationTrail trail = GetOrBuildFormationTrail(lead, chain);
-		int leadIndex = trail.Cells.Count - 1;
-		// 先走再转：首舰本阶段先沿原航向移动，结束时转向；轨迹格立即记录转向后的航向。
-		HexDirection leadAfterTurn = lead.PendingDirection ?? lead.Direction;
-		for (int i = 0; i < trail.Cells.Count; i++)
-			if (trail.Cells[i] == lead.HexCoords)
-				trail.Headings[i] = leadAfterTurn;
-		if (steps <= 0) return 0f;
-
-		for (int i = 0; i < steps; i++)
-		{
-			trail.Cells.Add(moved[i].Hex);
-			trail.Headings.Add(moved[i].Heading);
-		}
-
-		var leadPath = trail.Cells.GetRange(leadIndex + 1, steps);
-		var leadHeadings = trail.Headings.GetRange(leadIndex + 1, steps);
-		RemoveStackOccupant(occupiedShips, lead.HexCoords, lead);
-		AddStackOccupant(occupiedShips, trail.Cells[^1], lead);
-		float perStep = 0.2f + 0.35f / Math.Max(1, steps);
-		if (IsShipAlive(lead))
-			lead.AnimateMovePath(_mapGenerator, leadPath, perStep, leadHeadings);
-		else
-			lead.HexCoords = trail.Cells[^1];
-
-		for (int k = 1; k < chain.Count; k++)
-		{
-			var follower = chain[k];
-			if (!IsShipAlive(follower)) continue;
-			int followerIndex = trail.Cells.LastIndexOf(follower.HexCoords);
-			if (followerIndex < 0) continue;
-			int followerSteps = Math.Min(steps, trail.Cells.Count - 1 - followerIndex);
-			if (followerSteps <= 0) continue;
-			var followerPath = trail.Cells.GetRange(followerIndex + 1, followerSteps);
-			var headings = trail.Headings.GetRange(followerIndex + 1, followerSteps);
-			RemoveStackOccupant(occupiedShips, follower.HexCoords, follower);
-			AddStackOccupant(occupiedShips, followerPath[followerSteps - 1], follower);
-			follower.AnimateMovePath(_mapGenerator, followerPath, perStep, headings);
-		}
-		return 0.35f + steps * 0.2f;
-	}
-
-	private FormationTrail GetOrBuildFormationTrail(ShipComponent lead, List<ShipComponent> chain)
-	{
-		if (_formationTrails.TryGetValue(lead, out var trail)
-			&& trail.Cells.Count > 0
-			&& trail.Cells[^1] == lead.HexCoords
-			&& trail.Members.SequenceEqual(chain))
-			return trail;
-
-		trail = new FormationTrail();
-		for (int i = chain.Count - 1; i >= 0; i--)
-		{
-			var ship = chain[i];
-			if (!IsShipAlive(ship)) continue;
-			trail.Cells.Add(ship.HexCoords);
-			trail.Headings.Add(ship.Direction);
-		}
-		trail.Members.AddRange(chain);
-		_formationTrails[lead] = trail;
-		return trail;
-	}
-
-	private List<MoveRulesEvaluator.MovementStep> ResolveMovePath(ShipComponent ship,
-		IReadOnlyList<MoveRulesEvaluator.MovementStep> path, EventBus bus,
-		Dictionary<Vector2I, List<ShipComponent>> occupiedShips)
-	{
-		var moved = new List<MoveRulesEvaluator.MovementStep>();
-		int index = 0;
-		for (; index < path.Count; index++)
-		{
-			Vector2I next = path[index].Hex;
-			if (_dataManager?.IsIsland(next) ?? false)
-			{
-				bus.EmitLog($"🪨 {ship.ShipName} 撞击岛屿，直接沉没！");
-				ship.TakeDamage(ship.CurrentHp);
-				RefreshCommandValues();
-				return moved;
-			}
-			if (!CanStackEnter(ship, next, occupiedShips))
-			{
-				break;
-			}
-			moved.Add(path[index]);
-		}
-
-		if (index >= path.Count) return moved;
-		Vector2I blockedHex = path[index].Hex;
-		if (occupiedShips.TryGetValue(blockedHex, out var blockers) && blockers.Count > 0)
-		{
-			var blocker = blockers[0];
-			if (CollisionRulesEvaluator.IsCollision())
-			{
-				int hullSum = ship.MaxHp + blocker.MaxHp;
-				var (rollA, dmgA) = CollisionRulesEvaluator.RollDamage(hullSum);
-				var (rollB, dmgB) = CollisionRulesEvaluator.RollDamage(hullSum);
-				bus.EmitLog($"💥 {ship.ShipName} 与 {blocker.ShipName} 发生冲撞！（{rollA}→{dmgA}，{rollB}→{dmgB}）");
-				ship.TakeDamage(dmgA);
-				blocker.TakeDamage(dmgB);
-				RefreshCommandValues();
-			}
-			else
-			{
-				bus.EmitLog($"⚠️ {ship.ShipName} 前方有舰船但未发生冲撞，停在 {moved.Count} 格前");
-			}
-		}
-		else
-		{
-			bus.EmitLog($"⚠️ {ship.ShipName} 前方受阻，仅推进 {moved.Count} 格");
-		}
-		return moved;
-	}
-
-	private static void AddStackOccupant(
-		Dictionary<Vector2I, List<ShipComponent>> occupants, Vector2I hex, ShipComponent ship)
-	{
-		if (!occupants.TryGetValue(hex, out var list))
-		{
-			list = new List<ShipComponent>();
-			occupants[hex] = list;
-		}
-		if (!list.Contains(ship)) list.Add(ship);
-	}
-
-	private static void RemoveStackOccupant(
-		Dictionary<Vector2I, List<ShipComponent>> occupants, Vector2I hex, ShipComponent ship)
-	{
-		if (occupants.TryGetValue(hex, out var list))
-		{
-			list.Remove(ship);
-			if (list.Count == 0) occupants.Remove(hex);
-		}
-	}
-
-	/// <summary>同阵营单格最多 2 艘；敌舰占位或已满 2 艘时不可进入。</summary>
-	private static bool CanStackEnter(ShipComponent ship, Vector2I hex,
-		Dictionary<Vector2I, List<ShipComponent>> occupants)
-	{
-		if (!occupants.TryGetValue(hex, out var list) || list.Count == 0) return true;
-		if (hex == ship.HexCoords) return true;
-		if (list.Any(s => s.BattleSide != ship.BattleSide)) return false;
-		return list.Count < 2;
-	}
-
 	/// <summary>刷新方向标记：只标记单纵阵头与独行舰，跟随舰不显示。</summary>
 	private void RefreshDirectionOverlays()
 	{
@@ -1752,38 +1470,6 @@ public partial class GameplayDirector : Node
 			.Select(ship => (ship.HexCoords, ship.Direction))
 			.ToList();
 		_overlay.RefreshDirections(entries);
-	}
-
-	/// <summary>按同格同阵营堆叠序号自动调整模型 y 高度。</summary>
-	public void RefreshStackOffsets()
-	{
-		var groups = new Dictionary<Vector2I, List<ShipComponent>>();
-		foreach (var ship in _playerShips.Concat(_enemyShips))
-			if (IsShipAlive(ship))
-				AddStackOccupant(groups, ship.HexCoords, ship);
-
-		foreach (var group in groups)
-			foreach (var sideGroup in group.Value.GroupBy(s => s.BattleSide))
-			{
-				var stacked = sideGroup.ToList();
-				for (int i = 0; i < stacked.Count; i++)
-				{
-					var ship = stacked[i];
-					Vector3 hexCenter = _mapGenerator.HexToWorld(ship.HexCoords.X, ship.HexCoords.Y);
-					ship.ApplyStackOffset(i, stacked.Count, hexCenter, LateralAxisFor(ship));
-				}
-			}
-	}
-
-	private Vector3 LateralAxisFor(ShipComponent ship)
-	{
-		Vector2I off = HexDirectionUtility.Offset(ship.Direction);
-		Vector3 forward = _mapGenerator.HexToWorld(off.X, off.Y)
-			- _mapGenerator.HexToWorld(0, 0);
-		forward.Y = 0f;
-		if (forward.LengthSquared() < 0.0001f) return Vector3.Right;
-		forward = forward.Normalized();
-		return new Vector3(forward.Z, 0f, -forward.X);
 	}
 
 	public BattlePhase CurrentPhase => _currentPhase;
@@ -1868,20 +1554,9 @@ public partial class GameplayDirector : Node
 
 	/// <summary>损伤导致的降速不立即生效，统一在下一回合速度调整阶段强制压速。</summary>
 	private void ApplyDeferredSpeedCaps()
-	{
-		var bus = GetNode<EventBus>("EventBus");
-		foreach (var ship in _playerShips.Concat(_enemyShips))
-		{
-			if (!IsShipAlive(ship)) continue;
-			int cap = ship.MaxSpeedForCurrentState;
-			if (ship.CurrentSpeed > cap)
-			{
-				int old = ship.CurrentSpeed;
-				ship.CurrentSpeed = cap;
-				bus.EmitLog($"{ship.ShipName} 因损伤强制降速 {old} → {cap}");
-			}
-		}
-	}
+		=> _economy.ApplyDeferredSpeedCaps(
+			_playerShips.Concat(_enemyShips),
+			message => GetNode<EventBus>("EventBus").EmitSignal("LogMessage", message));
 
 	private void EmitPhaseChanged() =>
 		GetNode<EventBus>("EventBus").EmitSignal("PhaseChanged",

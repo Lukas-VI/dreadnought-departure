@@ -58,8 +58,20 @@ public static class VictoryRulesEvaluator
 		{
 			return VictoryResult.None;
 		}
-		using var document = JsonDocument.Parse(victoryJson);
-		JsonElement root = document.RootElement;
+		JsonElement root;
+		try
+		{
+			using var document = JsonDocument.Parse(victoryJson);
+			root = document.RootElement;
+		}
+		catch
+		{
+			return VictoryResult.None;
+		}
+		if (root.ValueKind != JsonValueKind.Object)
+		{
+			return VictoryResult.None;
+		}
 		if (!root.TryGetProperty("conditions", out JsonElement conditions))
 		{
 			conditions = default;
@@ -105,6 +117,10 @@ public static class VictoryRulesEvaluator
 	private static VictoryResult CheckCondition(
 		JsonElement condition, VictorySnapshot snapshot, bool defeat = false)
 	{
+		if (condition.ValueKind != JsonValueKind.Object)
+		{
+			return VictoryResult.None;
+		}
 		string type = Str(condition, "type");
 		string side = Str(condition, "side");
 		bool enemySide = side == "enemy";

@@ -114,10 +114,7 @@ public partial class PhaseActionMenu : Control
 					list.AddRange(ship.Data.SkillIds);
 				break;
 			case BattlePhase.Torpedo:
-				list.Add("torpedo_left_0");
-				list.Add("torpedo_left_1");
-				list.Add("torpedo_right_0");
-				list.Add("torpedo_right_1");
+				list.Add("torpedo");
 				break;
 		}
 		list.Add("skip");
@@ -128,7 +125,7 @@ public partial class PhaseActionMenu : Control
 	{
 		"speed_up" or "speed_down" or "turn_left" or "turn_right" => 1,
 		"attack" => CommandRulesEvaluator.FireCPCost(ship),
-		"torpedo_left_0" or "torpedo_left_1" or "torpedo_right_0" or "torpedo_right_1" =>
+		"torpedo" =>
 			CommandRulesEvaluator.TorpedoCPCost(ship, director?.IsPlayerSecondTurn == true),
 		"radar" => 0,
 		_ => 0
@@ -192,10 +189,9 @@ public partial class PhaseActionMenu : Control
 				or BattlePhase.MovePhase1 or BattlePhase.MovePhase2 or BattlePhase.MovePhase3,
 			"attack" => phase == BattlePhase.Gunfire && ship.MainAmmo > 0
 				&& ship.DamageState != DamageState.Heavy && ship.DamageState != DamageState.Sunk,
-			"torpedo_left_0" or "torpedo_left_1" => phase == BattlePhase.Torpedo
-				&& TorpedoRulesEvaluator.CanLaunch(ship, -1),
-			"torpedo_right_0" or "torpedo_right_1" => phase == BattlePhase.Torpedo
-				&& TorpedoRulesEvaluator.CanLaunch(ship, 1),
+			"torpedo" => phase == BattlePhase.Torpedo
+				&& (TorpedoRulesEvaluator.CanLaunch(ship, -1)
+					|| TorpedoRulesEvaluator.CanLaunch(ship, 1)),
 			"radar" => phase == BattlePhase.Gunfire && CanUseRadar(ship),
 			_ => true
 		};
@@ -208,10 +204,7 @@ public partial class PhaseActionMenu : Control
 		"turn_left" => ship.PendingDirection == HexDirectionUtility.TurnLeft(ship.Direction),
 		"turn_right" => ship.PendingDirection == HexDirectionUtility.TurnRight(ship.Direction),
 		"attack" => ship.PendingAttackTarget != null,
-		"torpedo_left_0" => ship.PendingTorpedoSide == -1 && ship.PendingTorpedoBranch == 0,
-		"torpedo_left_1" => ship.PendingTorpedoSide == -1 && ship.PendingTorpedoBranch == 1,
-		"torpedo_right_0" => ship.PendingTorpedoSide == 1 && ship.PendingTorpedoBranch == 0,
-		"torpedo_right_1" => ship.PendingTorpedoSide == 1 && ship.PendingTorpedoBranch == 1,
+		"torpedo" => ship.PendingTorpedoSide != 0,
 		"radar" => ship.PendingRadarActive,
 		_ => false
 	};
@@ -246,10 +239,7 @@ public partial class PhaseActionMenu : Control
 		"turn_left" => "左转",
 		"turn_right" => "右转",
 		"attack" => "炮击",
-		"torpedo_left_0" => "左舷雷击·正",
-		"torpedo_left_1" => "左舷雷击·斜",
-		"torpedo_right_0" => "右舷雷击·正",
-		"torpedo_right_1" => "右舷雷击·斜",
+		"torpedo" => "鱼雷",
 		"radar" => "雷达",
 		"skip" => "待命",
 		_ => id

@@ -63,16 +63,9 @@ public partial class TorpedoController : Node3D
 			var path = new List<Vector2I>();
 			Vector2I cursor = torpedo.Hex;
 			bool remove = false;
-			ShipComponent nearest = FindNearestEnemy(ships, torpedo);
 			for (int i = 0; i < steps; i++)
 			{
 				int branch = torpedo.FanBranch;
-				if (nearest != null)
-				{
-					branch = TorpedoRulesEvaluator.ChooseBranch(
-						cursor, torpedo.Direction, torpedo.FanSide,
-						nearest.HexCoords, torpedo.FanBranch);
-				}
 				var candidates = TorpedoRulesEvaluator.CandidateOffsets(
 					torpedo.Direction, torpedo.FanSide);
 				Vector2I next = cursor + candidates[branch];
@@ -99,6 +92,10 @@ public partial class TorpedoController : Node3D
 					break;
 				}
 				path.Add(cursor);
+				if (FindAnyShipAt(ships, cursor) != null)
+				{
+					break;
+				}
 				if (torpedo.RemainingRange - 1 <= 0) break;
 			}
 			if (path.Count == 0)
@@ -133,6 +130,24 @@ public partial class TorpedoController : Node3D
 		foreach (TorpedoComponent torpedo in survivors)
 		{
 			if (toRemove.Contains(torpedo)) continue;
+			ShipComponent target = FindTargetAt(ships, torpedo);
+			if (target != null)
+			{
+				var (hit, damage, detail) = TorpedoRulesEvaluator.ResolveHit(torpedo, target);
+				var bus = GetNode<EventBus>("../EventBus");
+				bus?.EmitLog(detail);
+				if (GodotObject.IsInstanceValid(target))
+				{
+					bus?.EmitSignal("HitFeedbackRequested", target, hit, damage);
+				}
+				if (hit)
+				{
+					target.PendingDamage += damage;
+					target.PendingShotChecks.Add(detail);
+				}
+				toRemove.Add(torpedo);
+				continue;
+			}
 			if (torpedo.RemainingRange <= 0)
 			{
 				GetNode<EventBus>("../EventBus")?.EmitLog(
@@ -140,21 +155,6 @@ public partial class TorpedoController : Node3D
 				toRemove.Add(torpedo);
 				continue;
 			}
-			ShipComponent target = FindTargetAt(ships, torpedo);
-			if (target == null) continue;
-			var (hit, damage, detail) = TorpedoRulesEvaluator.ResolveHit(torpedo, target);
-			var bus = GetNode<EventBus>("../EventBus");
-			bus?.EmitLog(detail);
-			if (hit)
-			{
-				target.PendingDamage += damage;
-				target.PendingShotChecks.Add(detail);
-				if (GodotObject.IsInstanceValid(target))
-				{
-					bus?.EmitSignal("HitFeedbackRequested", target, true, damage);
-				}
-			}
-			toRemove.Add(torpedo);
 		}
 		foreach (TorpedoComponent torpedo in toRemove)
 		{
@@ -164,35 +164,20 @@ public partial class TorpedoController : Node3D
 
 	private static ShipComponent FindTargetAt(IReadOnlyList<ShipComponent> ships,
 		TorpedoComponent torpedo)
+		=> FindAnyShipAt(ships, torpedo.Hex);
+
+	private static ShipComponent FindAnyShipAt(IReadOnlyList<ShipComponent> ships,
+		Vector2I hex)
 	{
 		foreach (ShipComponent ship in ships)
 		{
 			if (ship == null || !GodotObject.IsInstanceValid(ship) || ship.CurrentHp <= 0) continue;
-			if (ship.HexCoords == torpedo.Hex && ship.BattleSide != (GenerationSide)torpedo.Side)
+			if (ship.HexCoords == hex)
 			{
 				return ship;
 			}
 		}
 		return null;
-	}
-
-	private static ShipComponent FindNearestEnemy(IReadOnlyList<ShipComponent> ships,
-		TorpedoComponent torpedo)
-	{
-		ShipComponent nearest = null;
-		int best = int.MaxValue;
-		foreach (ShipComponent ship in ships)
-		{
-			if (ship == null || !GodotObject.IsInstanceValid(ship) || ship.CurrentHp <= 0) continue;
-			if (ship.BattleSide == (GenerationSide)torpedo.Side) continue;
-			int dist = BattleRulesEvaluator.GetHexDistance(torpedo.Hex, ship.HexCoords);
-			if (dist < best)
-			{
-				best = dist;
-				nearest = ship;
-			}
-		}
-		return nearest;
 	}
 
 	public void Clear()

@@ -177,13 +177,14 @@ public partial class PlayerController : Node, IUnitController
 		{ RejectAction("❌ 当前阶段不可转向"); return; }
 		if (actionId == "attack" && !canAttack)
 		{ RejectAction("❌ 当前阶段不可射击"); return; }
-		bool isTorpedo = TryParseTorpedoAction(actionId, out int torpedoSide, out int torpedoBranch);
-		if (isTorpedo && !canTorpedo)
-		{ RejectAction("❌ 当前阶段不可雷击"); return; }
-
-		if (isTorpedo)
+		if (actionId == "torpedo")
 		{
-			ExecuteTorpedoPending(torpedoSide, torpedoBranch);
+			if (!canTorpedo)
+			{
+				RejectAction("❌ 当前阶段不可雷击");
+				return;
+			}
+			EnterTorpedoTargeting();
 			return;
 		}
 
@@ -203,11 +204,12 @@ public partial class PlayerController : Node, IUnitController
 		}
 	}
 
-	private void ExecuteTorpedoPending(int side, int branch)
+	private void EnterTorpedoTargeting()
 	{
 		ShipComponent ship = _selected;
 		if (ship == null) return;
-		if (!TorpedoRulesEvaluator.CanLaunch(ship, side))
+		if (!TorpedoRulesEvaluator.CanLaunch(ship, -1)
+			&& !TorpedoRulesEvaluator.CanLaunch(ship, 1))
 		{
 			RejectAction("❌ 无法雷击：无鱼雷管、已中破/大破、本回合已雷击或该侧已无鱼雷");
 			return;
@@ -221,40 +223,47 @@ public partial class PlayerController : Node, IUnitController
 			return;
 		}
 		int range = ship.Data?.TorpedoRange ?? 4;
-		bool radarActive = ship.Data != null
-			&& !string.IsNullOrEmpty(ship.Data.RadarType)
-			&& ship.DamageState is DamageState.Intact or DamageState.Light;
-		bool hasTarget = _enemyUnits != null && _enemyUnits.Any(target =>
-			GodotObject.IsInstanceValid(target)
-			&& target.CurrentHp > 0
-			&& BattleRulesEvaluator.GetHexDistance(ship.HexCoords, target.HexCoords) <= range
-			&& VisionRulesEvaluator.CanEngage(ship, target, _data,
-				radarActive));
-		if (!hasTarget)
+		_pendingAction = "torpedo";
+		GetNode<EventBus>("../EventBus").EmitSignal(
+			"TorpedoRangeOverlayRequested", ship.HexCoords, range, (int)ship.Direction);
+		GetNode<EventBus>("../EventBus").EmitSignal("CameraFocusRequested",
+			ShipWorld(ship), Mathf.Clamp(10f + range * 3f, 12f, 40f), 55f);
+		GetNode<EventBus>("../EventBus").EmitSignal("LogMessage",
+			$"💣 {ship.ShipName} 点击高亮格选择雷击目标");
+	}
+
+	private void ExecuteTorpedoDestination(Vector2I hex)
+	{
+		ShipComponent ship = _selected;
+		if (ship == null || _data == null) return;
+		int range = ship.Data?.TorpedoRange ?? 4;
+		bool sideAllowed(int side) => TorpedoRulesEvaluator.CanLaunch(ship, side);
+		var reachable = TorpedoRulesEvaluator.FarthestReachable(
+			ship.HexCoords, ship.Direction, range, sideAllowed)
+			.Where(cell => !_data.IsIsland(cell) && _data.TerrainSources.ContainsKey(cell))
+			.ToList();
+		if (!reachable.Contains(hex))
 		{
-			RejectAction("❌ 射程/视野内没有可雷击的敌舰");
+			RejectAction("❌ 目标不在鱼雷可达范围");
 			return;
 		}
 
+		int side = TorpedoRulesEvaluator.SideToward(
+			ship.HexCoords, ship.Direction, hex);
+		if (!TorpedoRulesEvaluator.CanLaunch(ship, side))
+		{
+			side = -side;
+		}
+		int branch = TorpedoRulesEvaluator.BranchToward(
+			ship.HexCoords, ship.Direction, side, hex);
 		ship.PendingTorpedoSide = side;
 		ship.PendingTorpedoBranch = branch;
 		string sideText = side < 0 ? "左舷" : "右舷";
 		string branchText = branch == 0 ? "正" : "斜";
 		string sideName = $"{sideText}·{branchText}";
 		GetNode<EventBus>("../EventBus").EmitSignal("LogMessage",
-			$"💣 {ship.ShipName} {sideName}雷击待命（{cost} CP，推进后发射）");
+			$"💣 {ship.ShipName} {sideName}雷击待命 → ({hex.X},{hex.Y})（推进后发射）");
 		EndAction();
-	}
-
-	private static bool TryParseTorpedoAction(string actionId, out int side, out int branch)
-	{
-		side = 0;
-		branch = 0;
-		if (actionId == "torpedo_left_0") { side = -1; branch = 0; return true; }
-		if (actionId == "torpedo_left_1") { side = -1; branch = 1; return true; }
-		if (actionId == "torpedo_right_0") { side = 1; branch = 0; return true; }
-		if (actionId == "torpedo_right_1") { side = 1; branch = 1; return true; }
-		return false;
 	}
 
 	/// <summary>执行航速增减：检查变速限幅与 CP 消耗，更新 ship.CurrentSpeed，并按新航速推算到达格运镜。</summary>
@@ -387,6 +396,11 @@ public partial class PlayerController : Node, IUnitController
 	/// <summary>执行炮击：校验敌舰与射程，确认目标后以船-敌舰中点运镜并结算射击。</summary>
 	private void ExecutePendingAction(Vector2I hex)
 	{
+		if (_pendingAction == "torpedo")
+		{
+			ExecuteTorpedoDestination(hex);
+			return;
+		}
 		if (_pendingAction != "attack") return;
 		if (_enemyUnits == null) return;
 

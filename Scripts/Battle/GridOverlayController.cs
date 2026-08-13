@@ -58,6 +58,7 @@ public partial class GridOverlayController : Node
 		bus.OverlayDrawRequested += DrawTacticalRange;
 		bus.OverlayArcDrawRequested += DrawForwardArc;
 		bus.OverlayClearRequested += ClearOverlay;
+		bus.TorpedoRangeOverlayRequested += DrawTorpedoRange;
 		bus.MoveTargetHighlighted += HighlightMoveTarget;
 		bus.DirectionOverlayRequested += ShowDirection;
 		bus.DirectionOverlayClearRequested += ClearDirectionOverlay;
@@ -183,6 +184,33 @@ public partial class GridOverlayController : Node
 		{
 			if (!GodotObject.IsInstanceValid(mesh)) continue;
 			mesh.MaterialOverride = _originalMaterials.TryGetValue(mesh, out var orig) ? orig : null;
+		}
+	}
+
+	/// <summary>鱼雷目标选择：高亮当前舰船可达的最远格。</summary>
+	public void DrawTorpedoRange(Vector2I center, int range, int direction)
+	{
+		ClearOverlay();
+		HexDirection dir = (HexDirection)direction;
+		Dictionary<Vector2I, int> reachable =
+			TorpedoRulesEvaluator.ComputeReachable(center, dir, range, _ => true);
+		foreach (var (cell, steps) in reachable)
+		{
+			if (steps != range) continue;
+			if ((_dataManager?.IsIsland(cell) ?? false)
+				|| (_dataManager != null && !_dataManager.TerrainSources.ContainsKey(cell)))
+			{
+				continue;
+			}
+			if (OverlayModelMode())
+			{
+				SpawnOverlay(ArriveOverlayScene, cell, null);
+			}
+			else if (_targets.TryGetValue(cell, out var mesh)
+				&& GodotObject.IsInstanceValid(mesh))
+			{
+				mesh.MaterialOverride = MoveMaterial;
+			}
 		}
 	}
 

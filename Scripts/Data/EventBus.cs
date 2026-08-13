@@ -32,6 +32,7 @@ public partial class EventBus : Node
 	[Signal] public delegate void DirectionOverlayRequestedEventHandler(Vector2I hex, int direction);
 	[Signal] public delegate void DirectionOverlayClearRequestedEventHandler();
 	[Signal] public delegate void HitFeedbackRequestedEventHandler(ShipComponent target, bool hit, int damage);
+	[Signal] public delegate void TorpedoRangeOverlayRequestedEventHandler(Vector2I center, int range, int direction);
 	[Signal] public delegate void BattleStartedEventHandler();
 	[Signal] public delegate void StoryTriggerRequestedEventHandler(string scriptId);
 	[Signal] public delegate void PlayerActionPerformedEventHandler(string actionId);

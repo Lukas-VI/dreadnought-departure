@@ -99,6 +99,7 @@ PvP 服务端当前实际流转：`speed → move1 → move2 → move3 →（夜
 - `ShipData` 导出鱼雷管/伤害/射程/航速/备用鱼雷；服务端载入并初始化每艘船的剩余鱼雷。
 - 客户端 `CommandIntentBuilder` 新增 `torpedo` 指令（`side=-1/1`）；PvP 鱼雷阶段改为可交互，不再自动待命。
 - 服务端 `battleState.js` 新增鱼雷实体：发射扣 CP、减少鱼雷管、按 A2 表在移动阶段移动、同格命中裁定并扣血、离图/耗尽消失，`publicState` 广播 `torpedoes`。
-- 鱼雷扇面：客户端提交 `torpedo` 指令携带 `side` 与 `branch`；服务端按顶点侧双候选格贪心蛇行，`publicState` 同步 `fanSide / fanBranch`，客户端 `SyncRemoteTorpedoes` 与离线共用 `TorpedoController` / `torpedo.tscn`。
+- 鱼雷扇面：客户端先显示可达最远格 overlay，玩家点击目标格后提交 `torpedo` 指令（`side` 与 `branch` 由目的地推导）；服务端按顶点侧双候选格行进且不使用制导，`publicState` 同步 `fanSide / fanBranch`，客户端 `SyncRemoteTorpedoes` 与离线共用 `TorpedoController` / `torpedo.tscn`。
+- 鱼雷途中命中：客户端与服务端都按逐格检查敌我舰船，命中即裁定并移除鱼雷；客户端播放 HIT/MISS 与伤害气泡。
 - 备用鱼雷：低速且未转向、上一回合未发射的舰船在新回合自动装填一次（离线与 PvP 一致）。
 - 炮击开关：`GunfirePhaseEnabled` 默认开启，客户端与服务端均可跳过炮击阶段直接进入鱼雷/结算。

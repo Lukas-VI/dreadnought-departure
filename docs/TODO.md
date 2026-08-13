@@ -151,12 +151,14 @@
 
 ## 技术债：上帝类拆解
 
-- [ ] **GameplayDirector 拆解（已提上日程）**：当前 1500+ 行同时负责阶段管线、移动/转向、炮击/鱼雷结算、PvP 同步、胜负判定与相机编排，先按职责拆出：
+- [ ] **GameplayDirector 拆解（进行中）**：已从 1895 行降到核心 338 行，职责拆到独立服务与按域拆分的 partial：
   - [x] `BattlePhaseMachine`：阶段流转、跳过照明/炮击/鱼雷判定（已拆出）
   - [x] `VictoryJudge`：自定义条件/全灭/回合上限纯决策（已拆出）
   - [x] `MoveSettlementService`：逐格移动、阻挡、单纵阵轨迹、堆叠偏移与先走再转（已拆出）
   - [x] `CombatSettlementService`：检定日志、命中演绎排序、PendingDamage 落实（已拆出）
   - [x] `BattleEconomyState`：双方指挥值 / CP / 上限 / PV / 延迟降速（已拆出）
-  - [ ] `PvpSyncService`：远程状态解析、鱼雷/舰船实体同步
+  - [x] `PvpSyncService`：阶段映射与鱼雷实体同步（已拆出）；远程舰船状态已拆到 `GameplayDirector.Pvp.cs`
+  - [x] 按域拆分：`Turn.cs`（阶段/计时/敌我调度）、`Commands.cs`（指令提交/雷击）、`Settlement.cs`（结算/胜负）、`Move.cs`（移动编排）
+  - [ ] 把 `Pvp.cs` 的远程舰船状态继续收敛为 `PvpSyncService.ApplyShips`
 - [ ] 拆解时保持单机/PvP 共用 `CommandIntentBuilder` 与 `TorpedoRulesEvaluator`，不以两套系统为代价换“代码更短”。
 - [ ] 拆解完成后补 headless 冒烟：阶段推进、炮击开关、鱼雷扇面移动、PvP 状态广播。

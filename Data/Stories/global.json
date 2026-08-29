@@ -1,8 +1,9 @@
 {
   "triggers": [
-    { "event": "player_action", "key": "turn_left", "checkpoint": "tutorial_turn_seen", "script": "tutorial_turn" },
-    { "event": "chapter_enter", "key": "01", "checkpoint": "chapter_01_entered", "script": "chapter_01_enter" },
-    { "event": "level_enter", "key": "01-01", "script": "level_01_01_enter" },
-    { "event": "level_complete", "key": "01-01", "checkpoint": "level_01_01_complete", "script": "level_01_01_complete" }
+    { "event": "chapter_enter", "key": "00", "checkpoint": "chapter_00_entered", "script": "campaign/00/chapter" },
+    { "event": "chapter_enter", "key": "01", "checkpoint": "chapter_01_entered", "script": "campaign/01/chapter" },
+    { "event": "level_enter", "key": "00-01", "checkpoint": "level_00_01_entered", "script": "campaign/00/01/enter" },
+    { "event": "level_enter", "key": "01-01", "script": "campaign/01/01/enter" },
+    { "event": "level_complete", "key": "01-01", "checkpoint": "level_01_01_complete", "script": "campaign/01/01/complete" }
   ]
 }

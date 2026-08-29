@@ -1,0 +1,10 @@
+[gd_resource type="ShaderMaterial" format=3 uid="uid://cso2i4vdxr8ow"]
+
+[ext_resource type="Shader" uid="uid://cuiqmkpsk2tg8" path="res://assets/Shaders/ocean_wave.gdshader" id="1_c7xme"]
+
+[resource]
+render_priority = 0
+shader = ExtResource("1_c7xme")
+shader_parameter/albedo = Color(0.15, 0.35, 0.55, 1)
+shader_parameter/scroll_speed = 0.08
+shader_parameter/wave_amp = 0.015

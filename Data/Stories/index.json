@@ -1,0 +1,61 @@
+{
+  "title": "Dreadnought Departure 剧情",
+  "children": [
+    {
+      "title": "教程",
+      "children": [
+        { "title": "主菜单剧情示例", "script": "tutorial/demo" },
+        { "title": "首次转向提示", "script": "tutorial/turn", "event": "player_action", "key": "turn_left" }
+      ]
+    },
+    {
+      "title": "00 序章",
+      "children": [
+        { "title": "进入序章", "script": "campaign/00/chapter", "event": "chapter_enter", "key": "00" },
+        {
+          "title": "00-01 送粮（移动教学）",
+          "children": [
+            { "title": "出航前", "script": "campaign/00/01/enter", "event": "level_enter", "key": "00-01" },
+            { "title": "作战开始", "script": "campaign/00/01/start", "event": "battle_start" },
+            { "title": "加速教学", "script": "campaign/00/01/speed", "event": "player_action", "key": "speed_up" },
+            { "title": "转向教学", "script": "campaign/00/01/turn", "event": "special_cell", "key": "1" },
+            { "title": "到达目标", "script": "campaign/00/01/arrive", "event": "special_cell", "key": "6" }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "第 01 章",
+      "children": [
+        { "title": "进入章节", "script": "campaign/01/chapter", "event": "chapter_enter", "key": "01" },
+        {
+          "title": "01-01",
+          "children": [
+            { "title": "进入关卡", "script": "campaign/01/01/enter", "event": "level_enter", "key": "01-01" },
+            { "title": "完成关卡", "script": "campaign/01/01/complete", "event": "level_complete", "key": "01-01" }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "旧画布占位剧情",
+      "children": [
+        {
+          "title": "地图 1",
+          "children": [
+            { "title": "作战开始", "script": "scenario/1/battle_start", "event": "battle_start" },
+            { "title": "特殊格 1", "script": "scenario/1/special_1", "event": "special_cell", "key": "1" },
+            { "title": "特殊格 2", "script": "scenario/1/special_2", "event": "special_cell", "key": "2" },
+            { "title": "特殊格 3", "script": "scenario/1/special_3", "event": "special_cell", "key": "3" }
+          ]
+        },
+        {
+          "title": "地图 2",
+          "children": [
+            { "title": "作战开始", "script": "scenario/2/battle_start", "event": "battle_start" }
+          ]
+        }
+      ]
+    }
+  ]
+}

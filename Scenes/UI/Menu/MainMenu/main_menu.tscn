@@ -27,7 +27,7 @@ theme_override_constants/separation = 20
 [node name="Title" type="Label" parent="CenterContainer/VBoxContainer" unique_id=1274809231]
 layout_mode = 2
 theme_override_font_sizes/font_size = 36
-text = "Dreadnought Departure"
+text = "标题"
 horizontal_alignment = 1
 
 [node name="Spacer" type="Control" parent="CenterContainer/VBoxContainer" unique_id=1622025145]
@@ -62,7 +62,7 @@ text = "PvP 联机"
 custom_minimum_size = Vector2(300, 60)
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
-text = "网游中心"
+text = "网络"
 
 [node name="BtnStory" type="Button" parent="CenterContainer/VBoxContainer" unique_id=1446092046]
 custom_minimum_size = Vector2(300, 60)

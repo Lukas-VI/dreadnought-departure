@@ -1,0 +1,6 @@
+{
+  "background": { "color": "#0b0f17", "alpha": 0 },
+  "steps": [
+    { "type": "say", "speaker": "旁白", "text": "00 序章 · 送粮" }
+  ]
+}

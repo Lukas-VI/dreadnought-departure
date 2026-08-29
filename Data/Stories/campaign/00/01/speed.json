@@ -1,5 +1,5 @@
 {
-  "background": "#101a2b",
+  "background": { "color": "#101a2b", "alpha": 0 },
   "steps": [
     { "type": "say", "speaker": "昵称", "text": "怎么，看起来没有反应？" },
     { "type": "say", "speaker": "调度", "text": "基础的知识，要驱动这装备加速过程是很缓慢的，至于仪表指示的速度有多快，这张速力表标的还算清楚。" },

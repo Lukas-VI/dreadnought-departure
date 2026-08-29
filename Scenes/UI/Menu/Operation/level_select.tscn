@@ -22,6 +22,11 @@ offset_bottom = 72.0
 grow_horizontal = 2
 theme_override_constants/separation = 16
 
+[node name="BackButton" type="Button" parent="TopBar" unique_id=908339794]
+custom_minimum_size = Vector2(160, 46)
+layout_mode = 2
+text = "返回章节"
+
 [node name="Title" type="Label" parent="TopBar" unique_id=1399323484]
 layout_mode = 2
 theme_override_font_sizes/font_size = 28
@@ -31,15 +36,10 @@ text = "选择关卡"
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="WatchStoryCheck" type="CheckBox" parent="TopBar"]
+[node name="WatchStoryCheck" type="CheckBox" parent="TopBar" unique_id=1341606489]
 custom_minimum_size = Vector2(180, 46)
 layout_mode = 2
 text = "观看剧情"
-
-[node name="BackButton" type="Button" parent="TopBar" unique_id=908339794]
-custom_minimum_size = Vector2(160, 46)
-layout_mode = 2
-text = "返回章节"
 
 [node name="Body" type="MarginContainer" parent="." unique_id=68920601]
 layout_mode = 1

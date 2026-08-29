@@ -12,7 +12,8 @@
   "TorpedoModePlayer": 7,
   "TorpedoModeEnemy": 4,
   "MaxTurns": 18,
-  "TorpedoPhaseEnabled": false,
+  "Victory": null,
+  "TorpedoPhaseEnabled": true,
   "PhaseSecondsPerShip": [
     5,
     5,
@@ -110,7 +111,7 @@
     ],
     "4,-2": [
       {
-        "ShipId": "dreadnought",
+        "ShipId": "destroyer",
         "Direction": 0,
         "Speed": 0
       }

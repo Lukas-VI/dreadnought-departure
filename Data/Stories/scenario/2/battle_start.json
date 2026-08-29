@@ -1,5 +1,5 @@
 {
-  "background": "#231430",
+  "background": { "color": "#231430", "alpha": 0 },
   "steps": [
     { "type": "say", "speaker": "舰队指挥", "text": "地图 2 作战开始，注意北侧暗礁。" }
   ]

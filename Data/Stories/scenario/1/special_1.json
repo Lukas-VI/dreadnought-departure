@@ -1,0 +1,6 @@
+{
+  "background": { "color": "#2a1420", "alpha": 0 },
+  "steps": [
+    { "type": "say", "speaker": "航标", "text": "你进入了一个特殊格子，这里是脚本与关卡编辑通联的示例。" }
+  ]
+}

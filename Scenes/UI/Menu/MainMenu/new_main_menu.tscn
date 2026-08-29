@@ -1,0 +1,7 @@
+[gd_scene format=3 uid="uid://boudqmwre8uo3"]
+
+[ext_resource type="PackedScene" uid="uid://dwj8m30cwbo5i" path="res://assets/Model/UI/Main.glb" id="1_bern3"]
+
+[node name="NewMainMenu" type="Node3D" unique_id=1472269143]
+
+[node name="Main" parent="." unique_id=632951688 instance=ExtResource("1_bern3")]

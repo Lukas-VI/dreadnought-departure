@@ -1,5 +1,5 @@
 {
-  "background": "#101a2b",
+  "background": { "color": "#101a2b", "alpha": 0 },
   "steps": [
     { "type": "say", "speaker": "剧情", "text": "你进入了第一章，正式作战开始。" }
   ]

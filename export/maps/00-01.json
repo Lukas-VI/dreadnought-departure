@@ -27,6 +27,7 @@
 	]
   },
   "TorpedoPhaseEnabled": false,
+  "GunfirePhaseEnabled": false,
   "PhaseSecondsPerShip": [
 	5,
 	5,

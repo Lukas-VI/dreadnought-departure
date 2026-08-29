@@ -1,0 +1,10 @@
+{
+  "background": { "color": "#101a2b", "alpha": 0 },
+  "steps": [
+    { "type": "say", "speaker": "调度", "text": "不要分心！那么，指挥官，接下来我会把基础的同步协议和你再确认一遍。" },
+    { "type": "say", "speaker": "昵称", "text": "……" },
+    { "type": "say", "speaker": "调度", "text": "收到……请立刻回答！" },
+    { "type": "say", "speaker": "昵称", "text": "收到！那么快开始吧。" },
+    { "type": "say", "speaker": "调度", "text": "行动机能的指令序列，在一轮通讯窗口中，可以进行一次速度操作调整速度，三次机动操作进行转向。那么，请先准备加速吧。" }
+  ]
+}

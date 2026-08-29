@@ -1,8 +1,11 @@
 [gd_scene format=3 uid="uid://bbc00v3givrj0"]
 
+[ext_resource type="Script" uid="uid://cycolrxivb8sh" path="res://Scripts/UI/Menu/CardController.cs" id="1_htbfm"]
+
 [node name="Card" type="Control" unique_id=1889599941]
 layout_mode = 3
 anchors_preset = 0
+script = ExtResource("1_htbfm")
 
 [node name="MarginContainer" type="MarginContainer" parent="." unique_id=971875812]
 layout_mode = 1
@@ -28,7 +31,7 @@ layout_mode = 2
 [node name="VBoxContainer" type="HBoxContainer" parent="MarginContainer/PanelContainer/HBoxContainer" unique_id=319161476]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="MarginContainer/PanelContainer/HBoxContainer/VBoxContainer" unique_id=127686289]
+[node name="TypeLabel" type="Label" parent="MarginContainer/PanelContainer/HBoxContainer/VBoxContainer" unique_id=127686289]
 layout_mode = 2
 text = "Type"
 
@@ -36,7 +39,7 @@ text = "Type"
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="Label2" type="Label" parent="MarginContainer/PanelContainer/HBoxContainer/VBoxContainer" unique_id=826216487]
+[node name="AttrLabel" type="Label" parent="MarginContainer/PanelContainer/HBoxContainer/VBoxContainer" unique_id=826216487]
 layout_mode = 2
 text = "0-0-0"
 
@@ -46,7 +49,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="Label" type="Label" parent="MarginContainer/PanelContainer/HBoxContainer" unique_id=291505275]
+[node name="NameLabel" type="Label" parent="MarginContainer/PanelContainer/HBoxContainer" unique_id=291505275]
 layout_mode = 2
 text = "Name"
 horizontal_alignment = 1

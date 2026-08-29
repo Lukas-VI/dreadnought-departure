@@ -11,7 +11,7 @@ public partial class BattleShipOverlayController : Node3D
 {
 	[Export] public Texture2D TurnFlagTexture;
 	[Export] public float LabelHeight = 5.2f;
-	[Export] public float FlagHeight = 2.0f;
+	[Export] public float FlagHeight = 4.0f;
 	[Export] public float RefreshInterval = 0.05f;
 
 	private readonly Dictionary<ShipComponent, Label3D> _labels = new();
@@ -143,7 +143,7 @@ public partial class BattleShipOverlayController : Node3D
 		{
 			Texture = TurnFlagTexture,
 			Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
-			Scale = new Vector3(2.5f, 2.5f, 1f)
+			Scale = new Vector3(2.5f, 2.5f, 1f),
 		};
 		ship.AddChild(flag);
 		_flags[ship] = flag;

@@ -22,6 +22,7 @@ public partial class DockController : Control
 	private ColorRect _appreciationOverlay;
 	private TextureRect _appreciationPortrait;
 	private Label _appreciationPlaceholder;
+	private CardController _card;
 	private bool _appreciationMode;
 
 	public override void _Ready()
@@ -40,6 +41,7 @@ public partial class DockController : Control
 		_appreciationOverlay = GetNode<ColorRect>("AppreciationOverlay");
 		_appreciationPortrait = GetNode<TextureRect>("AppreciationOverlay/Center/PortraitBox/PortraitTexture");
 		_appreciationPlaceholder = GetNode<Label>("AppreciationOverlay/Center/PortraitBox/PlaceholderLabel");
+		_card = GetNode<CardController>("Content/HBox/LeftPanel/Margin/VBox/Card");
 
 		_entries = ShipCatalog.Entries.ToArray();
 		Refresh();
@@ -85,6 +87,11 @@ public partial class DockController : Control
 			$"雷达：{(string.IsNullOrEmpty(data.RadarType) ? "无" : data.RadarType)}\n" +
 			$"技能：{(data.SkillIds == null || data.SkillIds.Length == 0 ? "无" : string.Join("、", data.SkillIds))}\n\n" +
 			$"背景故事：\n{data.Background}";
+
+		_card.SetName(entry.DisplayName);
+		_card.SetType(data.ShipClass);
+		_card.SetAttr($"{data.ArmorClose}-{data.ArmorMedium}-{data.ArmorFar}");
+		
 	}
 
 	private void ShowPrev() { _index--; Refresh(); }

@@ -1,8 +1,8 @@
 {
   "triggers": [
-    { "event": "battle_start", "checkpoint": "story_00_01_started", "script": "00_01_start" },
-    { "event": "player_action", "key": "speed_up", "checkpoint": "story_00_01_speed_seen", "script": "00_01_speed" },
-    { "event": "special_cell", "key": "1", "checkpoint": "story_00_01_turn_seen", "script": "00_01_turn" },
-    { "event": "special_cell", "key": "6", "checkpoint": "story_00_01_arrive_seen", "script": "00_01_arrive" }
+    { "event": "battle_start", "checkpoint": "story_00_01_started", "script": "campaign/00/01/start" },
+    { "event": "player_action", "key": "speed_up", "checkpoint": "story_00_01_speed_seen", "script": "campaign/00/01/speed" },
+    { "event": "special_cell", "key": "1", "checkpoint": "story_00_01_turn_seen", "script": "campaign/00/01/turn" },
+    { "event": "special_cell", "key": "6", "checkpoint": "story_00_01_arrive_seen", "script": "campaign/00/01/arrive" }
   ]
 }

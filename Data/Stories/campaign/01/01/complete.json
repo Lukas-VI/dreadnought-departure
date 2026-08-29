@@ -1,5 +1,5 @@
 {
-  "background": "#152312",
+  "background": { "color": "#152312", "alpha": 0 },
   "steps": [
     { "type": "say", "speaker": "剧情", "text": "第一章第一关完成，后续章节已解锁。" }
   ]

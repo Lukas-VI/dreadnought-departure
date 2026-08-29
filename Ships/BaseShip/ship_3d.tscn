@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://d1k2bwwbi4fan"]
 
 [ext_resource type="Script" uid="uid://c5jjrnq6o77hv" path="res://Scripts/Unit/ShipComponent.cs" id="1_4aexa"]
+[ext_resource type="PackedScene" uid="uid://ruscp33jpmc5" path="res://assets/Model/char/default.blend" id="2_n6xpr"]
 
 [sub_resource type="PrismMesh" id="PrismMesh_n6xpr"]
 size = Vector3(1, 2, 1)
@@ -11,8 +12,11 @@ size = Vector3(1, 1.2490234, 1.0509033)
 [node name="Ships" type="Node3D" unique_id=432411186]
 script = ExtResource("1_4aexa")
 
+[node name="default" parent="." unique_id=142833682 instance=ExtResource("2_n6xpr")]
+
 [node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=1002817285]
 transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0.25, 0)
+visible = false
 mesh = SubResource("PrismMesh_n6xpr")
 
 [node name="Area3D" type="Area3D" parent="." unique_id=454021508]

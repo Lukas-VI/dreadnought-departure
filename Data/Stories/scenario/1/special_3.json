@@ -1,0 +1,6 @@
+{
+  "background": { "color": "#301c1c", "alpha": 0 },
+  "steps": [
+    { "type": "say", "speaker": "预警系统", "text": "前方是危险水域，建议减速规避。" }
+  ]
+}
